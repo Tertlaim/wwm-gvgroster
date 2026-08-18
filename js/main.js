@@ -1326,7 +1326,7 @@ function setupChangePassword() {
             
             // Use AuthModule.currentUser (window.currentUser is never set)
             const current = AuthModule.currentUser;
-            if (current && current.role === 'mod' && current.name) {
+            if (current && AuthModule.isMod() && current.name) {
                 try {
                     const response = await fetch('/api/moderators/change-password', {
                         method: 'POST',

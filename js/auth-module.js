@@ -127,6 +127,7 @@ const AuthModule = {
                     '<div class="user-badge-small">' +
                         '<i class="fas fa-' + roleIcon + '"></i> ' +
                         safeName + ' (' + safeRole + ')' +
+                        '<button class="logout-btn-small" id="changePwBtn" title="Change password"><i class="fas fa-key"></i></button>' +
                         '<button class="logout-btn-small" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> logout</button>' +
                     '</div>';
                 var logoutBtn = document.getElementById('logoutBtn');
@@ -135,6 +136,15 @@ const AuthModule = {
                         AuthModule.logout();
                         if (typeof render === 'function') render();
                         if (typeof saveState === 'function') saveState();
+                    });
+                }
+                var changePwBtn = document.getElementById('changePwBtn');
+                if (changePwBtn) {
+                    changePwBtn.addEventListener('click', function() {
+                        var changePwModal = document.getElementById('changePwModal');
+                        if (changePwModal) changePwModal.classList.add('active');
+                        var oldPwInput = document.getElementById('oldPwInput');
+                        if (oldPwInput) oldPwInput.focus();
                     });
                 }
             } else {

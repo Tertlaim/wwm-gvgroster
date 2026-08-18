@@ -587,7 +587,10 @@ app.post('/api/moderators/change-password', requireAuth, (req, res) => {
         return res.status(500).json({ success: false, error: 'Auth config error' });
     }
 
-    const mod = auth.moderators.find(m => m.username === username);
+    // Staff (mods/admins) live in auth.moderators; the owner (SuperAdmin)
+    // lives in auth.admin. Either may change their own password.
+    const mod = auth.moderators.find(m => m.username === username) ||
+        (auth.admin && auth.admin.username === username ? auth.admin : null);
     if (!mod) {
         return res.status(404).json({ success: false, error: 'Moderator not found' });
     }

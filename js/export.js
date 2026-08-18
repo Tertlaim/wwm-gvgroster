@@ -264,6 +264,13 @@ function exportRosterImage() {
         
         // Guild members grid (compact, row-major 6 columns).
         var gy = yTop + topH + GAP;
+        // Divider line across the width above the guild section.
+        ctx.strokeStyle = BORDER;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(PAD, gy - 16);
+        ctx.lineTo(W - PAD, gy - 16);
+        ctx.stroke();
         ctx.font = 'bold 24px system-ui';
         ctx.fillStyle = TITLE_COL;
         ctx.fillText('Guild Members (' + guild.length + ')', PAD, gy);
@@ -338,7 +345,7 @@ function exportRosterPDF() {
         html += '<div class="print-days">' + dayTables + '</div>';
         
         var guild = _guildMasterList();
-        html += '<h2>Guild Members (' + guild.length + ')</h2>';
+        html += '<h2 class="print-guild-heading">Guild Members (' + guild.length + ')</h2>';
         if (guild.length) {
             html += '<div class="print-guild-grid">';
             guild.forEach(function(p) {
