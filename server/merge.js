@@ -72,9 +72,21 @@ function mergePlayersById(currentPlayers, incomingPlayers, deletedIds, baseTimeM
 // data survive. Each player id may occupy at most one group per day, with the
 // incoming client's placement winning on conflicts (prevents stale duplicates
 // when a player was moved between groups by another editor).
+//
+// Two passes: first collect EVERY id the incoming snapshot places anywhere, so
+// a player the incoming client moved into one group is never also pulled back
+// in from a stale current copy in another group - the one-group-per-day
+// invariant must not depend on group key iteration order.
 function mergeGroupsDay(curGroups, incGroups, deletedIds, baseTimeMs) {
     const out = {};
-    const claimed = new Set();
+    const incomingById = new Map();
+    
+    Object.keys(incGroups || {}).forEach(key => {
+        const inc = incGroups[key] || {};
+        (Array.isArray(inc.players) ? inc.players : []).forEach(p => {
+            if (p && p.id) incomingById.set(p.id, p);
+        });
+    });
     
     Object.keys(incGroups || {}).forEach(key => {
         const inc = incGroups[key] || {};
@@ -87,15 +99,13 @@ function mergeGroupsDay(curGroups, incGroups, deletedIds, baseTimeMs) {
             if (!p || !p.id) { players.push(p); return; }
             if (isRemoved(p.id, deletedIds, baseTimeMs)) return;
             players.push(p);
-            claimed.add(p.id);
         });
         
         curPlayers.forEach(p => {
             if (!p || !p.id) return; // only incoming keeps id-less entries (legacy)
-            if (claimed.has(p.id)) return;
+            if (incomingById.has(p.id)) return;
             if (isRemoved(p.id, deletedIds, baseTimeMs)) return;
             players.push(p);
-            claimed.add(p.id);
         });
         
         out[key] = {
@@ -113,9 +123,8 @@ function mergeGroupsDay(curGroups, incGroups, deletedIds, baseTimeMs) {
             title: cur.title || key,
             players: (Array.isArray(cur.players) ? cur.players : []).filter(p => {
                 if (!p || !p.id) return true;
-                if (claimed.has(p.id)) return false;
+                if (incomingById.has(p.id)) return false;
                 if (isRemoved(p.id, deletedIds, baseTimeMs)) return false;
-                claimed.add(p.id);
                 return true;
             })
         };

@@ -83,3 +83,9 @@ function parseCSVRows(text) {
     if (row.some(function(x) { return x.trim() !== ''; })) rows.push(row);
     return rows;
 }
+
+// Node test support (Phase 11.8): expose the pure helpers when loaded under
+// node --test. In the browser `module` is undefined, so this is a no-op there.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { esc, getAuthHeader, downloadBlob, downloadDataUrl, csvEscape, parseCSVRows };
+}
