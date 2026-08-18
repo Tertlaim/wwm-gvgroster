@@ -108,9 +108,10 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
         titleHtml = 
             '<span class="title-display" data-group="' + groupKey + '">' + esc(title) + '</span>' +
             '<span class="title-actions">' +
-                '<button class="title-edit-btn" data-title-action="edit" data-group="' + groupKey + '"><i class="fas fa-edit"></i></button>' +
+                '<button class="title-edit-btn" data-title-action="edit" data-group="' + groupKey + '" title="Edit group title"><i class="fas fa-edit"></i></button>' +
                 '<button class="title-save-btn" data-title-action="save" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-check"></i></button>' +
                 '<button class="title-cancel-btn" data-title-action="cancel" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-times"></i></button>' +
+                '<button class="title-remove-btn" data-title-action="remove" data-group="' + groupKey + '" title="Remove group"><i class="fas fa-trash"></i></button>' +
             '</span>' +
             '<input class="title-edit" data-group="' + groupKey + '" value="' + esc(title) + '" maxlength="30" placeholder="Group name" style="display:none;">';
     } else {
@@ -529,6 +530,18 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
     
     var input = card.querySelector('.name-edit-input');
     if (input) {
+        // Single-line + Enter to commit, Escape to cancel (Phase 6.4)
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                var saveBtn = card.querySelector('[data-action="save-guild-card"]');
+                if (saveBtn) saveBtn.click();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                var cancelBtn = card.querySelector('[data-action="cancel-guild-card"]');
+                if (cancelBtn) cancelBtn.click();
+            }
+        });
         input.focus();
         var length = input.value.length;
         input.setSelectionRange(length, length);

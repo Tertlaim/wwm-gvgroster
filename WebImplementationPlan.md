@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 5 Complete (Concurrency). Next up: Phase 6 - Admin Tools & Editing Polish
+**Status:** Phase 6 Complete (Admin Tools & Editing Polish). Next up: Phase 7 - Power-User Interactions
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -148,28 +148,15 @@ GET  /api/health                      - Health check
 
 ## PENDING PHASES (roadmap)
 
-### Phase 6: Admin Tools & Editing Polish
+### Phase 6: Admin Tools & Editing Polish (Completed)
 Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4 (group deletion).**
 
-- [ ] **6.1 Fix "Add Group" button** (KNOWN BUG - Add Group currently not working)
-  - Files: `js/main.js` (group add handler), `server.js` (`/api/groups/add` exists - verify wiring)
-  - Acceptance: typing a name + Add creates the group for the currently viewed day; error toast on failure; group appears in grid without reload
-  - Day selection should follow the viewed tab automatically (no dropdown)
-- [ ] **6.2 Remove Group button** (To-Do #1 - group deletion)
-  - Files: `index.html`, `js/main.js`, `server.js` (`/api/groups/remove` exists - wire the button)
-  - Acceptance: Admin sees a remove control per group; confirmation dialog; removing a group with players asks where players go (reserve/guild) or blocks if non-empty; broadcast SSE after removal
-- [ ] **6.3 Inline guild name editing** (To-Do #4)
-  - Files: `index.html`, `js/main.js` (replace `setupGuildNameEditor` separate input+button)
-  - Acceptance: click guild name -> editable input; Enter commits via `/api/guild/name`; Escape cancels; visual feedback
-- [ ] **6.4 Single-line edit + Enter to commit** (To-Do #6)
-  - Files: `js/event-handlers.js`, `js/render-helpers.js`
-  - Acceptance: editing is single-line; Enter commits; Escape cancels (verify current multi-line behavior is gone)
-- [ ] **6.5 Recent changes panel taller** (To-Do #5)
-  - Files: `css/side-panel.css` (max-height 200px -> ~60vh), `index.html`
-  - Acceptance: panel scrolls, shows 50+ entries
-- [ ] **6.6 Group counter below group grid** (To-Do #7)
-  - Files: `index.html`, `css/diagram.css`
-  - Acceptance: stats row (Groups/Total/Duplicates) sits below the group grid
+- [x] **6.1 Fix "Add Group" button** - root cause was TWO bugs: `setupGroupManagement()` was never called in init (no handler attached) AND the `/api/groups/add` fetch sent no auth header (401 after Phase 4.4). Fixed both; group now goes to the currently viewed day (dropdown removed, `window.currentDay` used)
+- [x] **6.2 Remove Group button** - trash button on each group card (mods+); confirmation dialog; wired to `/api/groups/remove` with auth header; server blocks non-empty groups ("Move players first.") and the error surfaces as a toast; reloads + logs history after removal
+- [x] **6.3 Inline guild name editing** - the old editor referenced input/button elements that don't exist in the HTML (dead code, and the fetch lacked auth). Rebuilt: click the header title (mods+) -> inline input; Enter commits via `/api/guild/name` (auth header); Escape/blur cancels; title updates everywhere
+- [x] **6.4 Single-line edit + Enter to commit** - guild card name input now commits on Enter, cancels on Escape (group/reserve badges already had this)
+- [x] **6.5 Recent changes panel taller** - history list `max-height: 200px` -> `60vh` (scrollable, more entries visible)
+- [x] **6.6 Group counter below group grid** - stats row moved below the grid; spacing swapped to `margin-top`; duplicate `id="groupStats"` renamed to `groupCountStats`
 
 ### Phase 7: Power-User Interactions
 **Includes known-bug fixes #2 (context menu) and #3 (extended shortcuts).**
@@ -274,7 +261,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 3.5: Master List Fix | done | 100% |
 | Phase 4: Session Auth & Security | done | 100% |
 | Phase 5: Concurrency (Merge + SSE) | done | 100% |
-| Phase 6: Admin Tools & Editing Polish | next | 0% |
+| Phase 6: Admin Tools & Editing Polish | done | 100% |
 | Phase 7: Power-User Interactions | pending | 0% |
 | Phase 8: Export & Backup | pending | 0% |
 | Phase 9: Mobile & Accessibility | pending | 0% |
@@ -283,7 +270,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 12: Supabase Migration | pending | 0% |
 | Phase 13: Cron Keep-Alive | pending | 0% |
 
-**Overall Progress:** ~85%
+**Overall Progress:** ~87%
 
 ---
 
@@ -291,10 +278,10 @@ guild-war-management/            (git repo, branch main)
 
 | # | Bug | Where it's fixed |
 |---|-----|------------------|
-| 1 | Add Group button not working | Phase 6.1 |
+| 1 | Add Group button not working | ✅ Fixed in Phase 6.1 (was never initialized + missing auth header) |
 | 2 | No right-click context menu | Phase 7.1 |
 | 3 | No extended keyboard shortcuts (C/M/E/Delete) | Phase 7.2 |
-| 4 | Group deletion not implemented | Phase 6.2 |
+| 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
 | 5 | guildMembers day-specific (should be single array) | Phase 10 |
 | 6 | Backup download 401s (window.open without auth header) | Phase 8.2 |
 | 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 11.1 |

@@ -348,67 +348,104 @@ function initializeEmptyData() {
 // GUILD NAME MANAGEMENT
 // ============================================================
 
+// Inline guild name editing (Phase 6.3): click the header title to edit,
+// Enter commits via /api/guild/name, Escape cancels. Mods+ only.
 function setupGuildNameEditor() {
-    const guildNameInput = document.getElementById('guildNameInput');
-    const updateBtn = document.getElementById('updateGuildNameBtn');
-    const headerTitle = document.querySelector('.header-title h1');
     const guildNameDisplay = document.getElementById('guildNameDisplay');
+    if (!guildNameDisplay) return;
     
-    // Update guild name
-    if (updateBtn) {
-        updateBtn.addEventListener('click', async function() {
-            const name = guildNameInput.value.trim();
+    let editing = false;
+    
+    guildNameDisplay.addEventListener('click', function() {
+        if (editing) return;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        if (!isMod) {
+            showToast('Only moderators can edit the guild name.', 'error', 2000);
+            return;
+        }
+        
+        const original = window.guildName || guildNameDisplay.textContent || '';
+        editing = true;
+        guildNameDisplay.style.display = 'none';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'guildNameInlineInput';
+        input.value = original;
+        input.maxLength = 50;
+        input.style.fontSize = 'inherit';
+        input.style.fontWeight = 'inherit';
+        input.style.background = 'var(--bg-input)';
+        input.style.border = '1px solid var(--border-color)';
+        input.style.borderRadius = 'var(--radius-sm)';
+        input.style.color = 'var(--text-primary)';
+        input.style.padding = '2px 8px';
+        input.style.maxWidth = '60vw';
+        
+        guildNameDisplay.parentNode.insertBefore(input, guildNameDisplay);
+        input.focus();
+        input.setSelectionRange(original.length, original.length);
+        
+        function finish(save) {
+            if (!editing) return;
+            editing = false;
+            const name = save ? input.value.trim() : '';
+            if (input.parentNode) input.parentNode.removeChild(input);
+            guildNameDisplay.style.display = '';
+            if (!save) return;
             if (!name) {
                 showAlert('Guild name cannot be empty.', 'Error', '❌');
                 return;
             }
-            if (name.length > 50) {
-                showAlert('Guild name must be 50 characters or less.', 'Error', '❌');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/guild/name', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    window.guildName = name;
-                    if (guildNameDisplay) guildNameDisplay.textContent = name;
-                    if (headerTitle) {
-                        const icon = headerTitle.querySelector('i');
-                        if (icon) {
-                            headerTitle.innerHTML = '';
-                            headerTitle.appendChild(icon);
-                            headerTitle.appendChild(document.createTextNode(' ' + name));
-                        } else {
-                            headerTitle.textContent = name;
-                        }
-                    }
-                    
-                    // ---- LOG TO HISTORY ----
-                    if (typeof History !== 'undefined' && History.add) {
-                        History.add('guild_name', {
-                            details: name,
-                            newValue: name,
-                            oldValue: window._oldGuildName || 'Mask Sinners'
-                        });
-                        window._oldGuildName = name;
-                        console.log('📝 History logged: guild name change');
-                    }
-                    
-                    showAlert('Guild name updated successfully!', 'Success', '✅');
-                    saveState();
-                } else {
-                    showAlert('Failed to update guild name.', 'Error', '❌');
-                }
-            } catch (error) {
-                console.error('Error updating guild name:', error);
-                showAlert('Error updating guild name.', 'Error', '❌');
+            saveGuildName(name);
+        }
+        
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finish(true);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                finish(false);
             }
         });
+        input.addEventListener('blur', function() {
+            finish(false);
+        });
+    });
+}
+
+async function saveGuildName(name) {
+    try {
+        const response = await fetch('/api/guild/name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ name })
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.guildName = name;
+            const guildNameDisplay = document.getElementById('guildNameDisplay');
+            if (guildNameDisplay) guildNameDisplay.textContent = name;
+            
+            // ---- LOG TO HISTORY ----
+            if (typeof History !== 'undefined' && History.add) {
+                History.add('guild_name', {
+                    details: name,
+                    newValue: name,
+                    oldValue: window._oldGuildName || 'Mask Sinners'
+                });
+                window._oldGuildName = name;
+            }
+            
+            showAlert('Guild name updated successfully!', 'Success', '✅');
+            if (typeof loadState === 'function') loadState();
+        } else {
+            showAlert(result.error || 'Failed to update guild name.', 'Error', '❌');
+        }
+    } catch (error) {
+        console.error('Error updating guild name:', error);
+        showAlert('Error updating guild name.', 'Error', '❌');
     }
 }
 
@@ -419,7 +456,6 @@ function setupGuildNameEditor() {
 function setupGroupManagement() {
     const addGroupBtn = document.getElementById('addGroupBtn');
     const newGroupTitle = document.getElementById('newGroupTitle');
-    const newGroupDay = document.getElementById('newGroupDay');
     const groupCount = document.getElementById('groupCount');
     
     async function loadGroupStats() {
@@ -443,13 +479,14 @@ if (addGroupBtn) {
             return;
         }
         
-        const day = newGroupDay.value;
+        // The group is added to the day currently being viewed (no dropdown).
+        const day = window.currentDay || 'sat';
         const groupKey = 'group_' + Date.now();
         
         try {
             const response = await fetch('/api/groups/add', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ day, groupKey, title })
             });
             const result = await response.json();
@@ -1384,6 +1421,8 @@ async function init() {
         setupAdminControls();
         setupDayTabs();
         setupAnnouncement();
+        setupGroupManagement();
+        setupGuildNameEditor();
 		// Setup scroll shadow
         setupScrollShadow();
         
