@@ -247,13 +247,6 @@ function exportRosterImage() {
         
         // Guild members grid (compact, row-major 6 columns).
         let gy = yTop + topH + GAP;
-        // Divider line across the width above the guild section.
-        ctx.strokeStyle = BORDER;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(PAD, gy - 16);
-        ctx.lineTo(W - PAD, gy - 16);
-        ctx.stroke();
         ctx.font = 'bold 24px system-ui';
         ctx.fillStyle = TITLE_COL;
         ctx.fillText('Guild Members (' + guild.length + ')', PAD, gy);
