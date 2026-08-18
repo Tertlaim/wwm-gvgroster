@@ -7,6 +7,14 @@ var EventHandlers = {};
 EventHandlers.toggleEditMode = function(element, enable) {
     if (!element) return;
     
+    // Phase 8.3: an open edit form blocks incoming syncs so the input is
+    // never wiped mid-edit; the session ends on save/cancel.
+    if (enable) {
+        if (typeof beginUserEdit === 'function') beginUserEdit();
+    } else {
+        if (typeof endUserEdit === 'function') endUserEdit();
+    }
+    
     var displayMode = element.querySelectorAll('.display-mode');
     var editMode = element.querySelectorAll('.edit-mode');
     var actionButtons = element.querySelectorAll('.action-buttons');

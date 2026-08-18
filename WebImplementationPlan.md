@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 7B Complete. Next up: Phase 8 - Data Integrity & Sync Hardening (atomic writes, tombstone persistence, sync dirty-check, backup fix)
+**Status:** Phase 8 Complete (Data Integrity & Sync Hardening). Next up: Phase 9 - Security Hardening (password hashing, login rate limiting)
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -195,19 +195,11 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 
 **Priority rule:** whole-function items first (data integrity, sync correctness, working backups, auth security), then features, then structural refactors. Supabase migration + cron keep-alive are recorded as To-Dos but are **not planned work**.
 
-### Phase 8: Data Integrity & Sync Hardening (HIGH - protects the whole site)
-- [ ] **8.1 Atomic `writeDatabase`** (was 11.3)
-  - Write `database.json`/`history.json`/`auth.json` via temp file + rename so a crash can't corrupt the roster
-  - Acceptance: kill the server mid-write; the file on disk is always the last complete save
-- [ ] **8.2 Persist tombstones** (was 11.4)
-  - Store `deletedIds` in `database.json` (currently in-memory `DELETED_PLAYERS`); today a restart lets a stale editor resurrect deleted players
-  - Acceptance: delete a player, restart the server, a stale copy cannot bring them back
-- [ ] **8.3 Sync dirty-check** (was 11.5)
-  - Skip `applyServerData` while a mod has an in-progress edit (typing/mid-drag) so a poll or SSE push can't wipe it
-  - Acceptance: type in an edit field while another editor's save arrives; your text survives
-- [ ] **8.4 Fix backup download** (was 8.2, known bug #6)
-  - `downloadBackup()` uses `window.open` without the auth header -> 401; download via `fetch` blob + token
-  - Acceptance: an authed user can download a working JSON backup
+### Phase 8: Data Integrity & Sync Hardening ✅ COMPLETE
+- [x] **8.1 Atomic `writeDatabase`** - `atomicWriteFileSync()` (temp file + rename) used for `database.json`, `history.json`, `auth.json` and all init/default writes; verified no leftover `.tmp` files
+- [x] **8.2 Persist tombstones** - `deletedPlayers` ledger stored in `database.json` (hydrated into `DELETED_PLAYERS` on boot, re-persisted with every save, pruned with the same TTL/cap); verified end-to-end: delete -> restart server -> stale snapshot cannot resurrect the player. Ledger is stripped from `GET /api/data` (clients don't need it) but included in backups
+- [x] **8.3 Sync dirty-check** - `beginUserEdit()/endUserEdit()` session counter (edit forms via `toggleEditMode`, drag in flight, announcement editor); `performSync` defers (`_syncDeferred`) while a session is open and re-runs on close. Verified live: injected a simulated newer remote save while editing - the input survived untouched, and cancel re-synced
+- [x] **8.4 Fix backup download** (known bug #6) - `downloadBackup()` now fetches `/api/backup` with the auth header and saves the blob (was `window.open`, always 401); wired a **DOWNLOAD BACKUP (JSON)** button into Admin Tools (mod+, shown via `data-role-show`). Verified: 401 unauth / 200 authed, Bearer header attached
 
 ### Phase 9: Security Hardening (auth gates the whole site)
 - [ ] **9.1 Hash passwords** (was 11.1) - bcrypt already installed but `config/auth.json` is plaintext; hash on write, verify on login, migrate existing entries
@@ -284,14 +276,14 @@ guild-war-management/            (git repo, branch main)
 | Phase 6: Admin Tools & Editing Polish | done | 100% |
 | Phase 7: Power-User Interactions | ✅ complete | 100% |
 | Phase 7B: Roles, Admin Mgmt & Usability | ✅ complete | 100% |
-| Phase 8: Data Integrity & Sync Hardening | pending | 0% |
+| Phase 8: Data Integrity & Sync Hardening | ✅ complete | 100% |
 | Phase 9: Security Hardening | pending | 0% |
 | Phase 10: Export Options | pending | 0% |
 | Phase 11: Mobile & Accessibility | pending | 0% |
 | Phase 12: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~94%
+**Overall Progress:** ~97%
 
 ---
 
@@ -304,12 +296,12 @@ guild-war-management/            (git repo, branch main)
 | 3 | No extended keyboard shortcuts (C/M/E/Delete) | ✅ Fixed in Phase 7.2 (click-to-select + keys) |
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
 | 5 | guildMembers day-specific (should be single array) | Phase 12 (deferred - high blast radius) |
-| 6 | Backup download 401s (window.open without auth header) | Phase 8.4 |
+| 6 | Backup download 401s (window.open without auth header) | ✅ Fixed in Phase 8.4 (fetch + auth header + button in Admin Tools) |
 | 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 9.1 |
 | 8 | No rate limiting on login/register | Phase 9.2 |
-| 9 | Non-atomic writeDatabase (crash can corrupt JSON) | Phase 8.1 |
-| 10 | Tombstones in-memory only (lost on restart) | Phase 8.2 |
-| 11 | Poll can wipe an in-progress edit (no dirty-check) | Phase 8.3 |
+| 9 | Non-atomic writeDatabase (crash can corrupt JSON) | ✅ Fixed in Phase 8.1 (temp + rename) |
+| 10 | Tombstones in-memory only (lost on restart) | ✅ Fixed in Phase 8.2 (persisted ledger) |
+| 11 | Poll can wipe an in-progress edit (no dirty-check) | ✅ Fixed in Phase 8.3 (deferred sync) |
 | 12 | New Mod button broken (401 - no auth header, and never enabled on selection) | ✅ Fixed in Phase 7B |
 | 13 | No way to add admins (no SuperAdmin role, roles hardcoded) | ✅ Fixed in Phase 7B (SuperAdmin, data-driven roles) |
 
