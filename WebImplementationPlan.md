@@ -1,576 +1,327 @@
-```markdown
 # WebImplementationPlan.md
 
 ## Project: Mask Sinners Guild War Management
-**Current Date:** 2026-08-15
-**Status:** Phase 3 Complete (with Master List Fix)
-**Next Phase:** Phase 4 - Polish & Export
+**Current Date:** 2026-08-18
+**Status:** Phase 5 Complete (Concurrency). Next up: Phase 6 - Admin Tools & Editing Polish
+**Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
 
-## 📋 COMPLETED PHASES
+## STACK & RUN
 
-### ✅ Phase 1: Core System
+```
+Node.js + Express (server.js) | vanilla JS front-end (no framework) | JSON file storage
+npm start      ->  node server.js   (default port 3000)
+npm run dev    ->  nodemon server.js
+Dependencies: express, cors, bcrypt (installed, NOT yet used - see Phase 11)
+```
+
+---
+
+## COMPLETED PHASES
+
+### Phase 1: Core System
 - [x] Unique ID system (timestamp-based IDs for all players)
-- [x] Toast notifications (replaced blocking modals)
+- [x] Toast notifications
 - [x] CSS variables + themes (dark/light toggle)
-- [x] Sticky header + tabs
-- [x] Theme toggle button (top right)
+- [x] Sticky header + day tabs
+- [x] Theme toggle button
 
-### ✅ Phase 2: Bulk Actions & Cards
+### Phase 2: Bulk Actions & Cards
 - [x] Bulk selection (checkboxes across groups)
-- [x] ~~Bulk move to Reserve/Guild~~ → **UPDATED: Copy to Reserve** (keep in guild, add to reserves)
+- [x] Copy to Reserve (keep in guild, add to reserves) - Moderators+
 - [x] Bulk delete (Admin only, removes from ALL sources)
-- [x] ~~Bulk role/class change~~ → **REMOVED** (not needed for guild panel)
 - [x] Guild member cards (grid layout)
 - [x] Player notes (140 char limit, hover tooltip)
 - [x] Card editing (name, class, role)
 - [x] Drag & drop for guild cards
 
-### ✅ Phase 3: History & Shortcuts
-- [x] History panel (recent changes)
-- [x] History logging (moves, edits, adds, deletes)
+### Phase 3: History & Shortcuts
+- [x] History panel (recent changes), FIFO cleanup (last 100)
+- [x] History logging (moves, edits, adds, deletes, bulk)
 - [x] Clear history button
-- [x] Keyboard shortcuts legend (Ctrl+S, Ctrl+T, Escape)
-- [x] Date format: "15 Aug 2026, 02:58 AM"
-- [x] Reserve → Reserve duplicate blocking
-- [x] Master List Logic (guildMembers as source of truth)
+- [x] Shortcuts: `?` / `Ctrl+/` legend, `Ctrl+S` save, `Ctrl+T` theme, `Escape` cancel
+- [x] Reserve -> Reserve duplicate blocking
 
-### ✅ Phase 3.5: Master List Fix (Completed)
-- [x] `guildMembers` is now the master list of ALL players
+### Phase 3.5: Master List Fix
+- [x] `guildMembers` is the master list of ALL players
 - [x] Registration adds to `guildMembers` + `reserves`
-- [x] `renderGuildCards()` uses `getGuildMembers()` (master list)
 - [x] Server-side migration to populate guildMembers from existing data
 - [x] Bulk Copy to Reserve (keep in guild, add to reserves)
 - [x] Bulk Delete removes from ALL sources (Admin only)
-- [x] Removed unnecessary buttons (Move to Guild, Role/Class dropdowns)
+
+### Phase 4: Session Auth & Security Hardening
+- [x] Session tokens (mod/admin login), `requireAuth` on all mutating endpoints
+- [x] `POST /api/data` AUTH-REQUIRED; public writes go through dedicated `POST /api/register` (validates name/class/days, forces role Member, dedupes, logs history server-side)
+- [x] `render()` no longer calls `saveState()` (previously a public visitor's stale data clobbered the roster)
+- [x] Stored-XSS fix: `esc()` helper at every `innerHTML` injection point; server rejects `<`/`>` in registration names
+- [x] Change-password flow (Current Password field, auto-opens after mod login, sends auth header)
+- [x] Mod management: `window.moderators` populated from `/api/moderators/list` (Reset PW / Demote work)
+- [x] Empty/invalid POST body rejected (400) - cannot wipe roster
+- [x] Undo/redo feature removed (module + shortcuts + call sites)
+
+### Phase 5: Multi-Editor Concurrency - Merge + Tombstones + Realtime Sync
+- [x] **Server-side merge** (`mergeDatabase`): stale whole-file saves merged by player id - ids the saving client knows win, ids only other editors created survive
+- [x] **One-group-per-day constraint** in merge (incoming placement wins on conflicts)
+- [x] **Tombstones** (`deletedIds` + in-memory `DELETED_PLAYERS` map): full deletes recorded so a stale copy cannot resurrect a deleted player; auto-pruned (1-week TTL, 500 cap)
+- [x] **Explicit removals** (`removed` payload) applied after merge - moves/list-removals stick even on stale saves
+- [x] **SSE push** (`GET /api/events`): every save broadcasts `update`; clients re-sync in <1s; 30s poller + `visibilitychange` re-sync remain as fallback
+- [x] Client tracks pending removals/deletes (`trackPlayerRemovals` / `trackDeletedPlayerIds`) at every mutation site and clears them after a successful save
+- [x] `saveState()` sends `baseVersion` + `deletedIds` + `removed`, then converges to the merged server state
 
 ---
 
-## 🔧 CURRENT CODE STATUS
+## CURRENT BEHAVIOR (source of truth)
 
-### CSS Files:
-```
-css/variables.css          ✅ Theme variables
-css/toast.css              ✅ Toast notifications
-css/header.css             ✅ Sticky header
-css/day-tabs.css           ✅ Sticky tabs
-css/bulk-actions.css       ✅ Bulk selection
-css/guild-cards.css        ✅ Card layout
-css/shortcuts.css          ✅ Keyboard shortcuts
-css/main.css               ✅ Base styles
-css/diagram.css            ✅ Group grid
-css/admin-view.css         ✅ Admin styles
-css/public-view.css        ✅ Public styles
-css/reserve.css            ✅ Reserve styles
-css/guild-member.css       ✅ Guild member styles
-css/side-panel.css         ✅ Side panel
-css/admin-panel.css        ✅ Admin panel
-css/announcement.css       ✅ Announcement
-css/modal.css              ✅ Modals
-css/responsive.css         ✅ Responsive
-```
-
-### JS Files:
-```
-js/helpers.js             ✅ Helper functions (getGuildMembers returns master list)
-js/api.js                 ✅ API calls
-js/auth-module.js         ✅ Authentication
-js/toast.js               ✅ Toast system
-js/theme.js               ✅ Theme management
-js/event-handlers.js      ✅ Event handlers
-js/render-helpers.js      ✅ Rendering helpers (guild cards from master list)
-js/render.js              ✅ Main render
-js/dragdrop.js            ✅ Drag & drop
-js/bulk-actions.js        ✅ Bulk operations (Copy to Reserve, Delete from ALL)
-js/history.js             ✅ History tracking
-js/announcement.js        ✅ Announcements
-js/main.js                ✅ Main application (registration adds to master list)
-js/data.js                ✅ Sample data
-```
-
-### Data Files:
-```
-data/database.json        ✅ Main data with master list populated
-data/history.json         ✅ History log
-config/auth.json          ✅ Admin/moderator credentials
-```
-
----
-
-## 🔄 CURRENT BEHAVIOR
-
-### Master List Logic (IMPORTANT)
+### Data model
 | Concept | Description |
 |---------|-------------|
-| **guildMembers** | Master list of ALL players (regardless of where they are) |
-| **groups** | Players assigned to groups (subset of master list) |
-| **reserves** | Players in reserves (subset of master list) |
+| **guildMembers** | Master list of ALL players, day-specific: `{ sat: [], sun: [] }` |
+| **groups** | Players assigned to groups: `{ sat: { offence1: {title, players: []}, ... } }` |
+| **reserves** | `{ sat: [], sun: [] }` |
+| **versioning** | `lastUpdateTime` (ISO string) is the write version; client sends `baseVersion` |
+| **tombstones** | `deletedIds` in POST payload; `DELETED_PLAYERS` map server-side (in-memory) |
 
 ### Rules
 | Action | guildMembers (Master) | groups | reserves |
 |--------|----------------------|--------|----------|
-| **Register** | ✅ ADD | ❌ | ✅ ADD |
-| **Copy to Reserve** | ✅ KEEP | ✅ KEEP | ✅ ADD |
-| **Move to Group** | ✅ KEEP | ✅ ADD | ❌ REMOVE (if moving from reserve) |
-| **Move to Reserve** | ✅ KEEP | ❌ REMOVE (if moving from group) | ✅ ADD |
-| **Delete** | ❌ REMOVE | ❌ REMOVE | ❌ REMOVE |
+| **Register** | ADD | no | ADD |
+| **Copy to Reserve** | KEEP | KEEP | ADD |
+| **Move to Group** | KEEP | ADD | REMOVE (if moving from reserve) |
+| **Move to Reserve** | KEEP | REMOVE (if moving from group) | ADD |
+| **Delete** | REMOVE | REMOVE | REMOVE |
 
 ### Permissions
-| Role | Copy to Reserve | Delete |
-|------|----------------|--------|
-| **Admin** | ✅ | ✅ |
-| **Moderator** | ✅ | ❌ |
-| **Public** | ❌ | ❌ |
+| Role | Copy to Reserve | Delete (anywhere) | Edit cards |
+|------|----------------|-------------------|-----------|
+| **Admin** | yes | yes | yes |
+| **Moderator** | yes | no (full delete) | yes |
+| **Public** | no | no | no |
 
 ### Drag & Drop
 | Action | Behavior |
 |--------|----------|
-| **Guild → Group** | ✅ MOVE (remove from guild, add to group) |
-| **Guild → Reserve** | ✅ MOVE (remove from guild, add to reserve) |
-| **Reserve → Guild** | ✅ MOVE (remove from reserve, add to guild) |
-| **Group → Guild** | ✅ MOVE (remove from group, add to guild) |
-| **Group → Reserve** | ✅ MOVE (remove from group, add to reserve) |
-| **Reserve → Group** | ✅ MOVE (remove from reserve, add to group) |
-| **Group → Group** | ✅ MOVE (remove from source, add to target) |
-| **Reserve → Reserve** | ✅ BLOCKED (prevents useless duplicates) |
+| Guild -> Group / Reserve | MOVE |
+| Reserve -> Guild / Group | MOVE |
+| Group -> Guild / Reserve | MOVE |
+| Group -> Group | MOVE |
+| Reserve -> Reserve | BLOCKED (prevents useless duplicates) |
 
-### Bulk Actions
-| Button | Behavior |
-|--------|----------|
-| **Copy to Reserve** | ✅ COPY from guild to reserves (keep in guild). Moderators+ |
-| **Delete** | ❌ Remove from ALL sources (guild, groups, reserves). Admin only |
-
-### Guild Actions
-| Button | Behavior |
-|--------|----------|
-| **Copy to Reserve** | ✅ COPY selected from guild to reserves (keep in guild). Moderators+ |
-| **Delete Selected** | ❌ Remove from ALL sources (guild, groups, reserves). Admin only |
-
-### Editing
-- ✅ Click edit icon → inline editing
-- ✅ Enter to save, Escape to cancel
-- ✅ Cursor positioned at end of text
-- ✅ Unique IDs prevent editing wrong player
-
-### History
-- ✅ Logs all actions (moves, edits, adds, deletes, bulk actions)
-- ✅ Shows recent changes in side panel
-- ✅ Clear history (admin only)
-- ✅ FIFO cleanup (keeps last 100 entries)
-
-### Keyboard Shortcuts
-- ✅ `?` or `Ctrl+/` → Show shortcuts legend
-- ✅ `Ctrl+S` → Save state
-- ✅ `Ctrl+T` → Toggle theme
-- ✅ `Escape` → Cancel edit / Close modals / Clear selection
+### Auth & sync
+- Mods/admins get a session token; public visitors can only register via `/api/register`
+- Every save carries `baseVersion` (last synced server timestamp); server merges if stale
+- Clients converge via SSE push, 30s poll, and `visibilitychange` re-sync
 
 ---
 
-## 🔜 NEXT PHASES
+## API REFERENCE (current)
 
-### Phase 4: Polish & Export (PENDING)
-
-#### 4.1 Auto-Scroll on Drag Start
-**Goal:** When dragging guild cards (bottom panel), auto-scroll to show reserve area
-
-**Implementation:**
-```javascript
-// In dragdrop.js - handleDragStart()
-if (isFromGuild) {
-    scrollToReserves();
-}
-
-function scrollToReserves() {
-    var reserveArea = document.getElementById('reserveArea');
-    if (reserveArea) {
-        reserveArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-}
 ```
-
-**Files:**
-- `js/dragdrop.js`
-
----
-
-#### 4.2 Right-Click Context Menu
-**Goal:** Right-click on any player → context menu with actions
-
-**Options:**
-- Copy to Reserve
-- Move to Group → (submenu with all groups)
-- Edit Player (if admin/mod)
-- Delete (if admin)
-
-**Files to create:**
-- `js/context-menu.js`
-- `css/context-menu.css`
-
-**Files to modify:**
-- `index.html` (add context menu container)
-- `js/main.js` (initialize context menu)
-
-**UI Design:**
-```
-┌─────────────────────────────┐
-│ 📋 Copy to Reserve          │
-│ 📦 Move to Group ▶          │ ← Hover to expand
-│   ├── Offense 1 (6)        │
-│   ├── Offense 2 (5)        │
-│   ├── Defense (3)          │
-│   └── Jungle (4)           │
-│ ✏️ Edit Player              │
-│ 🗑️ Delete                   │
-└─────────────────────────────┘
+GET  /api/data                        - Load data (public)
+POST /api/data                        - Save data (AUTH, merge-aware: baseVersion/deletedIds/removed)
+POST /api/register                    - Public self-registration (validated, deduped, logs history)
+POST /api/login                       - Authenticate -> session token
+POST /api/logout                      - End session
+GET  /api/session                     - Check session (auth)
+GET  /api/moderators/list             - List moderators (admin)
+POST /api/moderators/add              - Add mod (admin)
+POST /api/moderators/remove           - Demote mod (admin)
+POST /api/moderators/reset-password   - Reset mod password (admin)
+POST /api/moderators/change-password  - Change own password (auth)
+GET  /api/auth/settings               - Auth settings (admin)
+POST /api/auth/settings               - Update auth settings (admin)
+GET  /api/events                      - SSE stream (realtime sync push)
+POST /api/guild/name                  - Set guild name (auth)
+POST /api/groups/add                  - Add group (auth)
+POST /api/groups/remove               - Remove group (auth)
+GET  /api/groups/config               - Group config (public)
+GET  /api/history                     - Get history (public)
+POST /api/history                     - Add history entry (public)
+POST /api/history/init                - Init history (auth)
+GET  /api/backup                      - Download backup (auth)
+POST /api/migrate-guild-members       - Migrate master list (admin only)
+GET  /api/guild-members-status        - Check migration status
+GET  /api/health                      - Health check
 ```
 
 ---
 
-#### 4.3 Keyboard Shortcuts (Extended)
-**Goal:** Click to select a player → press key to move
+## PENDING PHASES (roadmap)
 
-**Shortcuts:**
-| Key | Action |
-|-----|--------|
-| `C` | Copy to Reserve |
-| `M` | Move to Group (opens menu) |
-| `E` | Edit player (if mod/admin) |
-| `Delete` | Delete player (if admin) |
+### Phase 6: Admin Tools & Editing Polish
+Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4 (group deletion).**
 
-**Behavior:**
-- Click a player to select (highlight)
-- Press key to perform action
-- Click outside to deselect
+- [ ] **6.1 Fix "Add Group" button** (KNOWN BUG - Add Group currently not working)
+  - Files: `js/main.js` (group add handler), `server.js` (`/api/groups/add` exists - verify wiring)
+  - Acceptance: typing a name + Add creates the group for the currently viewed day; error toast on failure; group appears in grid without reload
+  - Day selection should follow the viewed tab automatically (no dropdown)
+- [ ] **6.2 Remove Group button** (To-Do #1 - group deletion)
+  - Files: `index.html`, `js/main.js`, `server.js` (`/api/groups/remove` exists - wire the button)
+  - Acceptance: Admin sees a remove control per group; confirmation dialog; removing a group with players asks where players go (reserve/guild) or blocks if non-empty; broadcast SSE after removal
+- [ ] **6.3 Inline guild name editing** (To-Do #4)
+  - Files: `index.html`, `js/main.js` (replace `setupGuildNameEditor` separate input+button)
+  - Acceptance: click guild name -> editable input; Enter commits via `/api/guild/name`; Escape cancels; visual feedback
+- [ ] **6.4 Single-line edit + Enter to commit** (To-Do #6)
+  - Files: `js/event-handlers.js`, `js/render-helpers.js`
+  - Acceptance: editing is single-line; Enter commits; Escape cancels (verify current multi-line behavior is gone)
+- [ ] **6.5 Recent changes panel taller** (To-Do #5)
+  - Files: `css/side-panel.css` (max-height 200px -> ~60vh), `index.html`
+  - Acceptance: panel scrolls, shows 50+ entries
+- [ ] **6.6 Group counter below group grid** (To-Do #7)
+  - Files: `index.html`, `css/diagram.css`
+  - Acceptance: stats row (Groups/Total/Duplicates) sits below the group grid
 
-**Files:**
-- `js/dragdrop.js` (add selection and keyboard handling)
+### Phase 7: Power-User Interactions
+**Includes known-bug fixes #2 (context menu) and #3 (extended shortcuts).**
 
----
+- [ ] **7.1 Right-click context menu** (was plan 4.2)
+  - New: `js/context-menu.js`, `css/context-menu.css`; touch: `index.html`, `js/main.js`
+  - Options: Copy to Reserve, Move to Group (submenu), Edit Player (mod/admin), Delete (admin)
+  - Acceptance: right-click any player opens menu; actions work and save via existing flows; menu closes on outside click
+- [ ] **7.2 Extended keyboard shortcuts** (was plan 4.3)
+  - Files: `js/dragdrop.js` (selection + key handling), `js/shortcuts.js`
+  - `C` copy to reserve, `M` move to group (menu), `E` edit (mod/admin), `Delete` delete (admin)
+  - Acceptance: click to select (highlight), press key to act, click outside to deselect
 
-#### 4.4 Export Options
-**Goal:** Multiple export formats
+### Phase 8: Export & Data Portability
+- [ ] **8.1 Export options** (was plan 4.4)
+  - New: `js/export.js`; touch: `index.html`
+  - JSON full backup, CSV player list, Image screenshot, PDF printable roster
+- [ ] **8.2 Fix backup download**
+  - Known issue: `downloadBackup()` uses `window.open` without the auth header -> 401 when wired
+  - Acceptance: backup download works for authed users (fetch blob with token + save, or signed URL)
 
-**Options:**
-- JSON export (full backup)
-- CSV export (player list)
-- Image export (screenshot)
-- PDF export (printable roster)
+### Phase 9: Mobile & Accessibility
+- [ ] **9.1 Mobile optimization** (was plan 4.5)
+  - Files: `css/responsive.css`, `index.html`
+  - 44px touch targets, swipe day navigation, responsive grids, mobile menu
+- [ ] **9.2 Accessibility** (was plan 4.6)
+  - Files: `index.html`, `js/main.js`
+  - ARIA labels, keyboard navigation, color contrast
 
-**Files:**
-- `js/export.js` (NEW)
-- Add export buttons to `index.html`
+### Phase 10: Data Model Simplification
+**Includes known-bug fix #5 (guildMembers day-specific).**
+- [ ] Change `guildMembers` from `{ sat: [], sun: [] }` to a single array
+  - Files: `server.js` (migration endpoint + all readers), `js/*` (getGuildMembers, render, dragdrop, bulk-actions)
+  - Acceptance: old data migrates cleanly; no day-splitting anywhere; registration/merge still work
 
----
+### Phase 11: Security Hardening
+Backlog from the adversarial review - none urgent for a private LAN app, but all cheap.
+- [ ] **11.1 Hash passwords** - bcrypt is already a dependency but `config/auth.json` stores plaintext; hash on write, verify on login, migrate existing entries
+- [ ] **11.2 Rate limiting** on `/api/login` and `/api/register`
+- [ ] **11.3 Atomic `writeDatabase`** - write temp file + rename so a crash can't corrupt JSON
+- [ ] **11.4 Persist tombstones** in `database.json` (currently in-memory; a restart lets a stale editor resurrect deleted players)
+- [ ] **11.5 Sync dirty-check** - skip `applyServerData` while a mod has an in-progress edit (typing/mid-drag) so a poll can't wipe it
 
-#### 4.5 Mobile Optimization
-**Goal:** Better mobile experience
+### Phase 12: Supabase Migration (To-Do #2)
+- [ ] Set up Supabase project + tables (guild_config, groups, reserves, guild_members, history, auth)
+- [ ] Add `@supabase/supabase-js`, `.env` with credentials
+- [ ] Rewrite `server.js` data layer (fs -> Supabase) keeping the current API contract (merge/tombstones/SSE semantics preserved)
+- [ ] Backward-compatible migration of existing `database.json`/`history.json`
 
-**Changes:**
-- Larger touch targets (44px)
-- Swipe navigation for days
-- Responsive grids
-- Mobile menu
-
-**Files:**
-- `css/responsive.css`
-- `index.html`
-
----
-
-#### 4.6 Accessibility
-**Goal:** ARIA labels, screen reader support
-
-**Changes:**
-- ARIA labels on interactive elements
-- Keyboard navigation
-- Color contrast
-
-**Files:**
-- `index.html`
-- `js/main.js`
-
----
-
-## 🗃️ TO-DO LIST (NEW)
-
-### 1. Admin Tools: Add Delete Button for Groups
-**Goal:** Add "Remove Group" button in Admin Tools. Currently there is "Add Group" but no remove option.
-
-**Implementation:**
-- Add delete/remove button next to each group (or a dropdown with delete option)
-- When clicked, show confirmation before removing
-- Only visible to Admin
-
-**Files:**
-- `index.html` (add remove button)
-- `js/main.js` (add remove group function)
-- `server.js` (add API endpoint if needed)
-
-**Notes:**
-- The "Add Group" button currently not working. Needs fixing.
-- Saturday/Sunday selection should follow current viewed tab (automatic, no dropdown needed)
+### Phase 13: Cron Keep-Alive (To-Do #3) - LAST
+- [ ] Weekly ping to keep Supabase instance alive (`cron.js` or node-cron, or external cron-job.org / UptimeRobot)
+- [ ] `GET /api/health` already exists - reuse it
 
 ---
 
-### 2. Migration to Supabase
-**Goal:** Migrate from local JSON file storage to Supabase (PostgreSQL)
-
-**Implementation:**
-- Set up Supabase project
-- Create tables for: groups, reserves, guildMembers, history, auth
-- Update `server.js` to use Supabase client instead of fs
-- Maintain backward compatibility during migration
-
-**Files:**
-- `server.js` (major rewrite)
-- `package.json` (add `@supabase/supabase-js` dependency)
-- `.env` (add Supabase credentials)
-
-**Tables:**
-```
-guild_config (guildName, announcement, lastUpdateTime)
-groups (id, day, group_key, title, players JSON)
-reserves (id, day, player_id, player_data JSON)
-guild_members (id, day, player_id, player_data JSON)
-history (id, action, playerId, playerName, from, to, day, details, timestamp, user)
-auth (id, username, password, role, created_at)
-```
-
----
-
-### 3. Cron Job for Supabase (Keep Alive)
-**Goal:** Keep Supabase instance active with weekly ping
-
-**Implementation:**
-- Use `node-cron` or `cron` package
-- Ping the `/api/health` endpoint weekly
-- Or set up external cron service (cron-job.org, UptimeRobot)
-
-**Files:**
-- `server.js` (add health check endpoint if not exists)
-- `cron.js` (NEW) - separate cron job file
-
-**Schedule:** Weekly (e.g., every Sunday at 12:00 AM)
-
----
-
-### 4. Admin Tools: Inline Guild Name Editing
-**Goal:** Edit guild name inline (instead of separate input + button)
-
-**Implementation:**
-- Click guild name → becomes editable input
-- Enter to save, Escape to cancel
-- Visual feedback on save
-
-**Current:** Separate input field + update button
-**New:** Inline editing (click to edit, Enter to save)
-
-**Files:**
-- `index.html` (update guild name display)
-- `js/main.js` (inline edit logic)
-
----
-
-### 5. Recent Changes Panel: Extend to Bottom
-**Goal:** Make history panel taller, showing more entries
-
-**Current:** `max-height: 200px`
-**New:** `max-height: 60vh` or extend to bottom of page
-
-**Implementation:**
-- Increase max-height
-- Make it scrollable
-- Show more entries (50+ instead of 20)
-
-**Files:**
-- `index.html` (update CSS class)
-- `css/side-panel.css` (update max-height)
-
----
-
-### 6. Edit: Single Line + Enter to Commit
-**Goal:** Editing should commit on Enter key, single-line only
-
-**Current:** Multiple lines possible, Enter sometimes not committing
-**New:** 
-- Single line input (no multi-line)
-- Enter key commits immediately
-- Escape cancels
-
-**Files:**
-- `js/event-handlers.js` (update edit logic)
-- `js/render-helpers.js` (update input fields to single line)
-
----
-
-### 7. Move Group Counter Below Group Panel
-**Goal:** Move the group stats counter from above the group grid to below it
-
-**Current:** Group stats displayed above the group grid
-**New:** Group stats displayed below the group grid
-
-**Implementation:**
-- Move the HTML element
-- Update CSS positioning
-
-**Files:**
-- `index.html` (move group stats element)
-- `css/diagram.css` (update positioning)
-
----
-
-## 🐛 KNOWN BUGS TO FIX
-
-### High Priority
-1. **Auto-scroll for guild card drag** - Guild panel is at bottom, need scroll to reserves (Plan 4.1)
-2. **Add Group button not working** - Admin Tools add group button needs fixing (To-Do #1)
-
-### Medium Priority
-3. **Right-click context menu** - Need to implement (Plan 4.2)
-4. **Keyboard shortcuts for move/copy** - Need to implement (Plan 4.3)
-5. **Group deletion** - Need to add remove group button (To-Do #1)
-6. **guildMembers day-specific** - Currently day-specific, simplify to single array later
-
-### Low Priority
-7. **Group labels** - B1-B6 working ✅
-8. **Duplicate highlighting** - Working ✅
-9. **Date format** - Fixed to "15 Aug 2026, 02:58 AM" ✅
-
----
-
-## 📁 PROJECT STRUCTURE
+## PROJECT STRUCTURE (current)
 
 ```
-guild-war-management/
-├── index.html                      ✅
-├── server.js                       ✅ (with migration endpoint)
-├── package.json                    ✅
-├── WebImplementationPlan.md        ✅ (THIS FILE)
-├── .env                            ⏳ (Supabase credentials - To-Do #2)
+guild-war-management/            (git repo, branch main)
+├── index.html                   done
+├── server.js                    done (auth, merge, tombstones, SSE, register)
+├── package.json                 done
+├── WebImplementationPlan.md     done (THIS FILE)
+├── .gitignore                   done (node_modules, data/, config/auth.json, backups/, .kilo, .freebuff)
 ├── config/
-│   └── auth.json                   ✅
+│   └── auth.json                done (git-ignored, plaintext passwords - Phase 11.1)
 ├── data/
-│   ├── database.json               ✅ (with master list populated)
-│   └── history.json                ✅
-├── css/
-│   ├── variables.css               ✅
-│   ├── main.css                    ✅
-│   ├── header.css                  ✅
-│   ├── day-tabs.css                ✅
-│   ├── toast.css                   ✅
-│   ├── bulk-actions.css            ✅
-│   ├── guild-cards.css             ✅
-│   ├── shortcuts.css               ✅
-│   ├── diagram.css                 ✅
-│   ├── admin-view.css              ✅
-│   ├── public-view.css             ✅
-│   ├── reserve.css                 ✅
-│   ├── guild-member.css            ✅
-│   ├── side-panel.css              ✅
-│   ├── admin-panel.css             ✅
-│   ├── announcement.css            ✅
-│   ├── modal.css                   ✅
-│   ├── responsive.css              ✅
-│   └── context-menu.css            ⏳ (Phase 4)
+│   ├── database.json            done (git-ignored)
+│   └── history.json             done (git-ignored)
+├── css/                         done - 19 files (variables, main, header, day-tabs, toast,
+│                                  bulk-actions, guild-cards, shortcuts, diagram,
+│                                  admin-view, public-view, reserve, guild-member,
+│                                  side-panel, admin-panel, announcement, modal, responsive)
 └── js/
-    ├── data.js                     ✅
-    ├── helpers.js                  ✅
-    ├── api.js                      ✅
-    ├── auth-module.js              ✅
-    ├── toast.js                    ✅
-    ├── theme.js                    ✅
-    ├── event-handlers.js           ✅
-    ├── render-helpers.js           ✅
-    ├── render.js                   ✅
-    ├── dragdrop.js                 ✅
-    ├── bulk-actions.js             ✅
-    ├── history.js                  ✅
-    ├── announcement.js             ✅
-    ├── main.js                     ✅
-    ├── context-menu.js             ⏳ (Phase 4)
-    ├── export.js                   ⏳ (Phase 4)
-    └── cron.js                     ⏳ (To-Do #3)
+    ├── main.js                  done - sync engine (SSE + poll + merge payload)
+    ├── api.js                   done - registerPlayer + auth header
+    ├── auth-module.js           done - sessions, change-password
+    ├── helpers.js               done - esc() + pending removal/delete tracking
+    ├── render.js                done - main render
+    ├── render-helpers.js        done - guild cards from master list
+    ├── event-handlers.js        done - inline edit, checkbox handlers
+    ├── dragdrop.js              done - drag & drop
+    ├── bulk-actions.js          done - copy/delete/clear selected
+    ├── history.js               done - history tracking
+    ├── announcement.js          done - announcements
+    ├── shortcuts.js             done - ? / Ctrl+S / Ctrl+T / Escape
+    ├── theme.js                 done - theme management
+    ├── toast.js                 done - toast system
+    └── data.js                  done - sample/fallback data
+    (context-menu.js, export.js, cron.js - to be created in Phases 7/8/13)
 ```
 
 ---
 
-## 🚀 NEXT SESSION START POINT
-
-When starting the next session, say:
-
-> "Continue from Phase 4 of WebImplementationPlan.md. Start with the To-Do list item 1: Fix Admin Tools - Add Group button and Add Delete button for groups."
-
----
-
-## 📊 PROGRESS METRICS
+## PROGRESS METRICS
 
 | Phase | Status | Progress |
 |-------|--------|----------|
-| Phase 1: Core System | ✅ Complete | 100% |
-| Phase 2: Bulk Actions & Cards | ✅ Complete (with fixes) | 100% |
-| Phase 3: History & Shortcuts | ✅ Complete | 100% |
-| Phase 3.5: Master List Fix | ✅ Complete | 100% |
-| Phase 4: Polish & Export | ⏳ Pending | 0% |
-| Phase 5: Discord Integration | ⏳ Future | 0% |
-| To-Do List | ⏳ Pending | 0% |
+| Phase 1: Core System | done | 100% |
+| Phase 2: Bulk Actions & Cards | done | 100% |
+| Phase 3: History & Shortcuts | done | 100% |
+| Phase 3.5: Master List Fix | done | 100% |
+| Phase 4: Session Auth & Security | done | 100% |
+| Phase 5: Concurrency (Merge + SSE) | done | 100% |
+| Phase 6: Admin Tools & Editing Polish | next | 0% |
+| Phase 7: Power-User Interactions | pending | 0% |
+| Phase 8: Export & Backup | pending | 0% |
+| Phase 9: Mobile & Accessibility | pending | 0% |
+| Phase 10: Data Model Simplification | pending | 0% |
+| Phase 11: Security Hardening | pending | 0% |
+| Phase 12: Supabase Migration | pending | 0% |
+| Phase 13: Cron Keep-Alive | pending | 0% |
 
-**Overall Progress:** 80%
-
----
-
-## 🔗 QUICK REFERENCE
-
-### Login
-- Admin: `Tertlaim` / `Sin1234`
-- Moderators: Set up via admin panel
-
-### API Endpoints
-```
-GET  /api/data                    - Load data
-POST /api/data                    - Save data
-POST /api/login                   - Authenticate
-GET  /api/history                 - Get history
-POST /api/history                 - Add history entry
-DELETE /api/history               - Clear history (admin)
-GET  /api/backup                  - Download backup
-POST /api/migrate-guild-members   - Migrate master list (admin only)
-GET  /api/guild-members-status    - Check migration status
-```
-
-### Keyboard Shortcuts
-```
-? or Ctrl+/  → Show shortcuts legend
-Ctrl+S       → Save state
-Ctrl+T       → Toggle theme
-Escape       → Cancel/Close
-```
+**Overall Progress:** ~85%
 
 ---
 
-## 📝 NOTES
+## KNOWN BUGS -> PHASE MAP
 
-### Decisions Made
-1. **Floating Panel:** Removed (didn't work well, replaced with future right-click + keyboard)
-2. **Reserve→Reserve:** Blocked (prevents useless duplicates)
-3. **Date Format:** `15 Aug 2026, 02:58 AM`
-4. **Group Labels:** B1, B2, B3, B4, B5, B6 (dynamic)
-5. **History Cleanup:** FIFO - keeps last 100 entries
-6. **Master List:** `guildMembers` is the source of truth for ALL players
-7. **Copy to Reserve:** Keeps player in guild, adds to reserves (does NOT remove from guild)
-8. **Delete:** Removes from ALL sources (guild, groups, reserves) - Admin only
-9. **guildMembers Structure:** Currently day-specific (sat/sun). Fix later to single array.
-10. **Group Stats Position:** Move to below group grid (To-Do #7)
-
-### Future Considerations
-1. **Discord Integration:** Standalone module (Phase 5)
-2. **Export Options:** JSON, CSV, Image, PDF (Phase 4)
-3. **Mobile Optimization:** Touch targets, swipe navigation (Phase 4)
-4. **Simplify guildMembers:** Change from `{ sat: [], sun: [] }` to single array `[]`
-5. **Supabase Migration:** Move from JSON to PostgreSQL (To-Do #2)
-6. **Cron Job:** Weekly keep-alive for Supabase (To-Do #3)
+| # | Bug | Where it's fixed |
+|---|-----|------------------|
+| 1 | Add Group button not working | Phase 6.1 |
+| 2 | No right-click context menu | Phase 7.1 |
+| 3 | No extended keyboard shortcuts (C/M/E/Delete) | Phase 7.2 |
+| 4 | Group deletion not implemented | Phase 6.2 |
+| 5 | guildMembers day-specific (should be single array) | Phase 10 |
+| 6 | Backup download 401s (window.open without auth header) | Phase 8.2 |
+| 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 11.1 |
+| 8 | No rate limiting on login/register | Phase 11.2 |
+| 9 | Non-atomic writeDatabase (crash can corrupt JSON) | Phase 11.3 |
+| 10 | Tombstones in-memory only (lost on restart) | Phase 11.4 |
+| 11 | Poll can wipe an in-progress edit (no dirty-check) | Phase 11.5 |
 
 ---
 
-*Last Updated: 2026-08-15*
-```
+## NOTES
+
+### Decisions made
+1. **Concurrency model:** whole-file last-writer-wins replaced by server-side per-id merge. Fresh saves replace; stale saves merge disjoint changes, apply explicit removals, respect tombstones. No 409 rejections - saves always land.
+2. **Realtime sync:** SSE push + 30s poll fallback + `visibilitychange` re-sync. No new dependencies.
+3. **Save contract:** client always sends the FULL snapshot + `baseVersion` + `deletedIds` + `removed`; server returns the merged state and the client converges to it.
+4. **Public writes:** only `/api/register` (validated, deduped, role forced to Member). Everything else requires a session.
+5. **Undo/redo removed:** simplified the save model; every edit is an immediate save (safe under the merge).
+6. **Reserve -> Reserve:** blocked (prevents useless duplicates).
+7. **Copy to Reserve:** keeps player in guild, adds to reserves (does NOT remove from guild).
+
+### Removed from plan
+- ~~4.1 Auto-Scroll on Drag Start~~ - removed by request (2026-08-18)
+
+### Future considerations
+- Discord integration (standalone module, after Phase 13)
+- Multi-line notes, custom group colors, per-day announcements
+- Migrate to single-array guildMembers (Phase 10) unlocks cleaner exports
+
+*Last Updated: 2026-08-18*

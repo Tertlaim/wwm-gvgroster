@@ -34,6 +34,49 @@ function esc(str) {
         .replace(/'/g, '&#39;');
 }
 
+// ============================================================
+//  CONCURRENCY (Phase 4.5) - pending removal/delete tracking
+// ============================================================
+// The server merges stale snapshots instead of blind-overwriting, so it needs
+// to know which removals this client actually made since its last save.
+// Types: 'group' -> { day, groupKey, ids }, 'reserve' -> { day, ids }, 'guild' -> { day, ids }
+
+function ensurePendingRemovals() {
+    if (!window._pendingRemovals) {
+        window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: {} };
+    }
+    return window._pendingRemovals;
+}
+
+function trackPlayerRemovals(type, day, ids, groupKey) {
+    const store = ensurePendingRemovals();
+    const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (list.length === 0) return;
+    if (type === 'group') {
+        if (!store.groups[day]) store.groups[day] = {};
+        if (!store.groups[day][groupKey]) store.groups[day][groupKey] = [];
+        list.forEach(id => { if (!store.groups[day][groupKey].includes(id)) store.groups[day][groupKey].push(id); });
+    } else if (type === 'reserve') {
+        if (!store.reserves[day]) store.reserves[day] = [];
+        list.forEach(id => { if (!store.reserves[day].includes(id)) store.reserves[day].push(id); });
+    } else if (type === 'guild') {
+        if (!store.guildMembers[day]) store.guildMembers[day] = [];
+        list.forEach(id => { if (!store.guildMembers[day].includes(id)) store.guildMembers[day].push(id); });
+    }
+}
+
+// Full deletes (removed from ALL panels) - the server tombstones these ids so
+// a stale copy from another editor cannot resurrect them.
+function trackDeletedPlayerIds(ids) {
+    if (!window._pendingDeletedIds) window._pendingDeletedIds = new Set();
+    (Array.isArray(ids) ? ids : [ids]).forEach(id => { if (id) window._pendingDeletedIds.add(id); });
+}
+
+function clearPendingSyncState() {
+    if (window._pendingDeletedIds) window._pendingDeletedIds.clear();
+    window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: {} };
+}
+
 // ---- ID Generation ----
 function generatePlayerId() {
     return 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);

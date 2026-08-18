@@ -108,7 +108,14 @@ async function saveState() {
         guildMembers: window.guildMembers, 
         lastUpdateTime: window.lastUpdateTime,
         announcement: window.announcementText || '',
-        guildName: window.guildName || 'Mask Sinners'
+        guildName: window.guildName || 'Mask Sinners',
+        // Concurrency metadata (Phase 4.5): the base version this snapshot
+        // is derived from, ids fully deleted, and ids removed from specific
+        // lists since our last save. The server merges stale snapshots and
+        // applies these removals on top.
+        baseVersion: window._serverLastUpdatedTime || null,
+        deletedIds: Array.from(window._pendingDeletedIds || []),
+        removed: (window._pendingRemovals || { groups: {}, reserves: {}, guildMembers: {} })
     };
     
     const result = await saveDataToServer(data);
@@ -116,6 +123,12 @@ async function saveState() {
         window.lastUpdateTime = result.lastUpdate;
         // Update sync timestamp so the poller doesn't re-apply our own changes
         window._serverLastUpdatedTime = result.lastUpdate;
+        // Removals/deletes were applied server-side - clear the pending records
+        if (typeof clearPendingSyncState === 'function') clearPendingSyncState();
+        // Converge to the merged server state (includes other editors' changes)
+        if (result.data) {
+            applyServerData(result.data);
+        }
         const lastUpdateEl = document.getElementById('lastUpdate');
         if (lastUpdateEl) {
             lastUpdateEl.textContent = `Last update: ${result.lastUpdate}`;
@@ -219,61 +232,95 @@ function startDataSync() {
         clearInterval(_syncTimer);
     }
     
-    _syncTimer = setInterval(async function() {
-        if (_isSyncing) return; // Prevent overlapping syncs
-        _isSyncing = true;
+    // 30s polling remains as a fallback; SSE + focus re-sync run on top.
+    _syncTimer = setInterval(performSync, SYNC_INTERVAL);
+    setupRealtimeSync();
+}
+
+// One sync pass: fetch server data and apply it if it is newer than ours.
+async function performSync() {
+    if (_isSyncing) return; // Prevent overlapping syncs
+    _isSyncing = true;
+    
+    try {
+        const serverData = await loadDataFromServer();
+        if (!serverData) return;
         
-        try {
-            const serverData = await loadDataFromServer();
-            if (!serverData) return;
+        const serverTime = serverData.lastUpdateTime;
+        const localTime = window._serverLastUpdatedTime;
+        
+        // If server has NEWER data than what we last synced, reload
+        if (serverTime && (!localTime || 
+            (typeof serverTime === 'string' && typeof localTime === 'string' && serverTime > localTime) ||
+            (typeof serverTime === 'object' && typeof localTime === 'object' && new Date(serverTime) > new Date(localTime)))) {
             
-            const serverTime = serverData.lastUpdateTime;
-            const localTime = window._serverLastUpdatedTime;
+            console.log('🔄 Server has newer data, syncing...');
             
-            // If server has NEWER data than what we last synced, reload
-            if (serverTime && (!localTime || 
-                (typeof serverTime === 'string' && typeof localTime === 'string' && serverTime > localTime) ||
-                (typeof serverTime === 'object' && typeof localTime === 'object' && new Date(serverTime) > new Date(localTime)))) {
-                
-                console.log('🔄 Server has newer data, syncing...');
-                
-                // Save current state for potential undo
-                const prevState = {
-                    groups: window.groups,
-                    reserves: window.reserves,
-                    guildMembers: window.guildMembers,
-                    announcement: window.announcementText,
-                    guildName: window.guildName
-                };
-                
-                applyServerData(serverData);
-                
-                // Only re-render if data actually changed
-                const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(window.groups) ||
-                                    JSON.stringify(prevState.reserves) !== JSON.stringify(window.reserves) ||
-                                    JSON.stringify(prevState.guildMembers) !== JSON.stringify(window.guildMembers) ||
-                                    prevState.announcement !== window.announcementText ||
-                                    prevState.guildName !== window.guildName;
-                
-                if (dataChanged && typeof render === 'function') {
-                    render();
-                    showToast('🔄 Data synced from server', 'info', 1500);
-                }
-            } else {
-                window._lastSyncedAt = Date.now();
+            // Snapshot current state to detect actual changes
+            const prevState = {
+                groups: window.groups,
+                reserves: window.reserves,
+                guildMembers: window.guildMembers,
+                announcement: window.announcementText,
+                guildName: window.guildName
+            };
+            
+            applyServerData(serverData);
+            
+            // Only re-render if data actually changed
+            const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(window.groups) ||
+                                JSON.stringify(prevState.reserves) !== JSON.stringify(window.reserves) ||
+                                JSON.stringify(prevState.guildMembers) !== JSON.stringify(window.guildMembers) ||
+                                prevState.announcement !== window.announcementText ||
+                                prevState.guildName !== window.guildName;
+            
+            if (dataChanged && typeof render === 'function') {
+                render();
+                showToast('🔄 Data synced from server', 'info', 1500);
             }
-        } catch (error) {
-            console.error('Sync error:', error);
-        } finally {
-            _isSyncing = false;
+        } else {
+            window._lastSyncedAt = Date.now();
         }
-    }, SYNC_INTERVAL);
+    } catch (error) {
+        console.error('Sync error:', error);
+    } finally {
+        _isSyncing = false;
+    }
+}
+
+// Real-time sync (Phase 4.5): SSE push from the server + re-sync on tab focus.
+// The 30s poller stays as a fallback when SSE is unavailable.
+function setupRealtimeSync() {
+    if (window._eventSource) {
+        try { window._eventSource.close(); } catch (e) {}
+        window._eventSource = null;
+    }
+    try {
+        const es = new EventSource('/api/events');
+        window._eventSource = es;
+        es.addEventListener('update', function() {
+            performSync();
+        });
+        // EventSource reconnects automatically on error; no action needed.
+        es.onerror = function() {};
+        console.log('Realtime sync connected (SSE)');
+    } catch (e) {
+        console.warn('Realtime sync unavailable, polling fallback only:', e);
+    }
+    
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) performSync();
+    });
 }
 
 function stopDataSync() {
     if (_syncTimer) {
         clearInterval(_syncTimer);
         _syncTimer = null;
+    }
+    if (window._eventSource) {
+        try { window._eventSource.close(); } catch (e) {}
+        window._eventSource = null;
     }
 }
 
@@ -625,7 +672,11 @@ function setupReserveActions() {
                 playersToDelete.sort(function(a, b) { return b - a; });
                 playersToDelete.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
+                        var removedId = r[idx] && r[idx].id;
                         r.splice(idx, 1);
+                        if (removedId && typeof trackPlayerRemovals === 'function') {
+                            trackPlayerRemovals('reserve', day, removedId);
+                        }
                     }
                 });
                 
@@ -633,8 +684,12 @@ function setupReserveActions() {
                 moveIndices.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
                         var player = r[idx];
+                        var movedId = player && player.id;
                         r.splice(idx, 1);
                         gm.push(player);
+                        if (movedId && typeof trackPlayerRemovals === 'function') {
+                            trackPlayerRemovals('reserve', day, movedId);
+                        }
                     }
                 });
                 
@@ -677,7 +732,11 @@ function setupReserveActions() {
                 
                 indices.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
+                        var removedId = r[idx] && r[idx].id;
                         r.splice(idx, 1);
+                        if (removedId && typeof trackPlayerRemovals === 'function') {
+                            trackPlayerRemovals('reserve', window.currentDay, removedId);
+                        }
                     }
                 });
                 
@@ -789,6 +848,10 @@ function setupGuildActions() {
                         const playerId = cb.dataset.playerId;
                         if (playerId) selectedIds.push(playerId);
                     });
+                    // Full delete - tombstone these ids so stale copies can't resurrect them
+                    if (selectedIds.length > 0 && typeof trackDeletedPlayerIds === 'function') {
+                        trackDeletedPlayerIds(selectedIds);
+                    }
                     
                     selectedIds.forEach(function(playerId) {
                         let removed = false;
@@ -863,18 +926,26 @@ function setupAdminTools() {
                     var allPlayers = [];
                     groupKeys.forEach(function(key) {
                         if (window.groups[day] && window.groups[day][key]) {
+                            var clearedIds = window.groups[day][key].players.map(function(p) { return p && p.id; }).filter(Boolean);
                             window.groups[day][key].players.forEach(function(p) {
                                 allPlayers.push(p);
                             });
                             window.groups[day][key].players = [];
+                            if (clearedIds.length > 0 && typeof trackPlayerRemovals === 'function') {
+                                trackPlayerRemovals('group', day, clearedIds, key);
+                            }
                         }
                     });
                     
                     if (window.reserves[day]) {
+                        var clearedReserveIds = window.reserves[day].map(function(p) { return p && p.id; }).filter(Boolean);
                         window.reserves[day].forEach(function(p) {
                             allPlayers.push(p);
                         });
                         window.reserves[day] = [];
+                        if (clearedReserveIds.length > 0 && typeof trackPlayerRemovals === 'function') {
+                            trackPlayerRemovals('reserve', day, clearedReserveIds);
+                        }
                     }
                     
                     var targetGm = day === 'sat' ? gmSat : gmSun;
@@ -912,13 +983,18 @@ if (clearToReserveBtn) {
             // Collect all players from groups
             groupKeys.forEach(function(key) {
                 if (g[key] && g[key].players) {
+                    var clearedIds = [];
                     g[key].players.forEach(function(p) {
                         if (!p.id) {
                             p.id = generatePlayerId();
                         }
+                        clearedIds.push(p.id);
                         allPlayers.push(p);
                     });
                     g[key].players = [];
+                    if (clearedIds.length > 0 && typeof trackPlayerRemovals === 'function') {
+                        trackPlayerRemovals('group', day, clearedIds, key);
+                    }
                 }
             });
             
