@@ -43,7 +43,7 @@ function esc(str) {
 function formatUpdateTime(value) {
     if (!value) return '';
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-        var d = new Date(value);
+        const d = new Date(value);
         if (!isNaN(d.getTime())) {
             return d.toLocaleString('en-US', {
                 day: 'numeric',
@@ -236,7 +236,7 @@ function isPlayerInGroup(day, groupKey, name, cls) {
 function isPlayerInAnyGroup(day, name, cls) {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     const groups = window.groups && window.groups[day] ? window.groups[day] : {};
-    for (let key of groupKeys) {
+    for (const key of groupKeys) {
         if (groups[key] && groups[key].players) {
             if (groups[key].players.some(p => p.name === name && p.class === cls)) {
                 return true;
@@ -309,7 +309,7 @@ function isMod() {
 // ============================================================
 
 function getGroups() { 
-    var day = window.currentDay || 'sat';
+    const day = window.currentDay || 'sat';
     
     // Initialize if not exists
     if (!window.groups) {
@@ -323,7 +323,7 @@ function getGroups() {
 }
 
 function getReserves() {
-    var day = window.currentDay || 'sat';
+    const day = window.currentDay || 'sat';
     
     // Initialize if not exists
     if (!window.reserves) {
@@ -338,7 +338,7 @@ function getReserves() {
 }
 
 function getGuildMembers() {
-    var day = window.currentDay || 'sat';
+    const day = window.currentDay || 'sat';
     
     // Initialize if not exists
     if (!window.guildMembers) {
@@ -360,14 +360,14 @@ function getAllRegisteredPlayers() {
 function totalPlayers() { 
     const g = getGroups(); 
     let sum = 0; 
-    for (let key in g) sum += g[key].players.length; 
+    for (const key in g) sum += g[key].players.length; 
     return sum; 
 }
 
 function getAllPlayers() { 
     const g = getGroups(); 
     let all = []; 
-    for (let key in g) all = all.concat(g[key].players); 
+    for (const key in g) all = all.concat(g[key].players); 
     return all.concat(getReserves()); 
 }
 
@@ -377,11 +377,11 @@ function getAllGuildMembers() {
 
 // Get total players in groups for a specific day
 function getTotalGroupPlayers(day) {
-    var total = 0;
-    var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    var groups = window.groups && window.groups[day] ? window.groups[day] : {};
-    for (var i = 0; i < groupKeys.length; i++) {
-        var key = groupKeys[i];
+    let total = 0;
+    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    for (let i = 0; i < groupKeys.length; i++) {
+        const key = groupKeys[i];
         if (groups[key] && groups[key].players) {
             total += groups[key].players.length;
         }
@@ -391,12 +391,12 @@ function getTotalGroupPlayers(day) {
 
 // Check if a player exists in any group for a specific day
 function isPlayerInAnyGroup(day, name, cls) {
-    var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    var groups = window.groups && window.groups[day] ? window.groups[day] : {};
-    for (var i = 0; i < groupKeys.length; i++) {
-        var key = groupKeys[i];
+    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    for (let i = 0; i < groupKeys.length; i++) {
+        const key = groupKeys[i];
         if (groups[key] && groups[key].players) {
-            for (var j = 0; j < groups[key].players.length; j++) {
+            for (let j = 0; j < groups[key].players.length; j++) {
                 if (groups[key].players[j].name === name && groups[key].players[j].class === cls) {
                     return true;
                 }
@@ -408,8 +408,8 @@ function isPlayerInAnyGroup(day, name, cls) {
 
 // Check if a player exists in guild members for a specific day
 function isPlayerInGuildMembers(day, name, cls) {
-    var guildMembers = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
-    for (var i = 0; i < guildMembers.length; i++) {
+    const guildMembers = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
+    for (let i = 0; i < guildMembers.length; i++) {
         if (guildMembers[i].name === name && guildMembers[i].class === cls) {
             return true;
         }

@@ -2,26 +2,26 @@
 //  RENDER HELPERS - Reusable rendering functions
 // ============================================================
 
-var RenderHelpers = {};
+const RenderHelpers = {};
 
 RenderHelpers.createGroupPlayerBadge = function(player, index, groupKey, canEdit) {
-    var displayRole = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
-    var roleIcon = typeof getRoleIcon === 'function' ? getRoleIcon(player.role || 'Member') : '';
-    var classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
-    var roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
+    const displayRole = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
+    const roleIcon = typeof getRoleIcon === 'function' ? getRoleIcon(player.role || 'Member') : '';
+    const classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
+    const roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
     
     // ---- DUPLICATE DETECTION ----
-    var isDuplicate = false;
-    var duplicateCount = 0;
-    var day = window.currentDay;
+    let isDuplicate = false;
+    let duplicateCount = 0;
+    const day = window.currentDay;
     
     if (day && window.groups && window.groups[day]) {
-        var groupKeys = Object.keys(window.groups[day]);
-        for (var i = 0; i < groupKeys.length; i++) {
-            var key = groupKeys[i];
+        const groupKeys = Object.keys(window.groups[day]);
+        for (let i = 0; i < groupKeys.length; i++) {
+            const key = groupKeys[i];
             if (window.groups[day][key] && window.groups[day][key].players) {
-                for (var j = 0; j < window.groups[day][key].players.length; j++) {
-                    var p = window.groups[day][key].players[j];
+                for (let j = 0; j < window.groups[day][key].players.length; j++) {
+                    const p = window.groups[day][key].players[j];
                     if (p.name === player.name && p.class === player.class) {
                         duplicateCount++;
                         if (duplicateCount > 1) {
@@ -33,7 +33,7 @@ RenderHelpers.createGroupPlayerBadge = function(player, index, groupKey, canEdit
         }
     }
     
-    var badge = document.createElement('div');
+    const badge = document.createElement('div');
     badge.className = 'player-badge ' + (canEdit ? 'admin-view' : 'public-view');
     if (isDuplicate) {
         badge.classList.add('duplicate-warning');
@@ -94,16 +94,16 @@ RenderHelpers.createGroupPlayerBadge = function(player, index, groupKey, canEdit
 };
 
 RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
-    var extraClass = { jungle: 'jungle', defence1: 'defence', offence1: '', offence2: '' };
-    var sortedPlayers = groupData && groupData.players ? (typeof sortPlayers === 'function' ? sortPlayers(groupData.players) : groupData.players) : [];
-    var title = groupData && groupData.title ? groupData.title : groupKey;
-    var labelText = label || '';
+    const extraClass = { jungle: 'jungle', defence1: 'defence', offence1: '', offence2: '' };
+    const sortedPlayers = groupData && groupData.players ? (typeof sortPlayers === 'function' ? sortPlayers(groupData.players) : groupData.players) : [];
+    const title = groupData && groupData.title ? groupData.title : groupKey;
+    const labelText = label || '';
     
-    var card = document.createElement('div');
+    const card = document.createElement('div');
     card.className = 'group-card ' + (extraClass[groupKey] || '');
     card.dataset.group = groupKey;
     
-    var titleHtml = '';
+    let titleHtml = '';
     if (canEdit) {
         // Edit/save/cancel sit at the FAR LEFT of the title row (visual change);
         // the remove (trash) button lives at the card's bottom-right instead.
@@ -145,7 +145,7 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
 };
 
 RenderHelpers.renderGroups = function(groups, canEdit) {
-    var groupGrid = document.getElementById('groupGrid');
+    const groupGrid = document.getElementById('groupGrid');
     if (!groupGrid) return;
     
     groupGrid.innerHTML = '';
@@ -155,13 +155,13 @@ RenderHelpers.renderGroups = function(groups, canEdit) {
         return;
     }
     
-    var groupKeys = Object.keys(groups);
+    const groupKeys = Object.keys(groups);
     groupKeys.sort();
     
-    for (var i = 0; i < groupKeys.length; i++) {
-        var key = groupKeys[i];
-        var label = 'B' + (i + 1);
-        var card = RenderHelpers.createGroupCard(key, groups[key], canEdit, label);
+    for (let i = 0; i < groupKeys.length; i++) {
+        const key = groupKeys[i];
+        const label = 'B' + (i + 1);
+        const card = RenderHelpers.createGroupCard(key, groups[key], canEdit, label);
         groupGrid.appendChild(card);
     }
 };
@@ -171,12 +171,12 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
         return document.createElement('span');
     }
     
-    var displayRole = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
-    var roleIcon = typeof getRoleIcon === 'function' ? getRoleIcon(player.role || 'Member') : '';
-    var classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
-    var roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
+    const displayRole = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
+    const roleIcon = typeof getRoleIcon === 'function' ? getRoleIcon(player.role || 'Member') : '';
+    const classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
+    const roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
     
-    var badge = document.createElement('span');
+    const badge = document.createElement('span');
     badge.className = 'reserve-badge ' + (canEdit ? 'admin-view' : 'public-view');
     badge.draggable = canEdit;
     badge.dataset.editable = 'true';
@@ -228,10 +228,10 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
 };
 
 RenderHelpers.createGuildBadge = function(player, index, canEdit) {
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-    var classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
     
-    var badge = document.createElement('span');
+    const badge = document.createElement('span');
     badge.className = 'guild-member-badge';
     badge.draggable = canEdit;
     badge.dataset.editable = 'true';
@@ -277,11 +277,11 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
 };
 
 RenderHelpers.renderReserves = function(reserves, canEdit) {
-    var reservePool = document.getElementById('reservePool');
-    var reserveCount = document.getElementById('reserveCount');
-    var reserveActions = document.getElementById('reserveActions');
-    var dragHint = document.getElementById('dragHint');
-    var moveToGuildBtn = document.getElementById('moveToGuildBtn');
+    const reservePool = document.getElementById('reservePool');
+    const reserveCount = document.getElementById('reserveCount');
+    const reserveActions = document.getElementById('reserveActions');
+    const dragHint = document.getElementById('dragHint');
+    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
     
     if (!reservePool) {
         return;
@@ -289,8 +289,8 @@ RenderHelpers.renderReserves = function(reserves, canEdit) {
     
     reservePool.innerHTML = '';
     
-    var reserveList = Array.isArray(reserves) ? reserves : [];
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const reserveList = Array.isArray(reserves) ? reserves : [];
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
     
     if (moveToGuildBtn) {
         moveToGuildBtn.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -304,9 +304,9 @@ RenderHelpers.renderReserves = function(reserves, canEdit) {
         return;
     }
     
-    for (var i = 0; i < reserveList.length; i++) {
-        var p = reserveList[i];
-        var badge = RenderHelpers.createReserveBadge(p, i, canEdit);
+    for (let i = 0; i < reserveList.length; i++) {
+        const p = reserveList[i];
+        const badge = RenderHelpers.createReserveBadge(p, i, canEdit);
         reservePool.appendChild(badge);
     }
     
@@ -320,24 +320,24 @@ RenderHelpers.renderReserves = function(reserves, canEdit) {
 // ============================================================
 
 RenderHelpers.renderGuildCards = function() {
-    var container = document.getElementById('guildMemberPool');
+    const container = document.getElementById('guildMemberPool');
     if (!container) return;
     
     container.innerHTML = '';
     
     // Use guildMembers as the source (master list)
-    var gm = getGuildMembers();
-    var allPlayers = Array.isArray(gm) ? gm : [];
+    const gm = getGuildMembers();
+    const allPlayers = Array.isArray(gm) ? gm : [];
     
     // Sort players by name
     allPlayers.sort(function(a, b) {
         return a.name.localeCompare(b.name);
     });
     
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-    var canEdit = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const canEdit = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
     
-    var countEl = document.getElementById('guildMemberCount');
+    const countEl = document.getElementById('guildMemberCount');
     if (countEl) countEl.textContent = allPlayers.length;
     
     if (allPlayers.length === 0) {
@@ -345,12 +345,12 @@ RenderHelpers.renderGuildCards = function() {
         return;
     }
     
-    var grid = document.createElement('div');
+    const grid = document.createElement('div');
     grid.className = 'guild-cards-grid';
     grid.id = 'guildCardsGrid';
     
     allPlayers.forEach(function(player, index) {
-        var card = RenderHelpers.createGuildCard(player, index, canEdit);
+        const card = RenderHelpers.createGuildCard(player, index, canEdit);
         grid.appendChild(card);
     });
     
@@ -358,12 +358,12 @@ RenderHelpers.renderGuildCards = function() {
 };
 
 RenderHelpers.createGuildCard = function(player, index, canEdit) {
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-    var classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
-    var roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
-    var roleDisplay = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const classIcon = typeof getClassIcon === 'function' ? getClassIcon(player.class) : '';
+    const roleClass = typeof getRoleClass === 'function' ? getRoleClass(player.role || 'Member') : 'member';
+    const roleDisplay = typeof getRoleDisplay === 'function' ? getRoleDisplay(player.role || 'Member') : (player.role || 'Member');
     
-    var card = document.createElement('div');
+    const card = document.createElement('div');
     card.className = 'guild-card';
     card.dataset.playerId = player.id;
     card.dataset.type = 'guild';
@@ -377,7 +377,7 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
         card.dataset.type = 'guild';
     }
     
-    var isSelected = window.BulkActions && BulkActions.isSelected(player.id, 'guild');
+    const isSelected = window.BulkActions && BulkActions.isSelected(player.id, 'guild');
     if (isSelected) card.classList.add('selected');
     
     card.innerHTML = 
@@ -425,7 +425,7 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
                 '</button>' +
             '</div>' : '');
     
-    var checkbox = card.querySelector('.guild-checkbox');
+    const checkbox = card.querySelector('.guild-checkbox');
     if (checkbox) {
         checkbox.addEventListener('change', function(e) {
             e.stopPropagation();
@@ -435,8 +435,8 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
         });
     }
     
-    var noteIcon = card.querySelector('.note-icon');
-    var noteTooltip = card.querySelector('.note-tooltip');
+    const noteIcon = card.querySelector('.note-icon');
+    const noteTooltip = card.querySelector('.note-tooltip');
     if (noteIcon && noteTooltip) {
         noteIcon.addEventListener('mouseenter', function() {
             noteTooltip.classList.add('active');
@@ -449,21 +449,21 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
         });
     }
     
-    var editBtn = card.querySelector('[data-action="edit-guild-card"]');
+    const editBtn = card.querySelector('[data-action="edit-guild-card"]');
     if (editBtn) {
         editBtn.addEventListener('click', function() {
             this.enterGuildCardEditMode(card, player);
         }.bind(this));
     }
     
-    var noteBtn = card.querySelector('[data-action="add-note"]');
+    const noteBtn = card.querySelector('[data-action="add-note"]');
     if (noteBtn) {
         noteBtn.addEventListener('click', function() {
             this.enterGuildCardNoteMode(card, player);
         }.bind(this));
     }
     
-    var deleteBtn = card.querySelector('[data-action="delete-guild-card"]');
+    const deleteBtn = card.querySelector('[data-action="delete-guild-card"]');
     if (deleteBtn) {
         deleteBtn.addEventListener('click', function() {
             if (typeof showConfirmation === 'function') {
@@ -481,14 +481,14 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
     if (card.classList.contains('editing')) return;
     card.classList.add('editing');
     
-    var nameEl = card.querySelector('.card-name .name');
-    var classEl = card.querySelector('.card-class .class-tag');
-    var roleEl = card.querySelector('.card-role .role-tag');
-    var footer = card.querySelector('.card-footer');
+    const nameEl = card.querySelector('.card-name .name');
+    const classEl = card.querySelector('.card-class .class-tag');
+    const roleEl = card.querySelector('.card-role .role-tag');
+    const footer = card.querySelector('.card-footer');
     
-    var originalName = player.name;
-    var originalClass = player.class;
-    var originalRole = player.role || 'Member';
+    const originalName = player.name;
+    const originalClass = player.class;
+    const originalRole = player.role || 'Member';
     
     nameEl.innerHTML = '<input class="name-edit-input" value="' + esc(originalName) + '" maxlength="20">';
     classEl.innerHTML = 
@@ -514,14 +514,14 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
         '</button>';
     
     footer.querySelector('[data-action="save-guild-card"]').addEventListener('click', function() {
-        var newName = card.querySelector('.name-edit-input').value.trim();
+        const newName = card.querySelector('.name-edit-input').value.trim();
         if (!newName) {
             showToast('Name cannot be empty', 'error', 2000);
             return;
         }
         
-        var newClass = card.querySelector('.class-edit-select').value;
-        var newRole = card.querySelector('.role-edit-select').value;
+        const newClass = card.querySelector('.class-edit-select').value;
+        const newRole = card.querySelector('.role-edit-select').value;
         
         this.updateGuildPlayer(player.id, newName, newClass, newRole);
         
@@ -535,37 +535,37 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
         render();
     });
     
-    var input = card.querySelector('.name-edit-input');
+    const input = card.querySelector('.name-edit-input');
     if (input) {
         // Single-line + Enter to commit, Escape to cancel (Phase 6.4)
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                var saveBtn = card.querySelector('[data-action="save-guild-card"]');
+                const saveBtn = card.querySelector('[data-action="save-guild-card"]');
                 if (saveBtn) saveBtn.click();
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                var cancelBtn = card.querySelector('[data-action="cancel-guild-card"]');
+                const cancelBtn = card.querySelector('[data-action="cancel-guild-card"]');
                 if (cancelBtn) cancelBtn.click();
             }
         });
         input.focus();
-        var length = input.value.length;
+        const length = input.value.length;
         input.setSelectionRange(length, length);
     }
 };
 
 RenderHelpers.enterGuildCardNoteMode = function(card, player) {
-    var notesEl = card.querySelector('.card-notes');
+    let notesEl = card.querySelector('.card-notes');
     if (!notesEl) {
-        var body = card.querySelector('.card-body');
-        var newNotes = document.createElement('div');
+        const body = card.querySelector('.card-body');
+        const newNotes = document.createElement('div');
         newNotes.className = 'card-notes';
         body.appendChild(newNotes);
         notesEl = newNotes;
     }
     
-    var currentNote = player.note || '';
+    const currentNote = player.note || '';
     notesEl.innerHTML = 
         '<div class="note-content">' +
             '<textarea class="note-edit" maxlength="140" placeholder="Add a note (max 140 characters)">' + esc(currentNote) + '</textarea>' +
@@ -580,11 +580,11 @@ RenderHelpers.enterGuildCardNoteMode = function(card, player) {
             '</div>' +
         '</div>';
     
-    var textarea = notesEl.querySelector('.note-edit');
-    var charCount = notesEl.querySelector('.note-char-count');
+    const textarea = notesEl.querySelector('.note-edit');
+    const charCount = notesEl.querySelector('.note-char-count');
     
     textarea.addEventListener('input', function() {
-        var len = textarea.value.length;
+        const len = textarea.value.length;
         charCount.textContent = len + '/140';
         if (len >= 140) {
             charCount.classList.add('limit-reached');
@@ -594,7 +594,7 @@ RenderHelpers.enterGuildCardNoteMode = function(card, player) {
     });
     
     notesEl.querySelector('[data-action="save-note"]').addEventListener('click', function() {
-        var note = textarea.value.trim().substring(0, 140);
+        const note = textarea.value.trim().substring(0, 140);
         player.note = note;
         this.updateGuildPlayerNote(player.id, note);
         render();
@@ -609,12 +609,12 @@ RenderHelpers.enterGuildCardNoteMode = function(card, player) {
 };
 
 RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
-    var days = ['sat', 'sun'];
-    var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+    const days = ['sat', 'sun'];
+    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     days.forEach(function(day) {
         if (window.guildMembers && window.guildMembers[day]) {
-            var player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
+            const player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.name = name;
                 player.class = cls;
@@ -626,7 +626,7 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
             if (window.groups && window.groups[day] && window.groups[day][key]) {
-                var player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
+                const player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
                 if (player) {
                     player.name = name;
                     player.class = cls;
@@ -638,7 +638,7 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     
     days.forEach(function(day) {
         if (window.reserves && window.reserves[day]) {
-            var player = window.reserves[day].find(function(p) { return p.id === playerId; });
+            const player = window.reserves[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.name = name;
                 player.class = cls;
@@ -652,12 +652,12 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
 };
 
 RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
-    var days = ['sat', 'sun'];
-    var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+    const days = ['sat', 'sun'];
+    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     days.forEach(function(day) {
         if (window.guildMembers && window.guildMembers[day]) {
-            var player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
+            const player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.note = note;
             }
@@ -667,7 +667,7 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
             if (window.groups && window.groups[day] && window.groups[day][key]) {
-                var player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
+                const player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
                 if (player) {
                     player.note = note;
                 }
@@ -677,7 +677,7 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     
     days.forEach(function(day) {
         if (window.reserves && window.reserves[day]) {
-            var player = window.reserves[day].find(function(p) { return p.id === playerId; });
+            const player = window.reserves[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.note = note;
             }
@@ -689,8 +689,8 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
 };
 
 RenderHelpers.deleteGuildCard = function(player) {
-    var days = ['sat', 'sun'];
-    var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+    const days = ['sat', 'sun'];
+    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     // Full delete - tombstone so stale copies can't resurrect the player
     if (player && player.id && typeof trackDeletedPlayerIds === 'function') {

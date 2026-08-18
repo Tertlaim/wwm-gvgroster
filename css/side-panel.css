@@ -458,3 +458,19 @@
     #printRoster thead { display: table-header-group; }
     #printRoster tr { break-inside: avoid; }
 }
+
+/* ===== UTILITY CLASSES (cleaner markup) ===== */
+.btn-auto { width: auto; padding: var(--spacing-xs) var(--spacing-md); }
+.btn-xl { width: auto; padding: var(--spacing-sm) var(--spacing-xl); }
+.btn-active { width: auto; padding: var(--spacing-xs) var(--spacing-md); background: var(--bg-active); }
+.flex-row-sm { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-sm); flex-wrap: wrap; }
+.select-field {
+    flex: 2;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-md);
+    color: var(--text-primary);
+    min-width: 100px;
+}
+.modal-sm { max-width: 400px; }

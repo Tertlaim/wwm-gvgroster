@@ -531,7 +531,7 @@ if (addGroupBtn) {
                 
                 // ---- LOG TO HISTORY ----
                 if (typeof History !== 'undefined' && History.add) {
-                    var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+                    const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
                     History.add('group_add', {
                         details: title,
                         day: day,
@@ -621,12 +621,12 @@ function setupRegistration() {
         
         // Public registrations go through the dedicated server endpoint
         // (POST /api/data now requires a moderator/admin session).
-        var days = [];
+        const days = [];
         if (daySat) days.push('sat');
         if (daySun) days.push('sun');
         
         confirmRegisterBtn.disabled = true;
-        var result = await registerPlayer(name, cls, days);
+        const result = await registerPlayer(name, cls, days);
         confirmRegisterBtn.disabled = false;
         
         if (!result || !result.success) {
@@ -673,14 +673,14 @@ function setupRegistration() {
 
 // ---- Reserve Actions ----
 function setupReserveActions() {
-    var moveToGuildBtn = document.getElementById('moveToGuildBtn');
-    var deleteSelectedBtn = document.getElementById('deleteSelectedReservesBtn');
-    var selectAllBtn = document.getElementById('selectAllReservesBtn');
+    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedReservesBtn');
+    const selectAllBtn = document.getElementById('selectAllReservesBtn');
     
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', function() {
-            var checkboxes = document.querySelectorAll('.reserve-checkbox');
-            var allChecked = true;
+            const checkboxes = document.querySelectorAll('.reserve-checkbox');
+            let allChecked = true;
             
             checkboxes.forEach(function(cb) {
                 if (!cb.checked) allChecked = false;
@@ -696,38 +696,38 @@ function setupReserveActions() {
     
     if (moveToGuildBtn) {
         moveToGuildBtn.addEventListener('click', function() {
-            var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-            var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+            const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+            const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
             
             if (!isAdmin && !isMod) {
                 showAlert('Only moderators and admins can move to guild.', 'Error', '❌');
                 return;
             }
             
-            var checkboxes = document.querySelectorAll('.reserve-checkbox:checked');
+            const checkboxes = document.querySelectorAll('.reserve-checkbox:checked');
             if (checkboxes.length === 0) {
                 showAlert('No reserves selected to move.', 'Info', 'ℹ️');
                 return;
             }
             
-            var day = window.currentDay;
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            const day = window.currentDay;
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
             
             showConfirmation('Move ' + checkboxes.length + ' selected reserve(s) to Guild Members for ' + dayName + '? (Duplicates will be removed)', function() {
-                var r = getReserves();
-                var gm = getGuildMembers();
-                var indices = Array.from(checkboxes).map(function(cb) {
+                const r = getReserves();
+                const gm = getGuildMembers();
+                const indices = Array.from(checkboxes).map(function(cb) {
                     return parseInt(cb.dataset.reserve);
                 }).sort(function(a, b) { return b - a; });
                 
-                var playersToMove = [];
-                var playersToDelete = [];
+                const playersToMove = [];
+                const playersToDelete = [];
                 
                 indices.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
-                        var player = r[idx];
+                        const player = r[idx];
                         
-                        var exists = gm.some(function(g) {
+                        const exists = gm.some(function(g) {
                             return g.name === player.name && g.class === player.class;
                         });
                         
@@ -742,7 +742,7 @@ function setupReserveActions() {
                 playersToDelete.sort(function(a, b) { return b - a; });
                 playersToDelete.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
-                        var removedId = r[idx] && r[idx].id;
+                        const removedId = r[idx] && r[idx].id;
                         r.splice(idx, 1);
                         if (removedId && typeof trackPlayerRemovals === 'function') {
                             trackPlayerRemovals('reserve', day, removedId);
@@ -750,11 +750,11 @@ function setupReserveActions() {
                     }
                 });
                 
-                var moveIndices = playersToMove.map(function(item) { return item.idx; }).sort(function(a, b) { return b - a; });
+                const moveIndices = playersToMove.map(function(item) { return item.idx; }).sort(function(a, b) { return b - a; });
                 moveIndices.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
-                        var player = r[idx];
-                        var movedId = player && player.id;
+                        const player = r[idx];
+                        const movedId = player && player.id;
                         r.splice(idx, 1);
                         gm.push(player);
                         if (movedId && typeof trackPlayerRemovals === 'function') {
@@ -763,10 +763,10 @@ function setupReserveActions() {
                     }
                 });
                 
-                var movedCount = playersToMove.length;
-                var deletedCount = playersToDelete.length;
+                const movedCount = playersToMove.length;
+                const deletedCount = playersToDelete.length;
                 
-                var message = 'Moved ' + movedCount + ' player(s) to Guild Members.';
+                let message = 'Moved ' + movedCount + ' player(s) to Guild Members.';
                 if (deletedCount > 0) {
                     message += ' Removed ' + deletedCount + ' duplicate(s) from Reserves.';
                 }
@@ -780,29 +780,29 @@ function setupReserveActions() {
     
     if (deleteSelectedBtn) {
         deleteSelectedBtn.addEventListener('click', function() {
-            var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-            var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+            const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+            const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
             
             if (!isAdmin && !isMod) {
                 showAlert('Only moderators and admins can delete reserves.', 'Error', '❌');
                 return;
             }
             
-            var checkboxes = document.querySelectorAll('.reserve-checkbox:checked');
+            const checkboxes = document.querySelectorAll('.reserve-checkbox:checked');
             if (checkboxes.length === 0) {
                 showAlert('No reserves selected for deletion.', 'Info', 'ℹ️');
                 return;
             }
             
             showConfirmation('Delete ' + checkboxes.length + ' selected reserve(s)?', function() {
-                var r = getReserves();
-                var indices = Array.from(checkboxes).map(function(cb) {
+                const r = getReserves();
+                const indices = Array.from(checkboxes).map(function(cb) {
                     return parseInt(cb.dataset.reserve);
                 }).sort(function(a, b) { return b - a; });
                 
                 indices.forEach(function(idx) {
                     if (r && idx >= 0 && idx < r.length) {
-                        var removedId = r[idx] && r[idx].id;
+                        const removedId = r[idx] && r[idx].id;
                         r.splice(idx, 1);
                         if (removedId && typeof trackPlayerRemovals === 'function') {
                             trackPlayerRemovals('reserve', window.currentDay, removedId);
@@ -976,9 +976,9 @@ function setupGuildActions() {
 
 // ---- Admin Tools ----
 function setupAdminTools() {
-    var clearToGuildBtn = document.getElementById('clearToGuildBtn');
-    var clearToReserveBtn = document.getElementById('clearToReserveBtn');
-    var downloadBackupBtn = document.getElementById('downloadBackupBtn');
+    const clearToGuildBtn = document.getElementById('clearToGuildBtn');
+    const clearToReserveBtn = document.getElementById('clearToReserveBtn');
+    const downloadBackupBtn = document.getElementById('downloadBackupBtn');
     
     if (downloadBackupBtn) {
         downloadBackupBtn.addEventListener('click', function() {
@@ -998,16 +998,16 @@ function setupAdminTools() {
             }
             
             showConfirmation('Move all members from groups and reserves to Guild Members for both Saturday and Sunday?', function() {
-                var gmSat = window.guildMembers.sat;
-                var gmSun = window.guildMembers.sun;
-                var days = ['sat', 'sun'];
-                var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+                const gmSat = window.guildMembers.sat;
+                const gmSun = window.guildMembers.sun;
+                const days = ['sat', 'sun'];
+                const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 
                 days.forEach(function(day) {
-                    var allPlayers = [];
+                    const allPlayers = [];
                     groupKeys.forEach(function(key) {
                         if (window.groups[day] && window.groups[day][key]) {
-                            var clearedIds = window.groups[day][key].players.map(function(p) { return p && p.id; }).filter(Boolean);
+                            const clearedIds = window.groups[day][key].players.map(function(p) { return p && p.id; }).filter(Boolean);
                             window.groups[day][key].players.forEach(function(p) {
                                 allPlayers.push(p);
                             });
@@ -1019,7 +1019,7 @@ function setupAdminTools() {
                     });
                     
                     if (window.reserves[day]) {
-                        var clearedReserveIds = window.reserves[day].map(function(p) { return p && p.id; }).filter(Boolean);
+                        const clearedReserveIds = window.reserves[day].map(function(p) { return p && p.id; }).filter(Boolean);
                         window.reserves[day].forEach(function(p) {
                             allPlayers.push(p);
                         });
@@ -1029,9 +1029,9 @@ function setupAdminTools() {
                         }
                     }
                     
-                    var targetGm = day === 'sat' ? gmSat : gmSun;
+                    const targetGm = day === 'sat' ? gmSat : gmSun;
                     allPlayers.forEach(function(p) {
-                        var exists = targetGm.some(function(g) { return g.name === p.name; });
+                        const exists = targetGm.some(function(g) { return g.name === p.name; });
                         if (!exists) {
                             targetGm.push(p);
                         }
@@ -1052,19 +1052,19 @@ if (clearToReserveBtn) {
             return;
         }
         
-        var day = window.currentDay;
-        var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+        const day = window.currentDay;
+        const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
         
         showConfirmation('Move all members from groups to Reserves for ' + dayName + '?', function() {
-            var g = getGroups();
-            var r = getReserves();
-            var groupKeys = Object.keys(g);
-            var allPlayers = [];
+            const g = getGroups();
+            const r = getReserves();
+            const groupKeys = Object.keys(g);
+            const allPlayers = [];
             
             // Collect all players from groups
             groupKeys.forEach(function(key) {
                 if (g[key] && g[key].players) {
-                    var clearedIds = [];
+                    const clearedIds = [];
                     g[key].players.forEach(function(p) {
                         if (!p.id) {
                             p.id = generatePlayerId();
@@ -1413,7 +1413,7 @@ function setupScrollShadow() {
 // ---- Collapsible panels (click a header to expand/collapse, persisted) ----
 function saveCollapseState() {
     try {
-        var collapsed = [];
+        const collapsed = [];
         document.querySelectorAll('.collapsible.collapsed').forEach(function(p) {
             if (p.id) collapsed.push(p.id);
         });
@@ -1423,12 +1423,12 @@ function saveCollapseState() {
 
 function restoreCollapseState() {
     try {
-        var raw = localStorage.getItem('gw_collapsed_panels');
+        const raw = localStorage.getItem('gw_collapsed_panels');
         if (!raw) return;
-        var collapsed = JSON.parse(raw);
+        const collapsed = JSON.parse(raw);
         if (!Array.isArray(collapsed)) return;
         collapsed.forEach(function(id) {
-            var panel = document.getElementById(id);
+            const panel = document.getElementById(id);
             if (panel) panel.classList.add('collapsed');
         });
     } catch (e) {}
@@ -1436,19 +1436,19 @@ function restoreCollapseState() {
 
 function setupCollapsiblePanels() {
     document.querySelectorAll('.collapsible').forEach(function(panel) {
-        var h3 = panel.querySelector('h3');
+        const h3 = panel.querySelector('h3');
         if (!h3) return;
         // The header ROW is the direct child of the panel that contains the h3
         // (h3 itself for most panels; the flex wrapper in the admin panel;
         // .reserve-header / .guild-header for those areas). The chevron lives
         // in the row so it always sits at the panel's top-right, uniformly.
-        var row = h3;
+        let row = h3;
         while (row.parentElement && row.parentElement !== panel) {
             row = row.parentElement;
         }
         row.classList.add('panel-header-row');
         if (!row.querySelector('.collapse-chevron')) {
-            var chevron = document.createElement('span');
+            const chevron = document.createElement('span');
             chevron.className = 'collapse-chevron';
             chevron.innerHTML = '<i class="fas fa-chevron-up"></i>';
             row.appendChild(chevron);
@@ -1463,14 +1463,34 @@ function setupCollapsiblePanels() {
     restoreCollapseState();
 }
 
+// ---- Modal focus trap: Tab stays inside the open modal (Phase 11 prep) ----
+function setupModalFocusTraps() {
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Tab') return;
+        const modal = document.querySelector('.modal-overlay.active');
+        if (!modal) return;
+        const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    });
+}
+
 // ---- Help & Shortcuts panel (below guild panel, role-aware) ----
 // Public viewers only see what applies to them: registration, collapsing
 // panels, and a hint to log in for the editing tools.
 function renderHelpPanel() {
-    var container = document.getElementById('helpShortcuts');
+    const container = document.getElementById('helpShortcuts');
     if (!container) return;
     
-    var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+    const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
     
     if (!isMod) {
         container.innerHTML =
@@ -1479,7 +1499,7 @@ function renderHelpPanel() {
                 'Log in with a moderator account to use them. You can still download the roster as an <em>Image</em> or <em>PDF</em> below.' +
             '</div>';
     } else if (typeof Shortcuts !== 'undefined' && Shortcuts.shortcuts) {
-        var entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
+        const entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
             return { combo: combo, description: Shortcuts.shortcuts[combo].description };
         });
         container.innerHTML =
@@ -1523,13 +1543,13 @@ async function init() {
         await loadModerators();
         
         // Load data
-        var loaded = await loadState();
+        const loaded = await loadState();
         console.log('Data loaded:', loaded);
         
         if (!loaded) {
             initializeEmptyData();
             window.lastUpdateTime = new Date().toLocaleString();
-            var lastUpdateEl = document.getElementById('lastUpdate');
+            const lastUpdateEl = document.getElementById('lastUpdate');
             if (lastUpdateEl) {
                 lastUpdateEl.textContent = 'Last update: ' + formatUpdateTime(window.lastUpdateTime);
             }
@@ -1579,6 +1599,9 @@ async function init() {
 			ExportPanel.init();
 			console.log('ExportPanel initialized');
 		}
+
+		// Modal focus trap (accessibility)
+		setupModalFocusTraps();
 
 		// Setup history clear button
 		const clearHistoryBtn = document.getElementById('clearHistoryBtn');
@@ -1631,7 +1654,7 @@ async function init() {
         
     } catch (error) {
         console.error('Error during initialization:', error);
-        var errorMsg = 'Failed to initialize application: ' + error.message;
+        const errorMsg = 'Failed to initialize application: ' + error.message;
         if (typeof showAlert === 'function') {
             showAlert(errorMsg, 'Error', '❌');
         } else {
