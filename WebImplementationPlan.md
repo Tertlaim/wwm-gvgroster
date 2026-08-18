@@ -224,11 +224,22 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **Public staff list** - new `GET /api/staff` (names + roles only, no credentials) lets public viewers see who the admins/moderators are in the Admin panel (was empty for public); staff list also loads for everyone on init
 - [x] **Admin icon fix** - `fa-shield-halved` -> `fa-shield-alt` in the staff list, user widget, and roles legend (FA 6.0.0-beta3 does not ship the renamed icon)
 
-### Phase 11: Code Quality & Refactoring (structural - planned, not started)
+### Phase 11: Code Quality & Refactoring (structural - in progress)
 From the 2026-08-18 review; all items are behavior-preserving and verified by the existing manual regression suite.
-- [ ] **11.1 Split `server.js`** (~1400 lines) into `server/auth.js`, `server/data.js` (read/write/merge/tombstones/atomic), `server/history.js`, `server/rate-limit.js`, `server/route/*.js` (singular naming)
+- [x] **11.1 Split `server.js`** (was ~1500 lines -> now a ~90-line boot file) into:
+  - `server/util.js` - atomicWriteFileSync
+  - `server/auth.js` - sessions, auth middleware (requireAuth/Admin/SuperAdmin), bcrypt hashing + migration, auth config read/write/init
+  - `server/data.js` - database read/write/init, tombstone hydration/persistence, guild-members migration
+  - `server/merge.js` - tombstone ledger (DELETED_PLAYERS) + merge engine (mergeDatabase/mergeGroupsDay/mergePlayersById/removeDeletedFromDb/applyRemovals)
+  - `server/history.js` - history read/write/init + appendHistory
+  - `server/rate-limit.js` - fixed-window limiter (login/register)
+  - `server/sse.js` - SSE client set + broadcastUpdate
+  - `server/route/auth.js` - login/logout/session/moderators/*/auth-settings/staff (registered via `register(app, ctx)`)
+  - `server/route/data.js` - data GET/POST, /api/events, register, guild name, groups/*, migrate endpoints, backup, health
+  - `server/route/history.js` - history GET/POST/init/clear
+  - Dependencies are one-way (data -> merge, auth/history/data -> util); routes receive a shared `ctx` object. `__dirname` paths adjusted with `..` so data/config resolve to the repo root. Verified: 17/17 API parity checks on a scratch copy (login, staff, save, register, history, groups, backup, 401 guard, owner password change) + live 3000 restart + UI clean
 - [ ] **11.2 Split `main.js`** (~1600 lines): extract sync engine, admin tools, help panel, collapsibles, init into modules (like the newer module files)
-- [ ] **11.3 Shared `js/util.js`** - `esc`, `getAuthHeader`, `_downloadBlob`/download helpers, CSV parser (currently duplicated in api.js / export.js / main.js / render-helper.js)
+- [x] **11.3 Shared `js/util.js`** - `esc`, `getAuthHeader`, `downloadBlob`, `downloadDataUrl`, `csvEscape`, `parseCSVRows`; local copies deleted from helper.js / api.js / export.js and call sites updated (backup download reuses shared downloadBlob). Verified: CSV export + parser round-trip in browser, no console errors
 - [ ] **11.4 Diffed/targeted rendering** - replace full `render()` rebuilds on save with panel-level DOM updates (fixes focus loss + DOM churn; keeps the Phase 8.3 dirty-check as a safety net). Review item #10 (deferred updates) assessed: no usability impact - polling 30s + SSE push + focus-resync already deliver updates within seconds; diffed rendering only affects local redraw speed, not update arrival
 - [ ] **11.5 `App.state` consolidation** - single state object for `window.groups/reserves/guildMembers/moderators/lastUpdateTime` (makes sync/render/test simpler)
 - [ ] **11.6 Finish the CSS-class migration** for the remaining ~66 inline `style=` in index.html + JS-generated markup (utilities: btn-auto/btn-xl/btn-active/flex-row-sm/select-field/modal-sm already added)
@@ -257,7 +268,19 @@ Kept on record for context; **not work to be done**.
 ```
 guild-war-management/            (git repo, branch main)
 ├── index.html                   done
-├── server.js                    done (auth, merge, tombstones, SSE, register)
+├── server.js                    done (Phase 11.1 boot file: middleware + route wiring + init + listen)
+├── server/                      done (Phase 11.1 split - one-way deps, ctx wiring)
+│   ├── util.js                  done - atomicWriteFileSync
+│   ├── auth.js                  done - sessions, middleware, bcrypt, auth config
+│   ├── data.js                  done - database read/write/init, tombstone persistence, migration
+│   ├── merge.js                 done - tombstone ledger + merge engine
+│   ├── history.js               done - history read/write/init + append
+│   ├── rate-limit.js            done - login/register limiter
+│   ├── sse.js                   done - SSE client set + broadcast
+│   └── route/
+│       ├── auth.js              done - login/logout/session/moderators/settings/staff
+│       ├── data.js              done - data/events/register/groups/migrate/backup/health
+│       └── history.js           done - history GET/POST/init/clear
 ├── package.json                 done
 ├── WebImplementationPlan.md     done (THIS FILE)
 ├── .gitignore                   done (node_modules, data/, config/auth.json, backups/, .kilo, .freebuff)
@@ -270,7 +293,7 @@ guild-war-management/            (git repo, branch main)
 │                                  bulk-action, guild-card, shortcut, diagram,
 │                                  admin-view, public-view, reserve, guild-member,
 │                                  side-panel, admin-panel, announcement, modal, responsive)
-└── js/                          (naming standard: no trailing 's' on custom files)
+├── js/                          (naming standard: no trailing 's' on custom files)
     ├── main.js                  done - sync engine (SSE + poll + merge payload)
     ├── api.js                   done - registerPlayer + auth header
     ├── auth-module.js           done - sessions, change-password
@@ -286,7 +309,8 @@ guild-war-management/            (git repo, branch main)
     ├── context-menu.js          done - Phase 7: right-click menu + click-to-select
     ├── theme.js                 done - theme management
     ├── toast.js                 done - toast system
-    └── data.js                  done - sample/fallback data
+    ├── data.js                  done - sample/fallback data
+    └── util.js                  done (11.3) - esc/getAuthHeader/download/CSV helpers (shared)
     (export.js - done Phase 10; cron.js - not planned, see Recorded To-Dos)
 ```
 
