@@ -182,8 +182,11 @@ function exportRosterImage() {
         var GCELL_H = 34;
         var guildRows = Math.ceil(guild.length / GCOLS);
         
+        // Uniform rhythm: GAP between blocks, TITLE_GAP between a heading
+        // and its content, so every panel in the image has the same air.
         var GAP = 34;
-        var H = PAD + 92 + GAP + topH + GAP + 30 + guildRows * GCELL_H + PAD;
+        var TITLE_GAP = 26;
+        var H = PAD + 92 + GAP + topH + GAP + TITLE_GAP + guildRows * GCELL_H + PAD;
         
         var canvas = document.createElement('canvas');
         canvas.width = W;
@@ -213,7 +216,7 @@ function exportRosterImage() {
             ctx.font = 'bold 24px system-ui';
             ctx.fillStyle = ACCENT;
             ctx.fillText(headerText, x, y);
-            y += 30;
+            y += TITLE_GAP;
             // Table header row.
             ctx.font = HDR_FONT;
             ctx.fillStyle = TEXT;
@@ -225,8 +228,8 @@ function exportRosterImage() {
             ctx.strokeRect(x, y, COLW, th);
             ctx.strokeRect(x + GROUP_COL, y, COLW - GROUP_COL, th);
             ctx.fillStyle = '#e2e8f0';
-            ctx.fillText('Group', x + CELL_PAD, y + th - CELL_PAD - 3);
-            ctx.fillText('Members', x + GROUP_COL + CELL_PAD, y + th - CELL_PAD - 3);
+            ctx.fillText('Group', x + CELL_PAD, y + CELL_PAD + LINE_H - 5);
+            ctx.fillText('Members', x + GROUP_COL + CELL_PAD, y + CELL_PAD + LINE_H - 5);
             y += th;
             // Body rows.
             rows.forEach(function(r, idx) {
@@ -260,11 +263,11 @@ function exportRosterImage() {
         drawTable(PAD + COLW + GUTTER, yTop, 'SUNDAY', tableRows.sun);
         
         // Guild members grid (compact, row-major 6 columns).
-        var gy = yTop + topH + GAP + 8;
+        var gy = yTop + topH + GAP;
         ctx.font = 'bold 24px system-ui';
         ctx.fillStyle = TITLE_COL;
         ctx.fillText('Guild Members (' + guild.length + ')', PAD, gy);
-        gy += 30;
+        gy += TITLE_GAP;
         var GCELL_FONT = '14px system-ui';
         ctx.font = GCELL_FONT;
         for (var gi = 0; gi < guild.length; gi++) {
