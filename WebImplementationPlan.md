@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 9 Complete (Security Hardening). Next up: Phase 10 - Export Options (JSON/CSV/Image/PDF)
+**Status:** Phase 10 Complete (Export Options). Next up: Phase 11 - Mobile & Accessibility
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -205,8 +205,13 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **9.1 Hash passwords** - bcrypt (cost 10) on every password write: boot migration hashes legacy plaintext (verified live - all 4 accounts migrated, original passwords still log in), `moderators/add` (plaintext revealed once in the response for hand-off, hash stored), `reset-password`, `change-password` (bcrypt-verified current pw). `verifyPassword()` falls back to legacy plaintext compare for hand-edited files until next restart. Hashes verified `$2b$10$` on disk
 - [x] **9.2 Rate limiting** - dependency-free in-memory fixed-window limiter (15 min) keyed by IP: login 20 attempts / register 15, then 429 with `retryAfter`; expired entries swept every 10 min. Verified: exactly 20 logins allowed then 429; 15 registrations then 429
 
-### Phase 10: Export Options (feature)
-- [ ] **10.1 Export** (was 8.1) - new `js/export.js`: JSON full backup, CSV player list, Image screenshot, PDF printable roster
+### Phase 10: Export Options ✅ COMPLETE (feature)
+- [x] **10.1 Export** (`js/export.js` + Export Roster section in the Help panel, role matrix):
+  - **Image (PNG)** + **PDF / Print** - available to everyone including public viewers (Image is a locally canvas-rendered roster image - no screenshot library, no CDN, works offline; PDF uses the existing print stylesheet + Save as PDF)
+  - **CSV player list** + **JSON backup** - moderators+ only (buttons hidden via `data-role-show="mod"` + client guard; JSON reuses the Phase 8.4 auth-header download)
+  - CSV: one row per player per day (Day, Name, Class, Role, Location) with placement mapped from groups/reserves, Excel BOM, escaped cells; verified live (56 rows, correct placement)
+  - Image: 1400px-wide canvas, dark themed, per-day groups/reserves/guild list; verified (1400x1172 PNG download)
+  - Help & Shortcuts panel also updated with: roles legend (crown/shield/user-shield), Live-sync explanation, Export availability; distinct role icons in the user widget (SuperAdmin crown, Admin shield, Moderator swords)
 
 ### Phase 11: Mobile & Accessibility
 - [ ] **11.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
@@ -258,7 +263,7 @@ guild-war-management/            (git repo, branch main)
     ├── theme.js                 done - theme management
     ├── toast.js                 done - toast system
     └── data.js                  done - sample/fallback data
-    (export.js - Phase 10; cron.js - not planned, see Recorded To-Dos)
+    (export.js - done Phase 10; cron.js - not planned, see Recorded To-Dos)
 ```
 
 ---
@@ -278,12 +283,12 @@ guild-war-management/            (git repo, branch main)
 | Phase 7B: Roles, Admin Mgmt & Usability | ✅ complete | 100% |
 | Phase 8: Data Integrity & Sync Hardening | ✅ complete | 100% |
 | Phase 9: Security Hardening | ✅ complete | 100% |
-| Phase 10: Export Options | pending | 0% |
+| Phase 10: Export Options | ✅ complete | 100% |
 | Phase 11: Mobile & Accessibility | pending | 0% |
 | Phase 12: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~98%
+**Overall Progress:** ~99%
 
 ---
 
@@ -325,5 +330,7 @@ guild-war-management/            (git repo, branch main)
 - Discord integration (standalone module, after the current roadmap)
 - Multi-line notes, custom group colors, per-day announcements
 - Migrate to single-array guildMembers (Phase 12) unlocks cleaner exports
+- **CSV import of guild members (Admin+)** - assessed: NOT difficult or resource-heavy for a LAN tool. CSV parsing is cheap (cap file size ~100KB, ~a few hundred rows); the real work is validation/merge semantics: dedupe by name+class, per-day selection, the 30-players-per-list cap, keeping stable player ids, history logging, and a dry-run preview before applying. Reuses the exact same save/merge path as drag & drop, so no new infrastructure.
+- **JSON restore (Admin+)** - the backup currently has NO upload path: restoring means stopping the server, replacing `data/database.json`, restarting (manual, documented). A Restore-from-backup upload (validate JSON, overwrite via the atomic writer, full history entry) is the natural companion to the CSV import feature and would make backups genuinely usable end-to-end.
 
 *Last Updated: 2026-08-18*

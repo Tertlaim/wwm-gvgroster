@@ -1475,7 +1475,7 @@ function renderHelpPanel() {
         container.innerHTML =
             '<div style="font-size:var(--font-size-sm); color:var(--text-secondary); line-height:1.7;">' +
                 '<i class="fas fa-info-circle"></i> Editing tools (drag &amp; drop, right-click menu, keyboard shortcuts, bulk actions) are for moderators and admins. ' +
-                'Log in with a moderator account to use them.' +
+                'Log in with a moderator account to use them. You can still download the roster as an <em>Image</em> or <em>PDF</em> below.' +
             '</div>';
     } else if (typeof Shortcuts !== 'undefined' && Shortcuts.shortcuts) {
         var entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
@@ -1573,6 +1573,12 @@ async function init() {
 		if (typeof ContextMenu !== 'undefined') {
 			ContextMenu.init();
 			console.log('ContextMenu initialized');
+		}
+
+		// Export Roster buttons (Phase 10)
+		if (typeof ExportPanel !== 'undefined') {
+			ExportPanel.init();
+			console.log('ExportPanel initialized');
 		}
 
 		// Setup history clear button
