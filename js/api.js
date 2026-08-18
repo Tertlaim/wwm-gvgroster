@@ -92,9 +92,36 @@ async function updateModPassword(username, oldPassword, newPassword) {
     }
 }
 
-// Download backup
-function downloadBackup() {
-    window.open(`${API_BASE}/backup`, '_blank');
+// Download backup (Phase 8.4)
+// window.open cannot send the session token, so the endpoint 401'd for
+// authed users. Fetch with the auth header, then save the blob locally.
+async function downloadBackup() {
+    try {
+        const response = await fetch(`${API_BASE}/backup`, {
+            headers: getAuthHeader()
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Backup failed (HTTP ${response.status})`);
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `guild-war-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (typeof showToast === 'function') {
+            showToast('Backup downloaded', 'success', 1500);
+        }
+    } catch (error) {
+        console.error('Download backup error:', error);
+        if (typeof showToast === 'function') {
+            showToast(error.message || 'Backup download failed. Are you logged in?', 'error', 3000);
+        }
+    }
 }
 
 // Health check

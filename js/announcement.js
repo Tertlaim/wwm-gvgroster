@@ -60,6 +60,8 @@ function setupAnnouncement() {
             editor.style.display = 'block';
             editBtn.style.display = 'none';
             input.focus();
+            // Phase 8.3: an open editor blocks sync re-renders mid-typing.
+            if (typeof beginUserEdit === 'function') beginUserEdit();
         });
     }
     
@@ -92,6 +94,7 @@ function setupAnnouncement() {
             saveAnnouncement(text);
             editor.style.display = 'none';
             if (editBtn) editBtn.style.display = 'inline-flex';
+            if (typeof endUserEdit === 'function') endUserEdit();
             renderAnnouncement();
             saveState(); // Save to server
             render(); // Refresh UI
@@ -104,6 +107,7 @@ function setupAnnouncement() {
         cancelBtn.addEventListener('click', function() {
             editor.style.display = 'none';
             if (editBtn) editBtn.style.display = 'inline-flex';
+            if (typeof endUserEdit === 'function') endUserEdit();
         });
     }
     

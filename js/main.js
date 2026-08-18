@@ -228,6 +228,30 @@ const SYNC_INTERVAL = 30000; // 30 seconds
 let _syncTimer = null;
 let _isSyncing = false;
 
+// ---- Sync dirty-check (Phase 8.3) ----
+// While a moderator has an in-progress edit (edit form open or drag in
+// flight), a poll/SSE push must not apply server data: applyServerData
+// re-renders and would wipe the unsaved input. Instead the sync is
+// deferred and re-run the moment the edit completes.
+let _editSessionCount = 0;
+let _syncDeferred = false;
+
+function beginUserEdit() {
+    _editSessionCount++;
+}
+
+function endUserEdit() {
+    if (_editSessionCount > 0) _editSessionCount--;
+    if (_editSessionCount === 0 && _syncDeferred) {
+        _syncDeferred = false;
+        performSync(); // Pick up the server data that arrived mid-edit.
+    }
+}
+
+function isUserEditing() {
+    return _editSessionCount > 0;
+}
+
 function startDataSync() {
     if (_syncTimer) {
         clearInterval(_syncTimer);
@@ -246,6 +270,13 @@ async function performSync() {
     try {
         const serverData = await loadDataFromServer();
         if (!serverData) return;
+        
+        // Phase 8.3: never apply server data over an in-progress edit.
+        // Defer instead; endUserEdit() re-runs the sync when editing stops.
+        if (isUserEditing()) {
+            _syncDeferred = true;
+            return;
+        }
         
         const serverTime = serverData.lastUpdateTime;
         const localTime = window._serverLastUpdatedTime;
@@ -946,6 +977,17 @@ function setupGuildActions() {
 function setupAdminTools() {
     var clearToGuildBtn = document.getElementById('clearToGuildBtn');
     var clearToReserveBtn = document.getElementById('clearToReserveBtn');
+    var downloadBackupBtn = document.getElementById('downloadBackupBtn');
+    
+    if (downloadBackupBtn) {
+        downloadBackupBtn.addEventListener('click', function() {
+            if (!AuthModule.getToken()) {
+                showToast('Please login to download a backup.', 'error', 3000);
+                return;
+            }
+            downloadBackup();
+        });
+    }
     
     if (clearToGuildBtn) {
         clearToGuildBtn.addEventListener('click', function() {

@@ -66,6 +66,10 @@ function handleDragStart(e) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', name);
     el.classList.add('dragging');
+    
+    // Phase 8.3: mark an edit session while the drag is in flight so a
+    // sync push cannot re-render the board mid-drag. handleDragEnd ends it.
+    if (typeof beginUserEdit === 'function') beginUserEdit();
 }
 
 function handleDragEnd(e) {
@@ -73,6 +77,8 @@ function handleDragEnd(e) {
     if (el) el.classList.remove('dragging');
     document.querySelectorAll('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid')
         .forEach(function(c) { c.classList.remove('drag-over'); });
+    // Phase 8.3: the drag (and any deferred sync) is done.
+    if (typeof endUserEdit === 'function') endUserEdit();
     // Don't clear dragData - keep it for potential use
 }
 

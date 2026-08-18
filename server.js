@@ -19,6 +19,18 @@ const AUTH_PATH = path.join(__dirname, 'config', 'auth.json');
 const HISTORY_PATH = path.join(__dirname, 'data', 'history.json');
 
 // ============================================
+// ATOMIC FILE WRITES (Phase 8.1)
+// ============================================
+// Write via a temp file + rename so a crash mid-write can never leave a
+// truncated/partial JSON file on disk (the rename is atomic on POSIX and
+// replace-on-rename on Windows).
+function atomicWriteFileSync(filePath, data) {
+    const tmpPath = filePath + '.tmp';
+    fs.writeFileSync(tmpPath, data);
+    fs.renameSync(tmpPath, filePath);
+}
+
+// ============================================
 // SESSION MANAGEMENT (Phase 4.4)
 // ============================================
 
@@ -117,7 +129,7 @@ function readAuthConfig() {
 // Write auth config
 function writeAuthConfig(data) {
     try {
-        fs.writeFileSync(AUTH_PATH, JSON.stringify(data, null, 2));
+        atomicWriteFileSync(AUTH_PATH, JSON.stringify(data, null, 2));
         return true;
     } catch (error) {
         console.error('Error writing auth config:', error);
@@ -150,7 +162,7 @@ function initAuthConfig() {
                 historyLimit: 100
             }
         };
-        fs.writeFileSync(AUTH_PATH, JSON.stringify(defaultAuth, null, 2));
+        atomicWriteFileSync(AUTH_PATH, JSON.stringify(defaultAuth, null, 2));
         console.log('Created new auth config file');
     }
 }
@@ -173,12 +185,43 @@ function readDatabase() {
 // Write database
 function writeDatabase(data) {
     try {
-        fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+        atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
         return true;
     } catch (error) {
         console.error('Error writing database:', error);
         return false;
     }
+}
+
+// Phase 8.2: Hydrate the in-memory tombstone map from disk so deletion
+// protection survives a server restart (a stale editor copy cannot
+// resurrect players deleted before the restart).
+function loadTombstonesFromDisk() {
+    try {
+        const db = readDatabase();
+        if (db && db.deletedPlayers && typeof db.deletedPlayers === 'object') {
+            Object.keys(db.deletedPlayers).forEach(id => {
+                const t = Number(db.deletedPlayers[id]);
+                if (id && !isNaN(t)) DELETED_PLAYERS.set(id, t);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tombstones:', error);
+    }
+    // Prune expired/over-cap entries now that the map is hydrated; persist
+    // the pruned table if anything changed so disk matches memory.
+    const before = DELETED_PLAYERS.size;
+    pruneTombstones();
+    if (DELETED_PLAYERS.size !== before) persistTombstones();
+}
+
+// Persist the current tombstone table into database.json (called on every
+// data save so the map and the file stay in sync).
+function persistTombstones() {
+    const db = readDatabase();
+    if (!db) return;
+    db.deletedPlayers = Object.fromEntries(DELETED_PLAYERS);
+    writeDatabase(db);
 }
 
 // Initialize database
@@ -216,7 +259,7 @@ function initDatabase() {
             lastUpdateTime: new Date().toISOString(),
             announcement: 'Welcome to Mask Sinners Guild War!'
         };
-        fs.writeFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
+        atomicWriteFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
         console.log('Created new database file');
     }
 }
@@ -239,7 +282,7 @@ function readHistory() {
 // Write history
 function writeHistory(data) {
     try {
-        fs.writeFileSync(HISTORY_PATH, JSON.stringify(data, null, 2));
+        atomicWriteFileSync(HISTORY_PATH, JSON.stringify(data, null, 2));
         return true;
     } catch (error) {
         console.error('Error writing history:', error);
@@ -260,7 +303,7 @@ function initHistory() {
             maxEntries: 100,
             lastCleared: null
         };
-        fs.writeFileSync(HISTORY_PATH, JSON.stringify(defaultHistory, null, 2));
+        atomicWriteFileSync(HISTORY_PATH, JSON.stringify(defaultHistory, null, 2));
         console.log('Created new history file');
     } else {
         // Verify the file has valid JSON
@@ -275,7 +318,7 @@ function initHistory() {
                 maxEntries: 100,
                 lastCleared: null
             };
-            fs.writeFileSync(HISTORY_PATH, JSON.stringify(defaultHistory, null, 2));
+            atomicWriteFileSync(HISTORY_PATH, JSON.stringify(defaultHistory, null, 2));
             console.log('✅ Recreated history.json');
         }
     }
@@ -516,8 +559,11 @@ app.post('/api/auth/settings', requireAuth, requireAdmin, (req, res) => {
 app.get('/api/data', (req, res) => {
     const data = readDatabase();
     if (data) {
+        // Tombstones are a server-side deletion ledger; clients don't need
+        // them (they send their own deletedIds per save).
+        const { deletedPlayers, ...publicData } = data;
         res.json({
-            ...data,
+            ...publicData,
             lastUpdateTime: data.lastUpdateTime || new Date().toISOString()
         });
     } else {
@@ -822,6 +868,10 @@ app.post('/api/data', requireAuth, (req, res) => {
     // removals (moves / list removals) on top of the merge.
     removeDeletedFromDb(merged, deletedIds);
     applyRemovals(merged, incoming.removed);
+    
+    // Phase 8.2: persist the tombstone ledger with every save so deletion
+    // protection survives a server restart.
+    merged.deletedPlayers = Object.fromEntries(DELETED_PLAYERS);
     
     merged.lastUpdateTime = new Date().toISOString();
     
@@ -1335,6 +1385,10 @@ app.get('/', (req, res) => {
 initAuthConfig();
 initDatabase();
 initHistory();
+
+// Phase 8.2: hydrate the tombstone ledger from disk before serving requests,
+// so deletion protection is in place from the first request after a restart.
+loadTombstonesFromDisk();
 
 // Run guildMembers migration
 runGuildMembersMigration();
