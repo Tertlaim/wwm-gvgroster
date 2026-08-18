@@ -175,21 +175,15 @@ function exportRosterImage() {
         var hSun = measureTable(tableRows.sun);
         var topH = Math.max(hSat, hSun);
         
-        // Guild members table (one master list).
+        // Guild members: compact grid (6 columns of "Name (Class)").
         var guild = _guildMasterList();
-        var guildCols = [520, 260, 1320 - 520 - 260];
-        var GHDR_FONT = 'bold 15px system-ui';
-        var GCELL_FONT = '14px system-ui';
-        var guildHeaderH = LINE_H + CELL_PAD * 2;
-        var guildRowsH = 0;
-        guild.forEach(function(p) {
-            var lines = 1; // names are short; single line each
-            p._h = lines * LINE_H + CELL_PAD * 2;
-            guildRowsH += p._h;
-        });
+        var GCOLS = 6;
+        var GCELL_W = (W - PAD * 2) / GCOLS;
+        var GCELL_H = 34;
+        var guildRows = Math.ceil(guild.length / GCOLS);
         
         var GAP = 34;
-        var H = PAD * 2 + 64 + 34 + topH + GAP + 40 + guildHeaderH + guildRowsH;
+        var H = PAD + 92 + GAP + topH + GAP + 30 + guildRows * GCELL_H + PAD;
         
         var canvas = document.createElement('canvas');
         canvas.width = W;
@@ -265,40 +259,31 @@ function exportRosterImage() {
         drawTable(PAD, yTop, 'SATURDAY', tableRows.sat);
         drawTable(PAD + COLW + GUTTER, yTop, 'SUNDAY', tableRows.sun);
         
-        // Guild members table (full width).
+        // Guild members grid (compact, row-major 6 columns).
         var gy = yTop + topH + GAP + 8;
         ctx.font = 'bold 24px system-ui';
         ctx.fillStyle = TITLE_COL;
         ctx.fillText('Guild Members (' + guild.length + ')', PAD, gy);
         gy += 30;
-        var gx = PAD;
-        // Header.
-        ctx.fillStyle = HEADER_BG;
-        ctx.fillRect(gx, gy, W - PAD * 2, guildHeaderH);
-        ctx.strokeStyle = BORDER;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(gx, gy, W - PAD * 2, guildHeaderH);
-        var colX = [gx, gx + guildCols[0], gx + guildCols[0] + guildCols[1]];
-        for (var c = 0; c < 3; c++) ctx.strokeRect(colX[c], gy, guildCols[c], guildHeaderH);
-        ctx.font = GHDR_FONT;
-        ctx.fillStyle = '#e2e8f0';
-        var gHead = ['Name', 'Class', 'Role'];
-        for (var c2 = 0; c2 < 3; c2++) ctx.fillText(gHead[c2], colX[c2] + CELL_PAD, gy + guildHeaderH - CELL_PAD - 3);
-        gy += guildHeaderH;
-        // Body.
-        guild.forEach(function(p, idx) {
-            ctx.fillStyle = (idx % 2 === 1) ? ALT_BG : '#0f172a';
-            ctx.fillRect(gx, gy, W - PAD * 2, p._h);
+        var GCELL_FONT = '14px system-ui';
+        ctx.font = GCELL_FONT;
+        for (var gi = 0; gi < guild.length; gi++) {
+            var gc = gi % GCOLS;
+            var gr = Math.floor(gi / GCOLS);
+            var x = PAD + gc * GCELL_W;
+            var y = gy + gr * GCELL_H;
+            if (gr % 2 === 1) {
+                ctx.fillStyle = ALT_BG;
+                ctx.fillRect(x, y, GCELL_W, GCELL_H);
+            }
             ctx.strokeStyle = BORDER;
             ctx.lineWidth = 1;
-            for (var c3 = 0; c3 < 3; c3++) ctx.strokeRect(colX[c3], gy, guildCols[c3], p._h);
-            ctx.font = GCELL_FONT;
+            ctx.strokeRect(x, y, GCELL_W, GCELL_H);
             ctx.fillStyle = TEXT;
-            ctx.fillText(p.name, colX[0] + CELL_PAD, gy + p._h - CELL_PAD - 3);
-            ctx.fillText(p.class, colX[1] + CELL_PAD, gy + p._h - CELL_PAD - 3);
-            ctx.fillText(p.role, colX[2] + CELL_PAD, gy + p._h - CELL_PAD - 3);
-            gy += p._h;
-        });
+            var label = guild[gi].name + (guild[gi].class ? ' (' + guild[gi].class + ')' : '');
+            if (label.length > 24) label = label.slice(0, 23) + '…';
+            ctx.fillText(label, x + 10, y + GCELL_H / 2 + 5);
+        }
         
         _downloadDataUrl(canvas.toDataURL('image/png'), 'guild-war-roster-' + _exportDate() + '.png');
         if (typeof showToast === 'function') showToast('Roster image downloaded', 'success', 1500);
@@ -309,11 +294,10 @@ function exportRosterImage() {
 }
 
 // ============================================================
-// PDF: dedicated printable roster (everyone) - shareable tables
-//   Page 1: Saturday (Group | Members table incl. Reserves)
-//   Page 2: Sunday (same)
-//   Following pages: Guild Members (Name | Class | Role table)
-// The app itself (incl. the Register panel) is hidden in print.
+// PDF: dedicated printable roster (everyone) - same layout as the
+// image export, in landscape: SATURDAY | SUNDAY side by side, then
+// a compact Guild Members grid. The app UI (incl. the Register
+// panel) is hidden in print.
 // ============================================================
 function exportRosterPDF() {
     try {
@@ -328,42 +312,40 @@ function exportRosterPDF() {
         html += '<p class="print-sub">Generated ' + esc(new Date().toLocaleString()) + '</p>';
         
         var dayNames = { sat: 'Saturday', sun: 'Sunday' };
-        var first = true;
+        var dayTables = '';
         ['sat', 'sun'].forEach(function(day) {
-            html += '<div' + (first ? '' : ' class="print-day-break"') + '>';
-            html += '<h2>' + dayNames[day] + '</h2>';
-            html += '<table class="print-day-table">';
-            html += '<thead><tr><th style="width:26%;">Group</th><th>Members</th></tr></thead><tbody>';
+            dayTables += '<div class="print-day-col">';
+            dayTables += '<h2>' + dayNames[day] + '</h2>';
+            dayTables += '<table class="print-day-table">';
+            dayTables += '<thead><tr><th style="width:26%;">Group</th><th>Members</th></tr></thead><tbody>';
             var groups = (window.groups && window.groups[day]) || {};
             Object.keys(groups).forEach(function(key) {
                 var g = groups[key] || {};
                 var players = (g.players || []).map(_playerName).filter(Boolean);
-                html += '<tr><td class="group-name">' + esc(g.title || key) + '</td><td>' +
+                dayTables += '<tr><td class="group-name">' + esc(g.title || key) + '</td><td>' +
                     (players.length ? esc(players.join(', ')) : '<span class="print-empty">— empty —</span>') + '</td></tr>';
             });
             var reserves = (window.reserves && window.reserves[day]) || [];
             var reserveNames = reserves.map(_playerName).filter(Boolean);
-            html += '<tr class="print-reserve-row"><td class="group-name">Reserves</td><td>' +
+            dayTables += '<tr class="print-reserve-row"><td class="group-name">Reserves</td><td>' +
                 (reserveNames.length ? esc(reserveNames.join(', ')) : '<span class="print-empty">— empty —</span>') + '</td></tr>';
-            html += '</tbody></table>';
-            html += '</div>';
-            first = false;
+            dayTables += '</tbody></table>';
+            dayTables += '</div>';
         });
+        html += '<div class="print-days">' + dayTables + '</div>';
         
         var guild = _guildMasterList();
-        html += '<div class="print-day-break">';
         html += '<h2>Guild Members (' + guild.length + ')</h2>';
         if (guild.length) {
-            html += '<table class="print-guild-table">';
-            html += '<thead><tr><th style="width:38%;">Name</th><th style="width:22%;">Class</th><th>Role</th></tr></thead><tbody>';
+            html += '<div class="print-guild-grid">';
             guild.forEach(function(p) {
-                html += '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.class) + '</td><td>' + esc(p.role) + '</td></tr>';
+                var label = p.name + (p.class ? ' (' + p.class + ')' : '');
+                html += '<span class="print-guild-item">' + esc(label) + '</span>';
             });
-            html += '</tbody></table>';
+            html += '</div>';
         } else {
             html += '<div class="print-empty">— empty —</div>';
         }
-        html += '</div>';
         
         el.innerHTML = html;
         window.print();
