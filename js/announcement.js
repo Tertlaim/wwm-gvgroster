@@ -6,13 +6,13 @@ function loadAnnouncement() {
     // SERVER IS THE SINGLE SOURCE OF TRUTH (Phase 4.3)
     // localStorage REMOVED — announcement is loaded from server data
     // via loadState()/applyServerData()
-    return window.announcementText || '';
+    return App.state.announcementText || '';
 }
 
 function saveAnnouncement(text) {
     // Announcement is saved to server via saveState()
     // localStorage caching REMOVED (Phase 4.3)
-    window.announcementText = text;
+    App.state.announcementText = text;
     return true;
 }
 
@@ -24,7 +24,7 @@ function renderAnnouncement() {
     const isModerator = isMod();
     
     // Load announcement
-    const text = window.announcementText || '';
+    const text = App.state.announcementText || '';
     
     if (text && text.trim()) {
         // Escape announcement text - it is rendered as HTML for all viewers
@@ -55,7 +55,7 @@ function setupAnnouncement() {
     // Edit button - show editor
     if (editBtn) {
         editBtn.addEventListener('click', function() {
-            const currentText = window.announcementText || '';
+            const currentText = App.state.announcementText || '';
             input.value = currentText;
             editor.style.display = 'block';
             editBtn.style.display = 'none';
@@ -85,12 +85,12 @@ function setupAnnouncement() {
                 History.add('announcement', {
                     details: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
                     newValue: text,
-                    oldValue: window.announcementText || ''
+                    oldValue: App.state.announcementText || ''
                 });
                 console.log('📝 History logged: announcement update');
             }
             
-            window.announcementText = text;
+            App.state.announcementText = text;
             saveAnnouncement(text);
             editor.style.display = 'none';
             if (editBtn) editBtn.style.display = 'inline-flex';

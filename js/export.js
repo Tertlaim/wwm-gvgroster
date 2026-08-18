@@ -30,7 +30,7 @@ function _guildMasterList() {
     const seen = {};
     const out = [];
     ['sat', 'sun'].forEach(function(day) {
-        const gm = (window.guildMembers && window.guildMembers[day]) || [];
+        const gm = (App.state.guildMembers && App.state.guildMembers[day]) || [];
         gm.forEach(function(p) {
             if (!p || !p.name) return;
             const k = p.name + '|' + (p.class || '');
@@ -111,13 +111,13 @@ function exportRosterImage() {
         // Build a day table: rows of { cells: [group, membersText], isReserve }.
         const buildDayTable = function(day) {
             const rows = [];
-            const groups = (window.groups && window.groups[day]) || {};
+            const groups = (App.state.groups && App.state.groups[day]) || {};
             Object.keys(groups).forEach(function(key) {
                 const g = groups[key] || {};
                 const players = (g.players || []).map(_playerName).filter(Boolean);
                 rows.push({ cells: [g.title || key, players.join(', ') || '—'], isReserve: false });
             });
-            const reserves = (window.reserves && window.reserves[day]) || [];
+            const reserves = (App.state.reserves && App.state.reserves[day]) || [];
             const reserveNames = reserves.map(_playerName).filter(Boolean);
             rows.push({ cells: ['Reserves', reserveNames.join(', ') || '—'], isReserve: true });
             return rows;
@@ -185,7 +185,7 @@ function exportRosterImage() {
         ctx.textBaseline = 'alphabetic';
         ctx.font = 'bold 34px system-ui';
         ctx.fillStyle = TITLE_COL;
-        ctx.fillText((window.guildName || 'Mask Sinners') + ' — Guild War Roster', PAD, 62);
+        ctx.fillText((App.state.guildName || 'Mask Sinners') + ' — Guild War Roster', PAD, 62);
         ctx.font = '18px system-ui';
         ctx.fillStyle = MUTED;
         ctx.fillText('Generated ' + new Date().toLocaleString(), PAD, 92);
@@ -289,7 +289,7 @@ function exportRosterPDF() {
         if (!el) { window.print(); return; }
         
         let html = '';
-        html += '<h1>' + esc(window.guildName || 'Mask Sinners') + ' — Guild War Roster</h1>';
+        html += '<h1>' + esc(App.state.guildName || 'Mask Sinners') + ' — Guild War Roster</h1>';
         html += '<p class="print-sub">Generated ' + esc(new Date().toLocaleString()) + '</p>';
         
         const dayNames = { sat: 'Saturday', sun: 'Sunday' };
@@ -299,14 +299,14 @@ function exportRosterPDF() {
             dayTables += '<h2>' + dayNames[day] + '</h2>';
             dayTables += '<table class="print-day-table">';
             dayTables += '<thead><tr><th style="width:26%;">Group</th><th>Members</th></tr></thead><tbody>';
-            const groups = (window.groups && window.groups[day]) || {};
+            const groups = (App.state.groups && App.state.groups[day]) || {};
             Object.keys(groups).forEach(function(key) {
                 const g = groups[key] || {};
                 const players = (g.players || []).map(_playerName).filter(Boolean);
                 dayTables += '<tr><td class="group-name">' + esc(g.title || key) + '</td><td>' +
                     (players.length ? esc(players.join(', ')) : '<span class="print-empty">— empty —</span>') + '</td></tr>';
             });
-            const reserves = (window.reserves && window.reserves[day]) || [];
+            const reserves = (App.state.reserves && App.state.reserves[day]) || [];
             const reserveNames = reserves.map(_playerName).filter(Boolean);
             dayTables += '<tr class="print-reserve-row"><td class="group-name">Reserves</td><td>' +
                 (reserveNames.length ? esc(reserveNames.join(', ')) : '<span class="print-empty">— empty —</span>') + '</td></tr>';
@@ -391,7 +391,7 @@ function _showImportPreview() {
         if (seen[k]) return false;
         seen[k] = true;
         const dayHas = days.some(function(day) {
-            return ((window.guildMembers && window.guildMembers[day]) || []).some(function(g) {
+            return ((App.state.guildMembers && App.state.guildMembers[day]) || []).some(function(g) {
                 return g && g.name === p.name && (g.class || '') === p.class;
             });
         });
@@ -447,9 +447,9 @@ function _applyGuildImport() {
     let added = 0;
     let skippedExisting = 0;
     days.forEach(function(day) {
-        if (!window.guildMembers) window.guildMembers = {};
-        if (!Array.isArray(window.guildMembers[day])) window.guildMembers[day] = [];
-        const list = window.guildMembers[day];
+        if (!App.state.guildMembers) App.state.guildMembers = {};
+        if (!Array.isArray(App.state.guildMembers[day])) App.state.guildMembers[day] = [];
+        const list = App.state.guildMembers[day];
         parsed.forEach(function(p) {
             const exists = list.some(function(g) { return g && g.name === p.name && (g.class || '') === p.class; });
             if (exists) { skippedExisting++; return; }

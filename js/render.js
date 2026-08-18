@@ -22,7 +22,7 @@ function render() {
 		
         console.log('render() - r from getReserves():', r);
         console.log('render() - r length:', r ? r.length : 0);
-        console.log('render() - window.reserves:', window.reserves);
+        console.log('render() - App.state.reserves:', App.state.reserves);
 		
         // Render groups
         if (RenderHelpers.renderGroups) {
@@ -87,18 +87,18 @@ function renderAdminPanel() {
         const editAnnouncementBtn = document.getElementById('editAnnouncementBtn');
         
         if (adminList) {
-            // Staff list is data-driven (window.moderators = { name: role });
+            // Staff list is data-driven (App.state.moderators = { name: role });
             // no usernames are hardcoded here.
             adminList.innerHTML = '';
-            const staffNames = Object.keys(window.moderators || {});
+            const staffNames = Object.keys(App.state.moderators || {});
             const roleRank = { superadmin: 0, admin: 1, mod: 2 };
             staffNames.sort(function(a, b) {
-                const ra = roleRank[window.moderators[a]] !== undefined ? roleRank[window.moderators[a]] : 3;
-                const rb = roleRank[window.moderators[b]] !== undefined ? roleRank[window.moderators[b]] : 3;
+                const ra = roleRank[App.state.moderators[a]] !== undefined ? roleRank[App.state.moderators[a]] : 3;
+                const rb = roleRank[App.state.moderators[b]] !== undefined ? roleRank[App.state.moderators[b]] : 3;
                 return ra - rb;
             });
             staffNames.forEach(function(name) {
-                const role = window.moderators[name] || 'mod';
+                const role = App.state.moderators[name] || 'mod';
                 const icon = role === 'superadmin' ? 'fa-crown' : role === 'admin' ? 'fa-shield-alt' : 'fa-check-circle';
                 const label = role === 'superadmin' ? 'Lead' : role === 'admin' ? 'Admin' : 'Mod';
                 const tag = document.createElement('span');
@@ -137,7 +137,7 @@ function updateModSelects() {
             }
             for (const name in names) {
                 // Anyone already on staff (any role) can't be re-added
-                if (name && !window.moderators[name]) {
+                if (name && !App.state.moderators[name]) {
                     const opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name;
@@ -152,8 +152,8 @@ function updateModSelects() {
             const select = selects[s];
             if (select) {
                 select.innerHTML = '<option value="">-- select mod --</option>';
-                for (const name in window.moderators) {
-                    const role = window.moderators[name];
+                for (const name in App.state.moderators) {
+                    const role = App.state.moderators[name];
                     // SuperAdmin itself can't be demoted/reset; admins only appear for SuperAdmin
                     if (role === 'superadmin') continue;
                     if (role === 'admin' && !isSuperAdmin) continue;
@@ -224,7 +224,7 @@ function updateGroupLimitWarning() {
         const day = window.currentDay;
         const total = getTotalGroupPlayers(day);
         const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-        const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+        const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
         
         document.querySelectorAll('.group-limit-warning').forEach(function(el) {
             el.remove();
@@ -271,7 +271,7 @@ function updateRoleDropdown() {
 function updateGroupStats() {
     try {
         const day = window.currentDay;
-        const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+        const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
         const groupKeys = Object.keys(groups);
         let totalPlayers = 0;
         let duplicateCount = 0;

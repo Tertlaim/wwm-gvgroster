@@ -250,7 +250,7 @@ const BulkActions = {
             });
             
             // Save back to global state
-            window.reserves[day] = r;
+            App.state.reserves[day] = r;
             
             this.clearSelection();
             updateLastUpdate();
@@ -295,10 +295,10 @@ const BulkActions = {
                     
                     // 1. Remove from guildMembers (master list) - both days
                     days.forEach(day => {
-                        if (window.guildMembers && window.guildMembers[day]) {
-                            const idx = window.guildMembers[day].findIndex(p => p.id === player.id);
+                        if (App.state.guildMembers && App.state.guildMembers[day]) {
+                            const idx = App.state.guildMembers[day].findIndex(p => p.id === player.id);
                             if (idx !== -1) {
-                                window.guildMembers[day].splice(idx, 1);
+                                App.state.guildMembers[day].splice(idx, 1);
                                 removed = true;
                             }
                         }
@@ -307,10 +307,10 @@ const BulkActions = {
                     // 2. Remove from groups - both days
                     days.forEach(day => {
                         groupKeys.forEach(key => {
-                            if (window.groups && window.groups[day] && window.groups[day][key]) {
-                                const idx = window.groups[day][key].players.findIndex(p => p.id === player.id);
+                            if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                                const idx = App.state.groups[day][key].players.findIndex(p => p.id === player.id);
                                 if (idx !== -1) {
-                                    window.groups[day][key].players.splice(idx, 1);
+                                    App.state.groups[day][key].players.splice(idx, 1);
                                     removed = true;
                                 }
                             }
@@ -319,10 +319,10 @@ const BulkActions = {
                     
                     // 3. Remove from reserves - both days
                     days.forEach(day => {
-                        if (window.reserves && window.reserves[day]) {
-                            const idx = window.reserves[day].findIndex(p => p.id === player.id);
+                        if (App.state.reserves && App.state.reserves[day]) {
+                            const idx = App.state.reserves[day].findIndex(p => p.id === player.id);
                             if (idx !== -1) {
-                                window.reserves[day].splice(idx, 1);
+                                App.state.reserves[day].splice(idx, 1);
                                 removed = true;
                             }
                         }

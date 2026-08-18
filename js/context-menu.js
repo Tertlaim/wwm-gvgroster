@@ -310,7 +310,7 @@ const ContextMenu = {
             return;
         }
         r.push(Object.assign({}, player));
-        window.reserves[day] = r;
+        App.state.reserves[day] = r;
         if (typeof updateLastUpdate === 'function') updateLastUpdate();
         if (typeof render === 'function') render();
         showToast('Copied ' + player.name + ' to Reserves', 'success', 2000);
@@ -361,8 +361,8 @@ const ContextMenu = {
         // Remove from source (tracked so stale merges keep the move)
         if (type === 'guild') {
             ['sat', 'sun'].forEach(function(dk) {
-                if (window.guildMembers && window.guildMembers[dk]) {
-                    window.guildMembers[dk] = window.guildMembers[dk].filter(function(p) { return p.id !== player.id; });
+                if (App.state.guildMembers && App.state.guildMembers[dk]) {
+                    App.state.guildMembers[dk] = App.state.guildMembers[dk].filter(function(p) { return p.id !== player.id; });
                 }
             });
             if (typeof trackPlayerRemovals === 'function') {
@@ -375,14 +375,14 @@ const ContextMenu = {
             movedFrom = sourceGroup;
         } else if (type === 'reserve') {
             const r = getReserves();
-            window.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
+            App.state.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
             if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('reserve', day, player.id);
             movedFrom = 'reserve';
         }
         
         // Add to the target group, preserving the player's id
         g[targetGroup].players.push(Object.assign({}, player));
-        window.groups[day] = g;
+        App.state.groups[day] = g;
         
         if (typeof History !== 'undefined' && History.add) {
             const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
@@ -467,7 +467,7 @@ const ContextMenu = {
                     const g = getGroups();
                     if (g[group]) {
                         g[group].players = g[group].players.filter(function(p) { return p.id !== player.id; });
-                        window.groups[day] = g;
+                        App.state.groups[day] = g;
                         if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('group', day, player.id, group);
                         if (typeof History !== 'undefined' && History.add) {
                             History.add('delete', {
@@ -492,7 +492,7 @@ const ContextMenu = {
             if (typeof showConfirmation === 'function') {
                 showConfirmation('Remove "' + player.name + '" from Reserves?', function() {
                     const r = getReserves();
-                    window.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
+                    App.state.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
                     if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('reserve', day, player.id);
                     if (typeof History !== 'undefined' && History.add) {
                         History.add('delete', {

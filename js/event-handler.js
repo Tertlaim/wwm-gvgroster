@@ -176,13 +176,13 @@ EventHandlers.saveItem = function(event) {
         let found = false;
         
         days.forEach(function(day) {
-            if (window.guildMembers && window.guildMembers[day]) {
-                for (let i = 0; i < window.guildMembers[day].length; i++) {
-                    if (window.guildMembers[day][i].id === playerId) {
-                        window.guildMembers[day][i].name = value;
-                        window.guildMembers[day][i].class = cls;
-                        window.guildMembers[day][i].role = role;
-                        playerData = window.guildMembers[day][i];
+            if (App.state.guildMembers && App.state.guildMembers[day]) {
+                for (let i = 0; i < App.state.guildMembers[day].length; i++) {
+                    if (App.state.guildMembers[day][i].id === playerId) {
+                        App.state.guildMembers[day][i].name = value;
+                        App.state.guildMembers[day][i].class = cls;
+                        App.state.guildMembers[day][i].role = role;
+                        playerData = App.state.guildMembers[day][i];
                         found = true;
                         updated = true;
                     }
@@ -193,13 +193,13 @@ EventHandlers.saveItem = function(event) {
         // If not found by ID, try name+class
         if (!found) {
             days.forEach(function(day) {
-                if (window.guildMembers && window.guildMembers[day]) {
-                    for (let i = 0; i < window.guildMembers[day].length; i++) {
-                        if (window.guildMembers[day][i].name === playerName && window.guildMembers[day][i].class === playerClass) {
-                            window.guildMembers[day][i].name = value;
-                            window.guildMembers[day][i].class = cls;
-                            window.guildMembers[day][i].role = role;
-                            playerData = window.guildMembers[day][i];
+                if (App.state.guildMembers && App.state.guildMembers[day]) {
+                    for (let i = 0; i < App.state.guildMembers[day].length; i++) {
+                        if (App.state.guildMembers[day][i].name === playerName && App.state.guildMembers[day][i].class === playerClass) {
+                            App.state.guildMembers[day][i].name = value;
+                            App.state.guildMembers[day][i].class = cls;
+                            App.state.guildMembers[day][i].role = role;
+                            playerData = App.state.guildMembers[day][i];
                             found = true;
                             updated = true;
                         }
@@ -213,24 +213,24 @@ EventHandlers.saveItem = function(event) {
             days.forEach(function(day) {
                 const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 groupKeys.forEach(function(key) {
-                    if (window.groups && window.groups[day] && window.groups[day][key]) {
-                        for (let i = 0; i < window.groups[day][key].players.length; i++) {
-                            if (window.groups[day][key].players[i].id === playerId || 
-                                (window.groups[day][key].players[i].name === playerName && window.groups[day][key].players[i].class === playerClass)) {
-                                window.groups[day][key].players[i].name = value;
-                                window.groups[day][key].players[i].class = cls;
-                                window.groups[day][key].players[i].role = role;
+                    if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                        for (let i = 0; i < App.state.groups[day][key].players.length; i++) {
+                            if (App.state.groups[day][key].players[i].id === playerId || 
+                                (App.state.groups[day][key].players[i].name === playerName && App.state.groups[day][key].players[i].class === playerClass)) {
+                                App.state.groups[day][key].players[i].name = value;
+                                App.state.groups[day][key].players[i].class = cls;
+                                App.state.groups[day][key].players[i].role = role;
                             }
                         }
                     }
                 });
-                if (window.reserves && window.reserves[day]) {
-                    for (let i = 0; i < window.reserves[day].length; i++) {
-                        if (window.reserves[day][i].id === playerId ||
-                            (window.reserves[day][i].name === playerName && window.reserves[day][i].class === playerClass)) {
-                            window.reserves[day][i].name = value;
-                            window.reserves[day][i].class = cls;
-                            window.reserves[day][i].role = role;
+                if (App.state.reserves && App.state.reserves[day]) {
+                    for (let i = 0; i < App.state.reserves[day].length; i++) {
+                        if (App.state.reserves[day][i].id === playerId ||
+                            (App.state.reserves[day][i].name === playerName && App.state.reserves[day][i].class === playerClass)) {
+                            App.state.reserves[day][i].name = value;
+                            App.state.reserves[day][i].class = cls;
+                            App.state.reserves[day][i].role = role;
                         }
                     }
                 }
@@ -421,8 +421,8 @@ EventHandlers.handleReturnToReserve = function(event) {
             }
             
             // ---- SAVE BACK TO GLOBAL STATE ----
-            window.groups[day] = g;
-            window.reserves[day] = r;
+            App.state.groups[day] = g;
+            App.state.reserves[day] = r;
             
             // ---- LOG TO HISTORY ----
             if (typeof History !== 'undefined' && History.add && movedPlayer) {
@@ -483,12 +483,12 @@ EventHandlers.handleDeleteItem = function(event) {
                 const day = days[d];
                 
                 // Remove from guild members
-                if (window.guildMembers && window.guildMembers[day]) {
-                    for (let i = 0; i < window.guildMembers[day].length; i++) {
-                        if (window.guildMembers[day][i].id === playerId || 
-                            (window.guildMembers[day][i].name === name && window.guildMembers[day][i].class === cls)) {
-                            removedPlayer = window.guildMembers[day][i];
-                            window.guildMembers[day].splice(i, 1);
+                if (App.state.guildMembers && App.state.guildMembers[day]) {
+                    for (let i = 0; i < App.state.guildMembers[day].length; i++) {
+                        if (App.state.guildMembers[day][i].id === playerId || 
+                            (App.state.guildMembers[day][i].name === name && App.state.guildMembers[day][i].class === cls)) {
+                            removedPlayer = App.state.guildMembers[day][i];
+                            App.state.guildMembers[day].splice(i, 1);
                             break;
                         }
                     }
@@ -497,28 +497,28 @@ EventHandlers.handleDeleteItem = function(event) {
                 // Remove from groups
                 for (let k = 0; k < groupKeys.length; k++) {
                     const key = groupKeys[k];
-                    if (window.groups && window.groups[day] && window.groups[day][key]) {
+                    if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
                         const newPlayers = [];
-                        for (let p = 0; p < window.groups[day][key].players.length; p++) {
-                            if (window.groups[day][key].players[p].id !== playerId &&
-                                !(window.groups[day][key].players[p].name === name && window.groups[day][key].players[p].class === cls)) {
-                                newPlayers.push(window.groups[day][key].players[p]);
+                        for (let p = 0; p < App.state.groups[day][key].players.length; p++) {
+                            if (App.state.groups[day][key].players[p].id !== playerId &&
+                                !(App.state.groups[day][key].players[p].name === name && App.state.groups[day][key].players[p].class === cls)) {
+                                newPlayers.push(App.state.groups[day][key].players[p]);
                             }
                         }
-                        window.groups[day][key].players = newPlayers;
+                        App.state.groups[day][key].players = newPlayers;
                     }
                 }
                 
                 // Remove from reserves
-                if (window.reserves && window.reserves[day]) {
+                if (App.state.reserves && App.state.reserves[day]) {
                     const newReserves = [];
-                    for (let p = 0; p < window.reserves[day].length; p++) {
-                        if (window.reserves[day][p].id !== playerId &&
-                            !(window.reserves[day][p].name === name && window.reserves[day][p].class === cls)) {
-                            newReserves.push(window.reserves[day][p]);
+                    for (let p = 0; p < App.state.reserves[day].length; p++) {
+                        if (App.state.reserves[day][p].id !== playerId &&
+                            !(App.state.reserves[day][p].name === name && App.state.reserves[day][p].class === cls)) {
+                            newReserves.push(App.state.reserves[day][p]);
                         }
                     }
-                    window.reserves[day] = newReserves;
+                    App.state.reserves[day] = newReserves;
                 }
             }
             
@@ -593,7 +593,7 @@ EventHandlers.setupTitleListeners = function() {
                 }
                 
                 const day = window.currentDay;
-                const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+                const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
                 const oldTitle = display.textContent;
                 
                 if (groups && groups[groupKey]) {
