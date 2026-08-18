@@ -281,15 +281,25 @@
     display: none !important;
 }
 
-/* Reserved space for the corner label (A/B/C/...) so panel content never
-   touches it: the label is ~28px tall + 8px bottom offset = 36px, so 3.2rem
-   leaves a visible air gap. !important because the panel css files load
-   after side-panel.css and would otherwise override this. */
+/* Reserved space for the corner labels so panel content never touches them:
+   the label is ~28px tall + 8px bottom offset = 36px. 2.3rem (36.8px) is the
+   standard reserve; the announcement panel gets a bit more (user request).
+   !important because the panel css files load after side-panel.css and would
+   otherwise override this. */
 .panel-section,
-.announcement-section,
 .reserve-area,
 .guild-member-area {
+    padding-bottom: 2.3rem !important;
+}
+
+.announcement-section {
     padding-bottom: 3.2rem !important;
+}
+
+/* The groups panel has no panel-level label (B1-B4 live on the cards), so
+   it needs no reserve - keep its normal padding. */
+#groupsPanel {
+    padding-bottom: var(--spacing-md) !important;
 }
 
 /* A collapsed panel only needs its header - drop the label reserve */
