@@ -189,6 +189,7 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **Help & Shortcuts panel** below the Guild panel (collapsible) - keyboard shortcuts grid auto-built from the `Shortcuts` registry + an 8-item Quick Guide (register, drag & drop, right-click menu, keyboard select, bulk, editing, groups, collapsing)
 - [x] **Collapsible panels** for all editable panels (A-H + Help): click a panel header to expand/collapse, chevron indicator, state persisted in `localStorage` (`gw_collapsed_panels`), survives reloads
 - **Roles storage note:** accounts/roles stay in `config/auth.json` (the git-ignored auth database) rather than `data/database.json` - credentials must not flow through the merge engine or SSE broadcast, which would leak hashed/plaintext passwords to every viewer. Data-driven, versioned out of the repo = not hardcoded.
+- [x] **Public-view polish (user-reported bugs):** labels get a reserved bottom strip (2.3rem padding) so A/B/C/... never overlap content; collapse chevron pinned to the top-right corner of every panel uniformly (was drifting when reserve/guild header buttons wrapped); admin panel's collapse no longer hides its own header (header row is now excluded from the hide rule, so the uncollapse chevron stays visible); panel labels re-lettered to match layout order (Help=E, Register=F, Admin=G, Admin Tools=H, History=I).
 
 ### Phase 8: Export & Data Portability
 - [ ] **8.1 Export options** (was plan 4.4)
@@ -292,7 +293,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 12: Supabase Migration | pending | 0% |
 | Phase 13: Cron Keep-Alive | pending | 0% |
 
-**Overall Progress:** ~93%
+**Overall Progress:** ~94%
 
 ---
 
