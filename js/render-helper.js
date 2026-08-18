@@ -526,13 +526,13 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
         this.updateGuildPlayer(player.id, newName, newClass, newRole);
         
         card.classList.remove('editing');
-        render();
+        render(true); // force: the card's display mode changed even if data didn't
         showToast('Player updated successfully', 'success', 2000);
     }.bind(this));
     
     footer.querySelector('[data-action="cancel-guild-card"]').addEventListener('click', function() {
         card.classList.remove('editing');
-        render();
+        render(true); // force: cancel must close the form even when data is unchanged
     });
     
     const input = card.querySelector('.name-edit-input');
@@ -597,12 +597,12 @@ RenderHelpers.enterGuildCardNoteMode = function(card, player) {
         const note = textarea.value.trim().substring(0, 140);
         player.note = note;
         this.updateGuildPlayerNote(player.id, note);
-        render();
+        render(true); // force: close the note form even if the note was cleared
         showToast('Note saved', 'success', 2000);
     }.bind(this));
     
     notesEl.querySelector('[data-action="cancel-note"]').addEventListener('click', function() {
-        render();
+        render(true); // force: cancel must close the note form
     });
     
     textarea.focus();

@@ -101,6 +101,11 @@ module.exports = function registerDataRoutes(app, ctx) {
         merge.removeDeletedFromDb(merged, deletedIds);
         merge.applyRemovals(merged, incoming.removed);
         
+        // Master-list integrity: backfill guildMembers[day] from that day's
+        // groups+reserves so a stale snapshot or an older client can't leave
+        // gaps in the master list.
+        data.ensureMasterList(merged);
+        
         // Phase 8.2: persist the tombstone ledger with every save so deletion
         // protection survives a server restart.
         merged.deletedPlayers = Object.fromEntries(merge.DELETED_PLAYERS);

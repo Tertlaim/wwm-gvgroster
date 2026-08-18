@@ -54,6 +54,9 @@ data.loadTombstonesFromDisk();
 // Run guildMembers migration
 data.runGuildMembersMigration();
 
+// Master-list integrity: repair any day-split master gaps on boot
+data.runMasterListBackfill();
+
 // ============================================
 // START SERVER
 // ============================================

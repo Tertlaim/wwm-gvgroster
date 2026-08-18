@@ -174,6 +174,9 @@ function handleDrop(e) {
     }
     
     // ---- DUPLICATE CHECKS FOR GROUPS ----
+    // Count OTHER players with the same name+class - the dragged player's own
+    // occurrence (its source group entry) must not trip the warning, or every
+    // group->group move would claim a "duplicate".
     if (targetGroup) {
         let duplicateCount = 0;
         const groupKeys = Object.keys(g);
@@ -182,7 +185,11 @@ function handleDrop(e) {
             if (g[key] && g[key].players) {
                 for (let j = 0; j < g[key].players.length; j++) {
                     if (g[key].players[j].name === name && g[key].players[j].class === cls) {
-                        duplicateCount++;
+                        const sameDragged = playerId && g[key].players[j].id === playerId;
+                        const sourceSlot = !playerId && isFromGroup && key === group;
+                        if (!sameDragged && !sourceSlot) {
+                            duplicateCount++;
+                        }
                     }
                 }
             }

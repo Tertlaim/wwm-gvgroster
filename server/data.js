@@ -123,7 +123,6 @@ function initDatabase() {
 // Populate guildMembers from groups and reserves (deduplicated)
 function migrateGuildMembers(data) {
     const days = ['sat', 'sun'];
-    const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     let migrated = 0;
     let totalPlayers = 0;
     
@@ -146,9 +145,11 @@ function migrateGuildMembers(data) {
             });
         }
         
-        // Collect players from groups
+        // Collect players from groups - ALL groups for the day (not just the
+        // default four keys: admins add custom groups, and those players must
+        // reach the master list too).
         if (data.groups && data.groups[day]) {
-            groupKeys.forEach(key => {
+            Object.keys(data.groups[day]).forEach(key => {
                 if (data.groups[day][key] && data.groups[day][key].players) {
                     data.groups[day][key].players.forEach(p => {
                         if (p.id && !seen.has(p.id)) {
@@ -200,6 +201,26 @@ function needsGuildMembersMigration(data) {
     return hasData;
 }
 
+// Master-list integrity: every player that exists in groups or reserves must
+// also appear in guildMembers for the same day. The day-split master can
+// drift - e.g. a Saturday-registered player dragged into a Sunday group was
+// never added to guildMembers.sun - so this backfills on every save and at
+// boot. migrateGuildMembers() does the per-day merge; this is the semantic
+// wrapper (returns players added).
+function ensureMasterList(data) {
+    return migrateGuildMembers(data).migrated;
+}
+
+// Boot-time backfill: repair any existing master-list gaps and persist.
+function runMasterListBackfill() {
+    const db = readDatabase();
+    if (!db) return;
+    const { migrated } = migrateGuildMembers(db);
+    if (migrated > 0 && writeDatabase(db)) {
+        console.log(`✅ Master list backfilled: ${migrated} player(s) added to guildMembers`);
+    }
+}
+
 // Run migration on server start
 function runGuildMembersMigration() {
     console.log('Checking if guildMembers migration is needed...');
@@ -231,6 +252,8 @@ module.exports = {
     readDatabase,
     writeDatabase,
     getLastUpdateTime,
+    ensureMasterList,
+    runMasterListBackfill,
     initDatabase,
     loadTombstonesFromDisk,
     persistTombstones,
