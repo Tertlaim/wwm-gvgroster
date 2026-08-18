@@ -1393,16 +1393,25 @@ function restoreCollapseState() {
 
 function setupCollapsiblePanels() {
     document.querySelectorAll('.collapsible').forEach(function(panel) {
-        var header = panel.querySelector('h3');
-        if (!header) return;
-        if (!header.querySelector('.collapse-chevron')) {
+        var h3 = panel.querySelector('h3');
+        if (!h3) return;
+        // The header ROW is the direct child of the panel that contains the h3
+        // (h3 itself for most panels; the flex wrapper in the admin panel;
+        // .reserve-header / .guild-header for those areas). The chevron lives
+        // in the row so it always sits at the panel's top-right, uniformly.
+        var row = h3;
+        while (row.parentElement && row.parentElement !== panel) {
+            row = row.parentElement;
+        }
+        row.classList.add('panel-header-row');
+        if (!row.querySelector('.collapse-chevron')) {
             var chevron = document.createElement('span');
             chevron.className = 'collapse-chevron';
             chevron.innerHTML = '<i class="fas fa-chevron-up"></i>';
-            header.appendChild(chevron);
+            row.appendChild(chevron);
         }
-        header.addEventListener('click', function(e) {
-            // Don't toggle when clicking an interactive child inside the header
+        row.addEventListener('click', function(e) {
+            // Don't toggle when clicking an interactive child inside the header row
             if (e.target.closest('button, input, select, a')) return;
             panel.classList.toggle('collapsed');
             saveCollapseState();

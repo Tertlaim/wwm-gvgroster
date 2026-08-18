@@ -242,25 +242,57 @@
     }
 }
 /* ===== COLLAPSIBLE PANELS (click header to expand/collapse) ===== */
-.collapsible h3 {
+.panel-header-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
     cursor: pointer;
     user-select: none;
 }
 
+/* The chevron is pinned to the panel's top-right corner so it sits in the
+   same place on every panel, even when a header row wraps (reserve/guild
+   action buttons) or the h3 is nested in a wrapper (admin panel). Panels
+   are position:relative, so the header row needs no positioning itself. */
 .collapsible .collapse-chevron {
-    margin-left: auto;
+    position: absolute;
+    top: 0.85rem;
+    right: 1.1rem;
     font-size: 0.75rem;
     opacity: 0.55;
     transition: transform 0.2s ease;
+    z-index: 5;
 }
 
 .collapsible.collapsed .collapse-chevron {
     transform: rotate(-90deg);
 }
 
-/* Collapsed panels hide everything except the header row */
-.collapsible.collapsed > :not(h3):not(.reserve-header):not(.guild-header) {
+/* Keep header-row content (e.g. reserve/guild action buttons) clear of the
+   top-right chevron zone */
+.reserve-header,
+.guild-header {
+    padding-right: 2.2rem;
+}
+
+/* Collapsed panels hide everything except the header row, which always
+   keeps its top-right chevron so the panel can be expanded again. */
+.collapsible.collapsed > :not(.panel-header-row) {
     display: none !important;
+}
+
+/* Reserved space for the corner label (A/B/C/...) so it never overlaps
+   panel content (forms, buttons, lists). */
+.panel-section,
+.announcement-section,
+.reserve-area,
+.guild-member-area {
+    padding-bottom: 2.3rem;
+}
+
+/* A collapsed panel only needs its header - drop the label reserve */
+.collapsible.collapsed {
+    padding-bottom: var(--spacing-sm) !important;
 }
 
 /* ===== HELP & SHORTCUTS PANEL ===== */
