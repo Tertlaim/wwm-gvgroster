@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 6 Complete (Admin Tools & Editing Polish). Next up: Phase 7 - Power-User Interactions
+**Status:** Phase 7 Complete (Context Menu + Keyboard Actions). Next up: Phase 8 - Export & Data Portability
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -160,17 +160,19 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **6.5 Recent changes panel taller** - history list `max-height: 200px` -> `60vh` (scrollable, more entries visible)
 - [x] **6.6 Group counter below group grid** - stats row moved below the grid; spacing swapped to `margin-top`; duplicate `id="groupStats"` renamed to `groupCountStats`
 
-### Phase 7: Power-User Interactions
-**Includes known-bug fixes #2 (context menu) and #3 (extended shortcuts).**
+### Phase 7: Power-User Interactions ✅ COMPLETE
+**Includes known-bug fixes #2 (context menu) and #3 (extended shortcuts) - both FIXED.**
 
-- [ ] **7.1 Right-click context menu** (was plan 4.2)
-  - New: `js/context-menu.js`, `css/context-menu.css`; touch: `index.html`, `js/main.js`
-  - Options: Copy to Reserve, Move to Group (submenu), Edit Player (mod/admin), Delete (admin)
-  - Acceptance: right-click any player opens menu; actions work and save via existing flows; menu closes on outside click
-- [ ] **7.2 Extended keyboard shortcuts** (was plan 4.3)
-  - Files: `js/dragdrop.js` (selection + key handling), `js/shortcuts.js`
-  - `C` copy to reserve, `M` move to group (menu), `E` edit (mod/admin), `Delete` delete (admin)
-  - Acceptance: click to select (highlight), press key to act, click outside to deselect
+- [x] **7.1 Right-click context menu**
+  - New: `js/context-menu.js`, `css/context-menu.css`; wired in `index.html` + `js/main.js` init
+  - Options: Copy to Reserve (mods+, hidden for reserve players), Move to Group (flyout submenu with every group of the current day, mods+), Edit Player (mods+, admin-only for guild cards), Delete (admin; reserve delete is mods+ to mirror the existing Delete-Selected rule)
+  - Actions reuse the existing flows: copy keeps the player in guild, move removes from source + tracks `trackPlayerRemovals` (stale-merge safe), guild delete is a tombstoned full delete, group/reserve delete is a tracked list removal
+  - Menu closes on outside click / Escape / scroll / resize; auto-flips near screen edges; public viewers get no menu (native context menu untouched)
+  - Verified E2E in browser: menu items correct per type/permission, all six flows (copy/move reserve/move group/delete group/delete reserve/delete guild) asserted in-memory with correct tracking + tombstone
+- [x] **7.2 Extended keyboard shortcuts**
+  - Click any player to select (gold highlight), then `C` copy to reserve, `M` move-to-group (menu opens at the player with the submenu already open), `E` edit, `Delete`/`Backspace` delete; Escape or clicking empty space deselects
+  - Implemented in `js/context-menu.js` (selection + actions) + `js/shortcuts.js` (keys); legend auto-lists the new keys
+  - Note: plan originally put selection in `dragdrop.js`; it lives in `context-menu.js` instead so selection and the actions it drives share one module
 
 ### Phase 8: Export & Data Portability
 - [ ] **8.1 Export options** (was plan 4.4)
@@ -244,11 +246,12 @@ guild-war-management/            (git repo, branch main)
     ├── bulk-actions.js          done - copy/delete/clear selected
     ├── history.js               done - history tracking
     ├── announcement.js          done - announcements
-    ├── shortcuts.js             done - ? / Ctrl+S / Ctrl+T / Escape
+    ├── shortcuts.js             done - ? / Ctrl+S / Ctrl+T / Escape + C/M/E/Delete
+    ├── context-menu.js          done - Phase 7: right-click menu + click-to-select
     ├── theme.js                 done - theme management
     ├── toast.js                 done - toast system
     └── data.js                  done - sample/fallback data
-    (context-menu.js, export.js, cron.js - to be created in Phases 7/8/13)
+    (export.js, cron.js - to be created in Phases 8/13)
 ```
 
 ---
@@ -264,7 +267,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 4: Session Auth & Security | done | 100% |
 | Phase 5: Concurrency (Merge + SSE) | done | 100% |
 | Phase 6: Admin Tools & Editing Polish | done | 100% |
-| Phase 7: Power-User Interactions | pending | 0% |
+| Phase 7: Power-User Interactions | ✅ complete | 100% |
 | Phase 8: Export & Backup | pending | 0% |
 | Phase 9: Mobile & Accessibility | pending | 0% |
 | Phase 10: Data Model Simplification | pending | 0% |
@@ -272,7 +275,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 12: Supabase Migration | pending | 0% |
 | Phase 13: Cron Keep-Alive | pending | 0% |
 
-**Overall Progress:** ~87%
+**Overall Progress:** ~91%
 
 ---
 
@@ -281,8 +284,8 @@ guild-war-management/            (git repo, branch main)
 | # | Bug | Where it's fixed |
 |---|-----|------------------|
 | 1 | Add Group button not working | ✅ Fixed in Phase 6.1 (was never initialized + missing auth header) |
-| 2 | No right-click context menu | Phase 7.1 |
-| 3 | No extended keyboard shortcuts (C/M/E/Delete) | Phase 7.2 |
+| 2 | No right-click context menu | ✅ Fixed in Phase 7.1 (context-menu.js) |
+| 3 | No extended keyboard shortcuts (C/M/E/Delete) | ✅ Fixed in Phase 7.2 (click-to-select + keys) |
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
 | 5 | guildMembers day-specific (should be single array) | Phase 10 |
 | 6 | Backup download 401s (window.open without auth header) | Phase 8.2 |

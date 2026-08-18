@@ -35,6 +35,30 @@ function esc(str) {
 }
 
 // ============================================================
+//  DISPLAY - last-update timestamp formatting
+// ============================================================
+// Convert a server ISO timestamp (e.g. 2026-08-18T03:57:28.427Z) into the
+// app's readable local format: "18 Aug 2026, 11:57 AM". Values that are
+// already human-readable pass through unchanged.
+function formatUpdateTime(value) {
+    if (!value) return '';
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        var d = new Date(value);
+        if (!isNaN(d.getTime())) {
+            return d.toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+    }
+    return value;
+}
+
+// ============================================================
 //  CONCURRENCY (Phase 4.5) - pending removal/delete tracking
 // ============================================================
 // The server merges stale snapshots instead of blind-overwriting, so it needs

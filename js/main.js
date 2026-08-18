@@ -86,7 +86,7 @@ function updateLastUpdate() {
     window.lastUpdateTime = formatted;
     const lastUpdateEl = document.getElementById('lastUpdate');
     if (lastUpdateEl) {
-        lastUpdateEl.textContent = `Last update: ${window.lastUpdateTime}`;
+        lastUpdateEl.textContent = `Last update: ${formatUpdateTime(window.lastUpdateTime)}`;
     }
     saveState();
 }
@@ -131,7 +131,7 @@ async function saveState() {
         }
         const lastUpdateEl = document.getElementById('lastUpdate');
         if (lastUpdateEl) {
-            lastUpdateEl.textContent = `Last update: ${result.lastUpdate}`;
+            lastUpdateEl.textContent = `Last update: ${formatUpdateTime(result.lastUpdate)}`;
         }
     } else if (result && result.error) {
         // Server rejected the save (e.g. expired session) - surface it instead of losing data silently
@@ -199,7 +199,7 @@ function applyServerData(serverData) {
         window.lastUpdateTime = serverData.lastUpdateTime;
         const lastUpdateEl = document.getElementById('lastUpdate');
         if (lastUpdateEl) {
-            lastUpdateEl.textContent = `Last update: ${window.lastUpdateTime}`;
+            lastUpdateEl.textContent = `Last update: ${formatUpdateTime(window.lastUpdateTime)}`;
         }
     }
     
@@ -1365,7 +1365,7 @@ async function init() {
             window.lastUpdateTime = new Date().toLocaleString();
             var lastUpdateEl = document.getElementById('lastUpdate');
             if (lastUpdateEl) {
-                lastUpdateEl.textContent = 'Last update: ' + window.lastUpdateTime;
+                lastUpdateEl.textContent = 'Last update: ' + formatUpdateTime(window.lastUpdateTime);
             }
         }
 
@@ -1394,6 +1394,12 @@ async function init() {
 		if (typeof Shortcuts !== 'undefined') {
 			Shortcuts.init();
 			console.log('Shortcuts initialized');
+		}
+
+		// Initialize Context Menu + keyboard select (Phase 7)
+		if (typeof ContextMenu !== 'undefined') {
+			ContextMenu.init();
+			console.log('ContextMenu initialized');
 		}
 
 		// Setup history clear button
