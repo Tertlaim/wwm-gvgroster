@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 7 Complete (Context Menu + Keyboard Actions). Next up: Phase 8 - Export & Data Portability
+**Status:** Phase 7B Complete. Next up: Phase 8 - Data Integrity & Sync Hardening (atomic writes, tombstone persistence, sync dirty-check, backup fix)
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -13,7 +13,7 @@
 Node.js + Express (server.js) | vanilla JS front-end (no framework) | JSON file storage
 npm start      ->  node server.js   (default port 3000)
 npm run dev    ->  nodemon server.js
-Dependencies: express, cors, bcrypt (installed, NOT yet used - see Phase 11)
+Dependencies: express, cors, bcrypt (installed, NOT yet used - see Phase 9)
 ```
 
 ---
@@ -146,7 +146,7 @@ GET  /api/health                      - Health check
 
 ---
 
-## PENDING PHASES (roadmap)
+## PHASES 6-7B (completed, documented here)
 
 ### Phase 6: Admin Tools & Editing Polish (Completed)
 Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4 (group deletion).**
@@ -191,45 +191,43 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - **Roles storage note:** accounts/roles stay in `config/auth.json` (the git-ignored auth database) rather than `data/database.json` - credentials must not flow through the merge engine or SSE broadcast, which would leak hashed/plaintext passwords to every viewer. Data-driven, versioned out of the repo = not hardcoded.
 - [x] **Public-view polish (user-reported bugs):** labels get a reserved bottom strip (2.3rem padding, now `!important` so the later-loaded panel CSS can't override it) so A/B/C/... never overlap content; collapse chevron pinned to the top-right corner of every panel uniformly (was drifting when reserve/guild header buttons wrapped); admin panel's collapse no longer hides its own header (header row is now excluded from the hide rule, so the uncollapse chevron stays visible); panel labels re-lettered to match layout order (Help=E, Register=F, Admin=G, Admin Tools=H, History=I); uniform vertical spacing between panels in the diagram column that mirrors the side panel's gap rhythm at every breakpoint; Help & Shortcuts panel is role-aware - public viewers see only registration/collapse tips + a login hint, mods+ see the full shortcuts grid and guide.
 
-### Phase 8: Export & Data Portability
-- [ ] **8.1 Export options** (was plan 4.4)
-  - New: `js/export.js`; touch: `index.html`
-  - JSON full backup, CSV player list, Image screenshot, PDF printable roster
-- [ ] **8.2 Fix backup download**
-  - Known issue: `downloadBackup()` uses `window.open` without the auth header -> 401 when wired
-  - Acceptance: backup download works for authed users (fetch blob with token + save, or signed URL)
+## PENDING PHASES (roadmap, re-prioritized 2026-08-18)
 
-### Phase 9: Mobile & Accessibility
-- [ ] **9.1 Mobile optimization** (was plan 4.5)
-  - Files: `css/responsive.css`, `index.html`
-  - 44px touch targets, swipe day navigation, responsive grids, mobile menu
-- [ ] **9.2 Accessibility** (was plan 4.6)
-  - Files: `index.html`, `js/main.js`
-  - ARIA labels, keyboard navigation, color contrast
+**Priority rule:** whole-function items first (data integrity, sync correctness, working backups, auth security), then features, then structural refactors. Supabase migration + cron keep-alive are recorded as To-Dos but are **not planned work**.
 
-### Phase 10: Data Model Simplification
-**Includes known-bug fix #5 (guildMembers day-specific).**
-- [ ] Change `guildMembers` from `{ sat: [], sun: [] }` to a single array
-  - Files: `server.js` (migration endpoint + all readers), `js/*` (getGuildMembers, render, dragdrop, bulk-actions)
-  - Acceptance: old data migrates cleanly; no day-splitting anywhere; registration/merge still work
+### Phase 8: Data Integrity & Sync Hardening (HIGH - protects the whole site)
+- [ ] **8.1 Atomic `writeDatabase`** (was 11.3)
+  - Write `database.json`/`history.json`/`auth.json` via temp file + rename so a crash can't corrupt the roster
+  - Acceptance: kill the server mid-write; the file on disk is always the last complete save
+- [ ] **8.2 Persist tombstones** (was 11.4)
+  - Store `deletedIds` in `database.json` (currently in-memory `DELETED_PLAYERS`); today a restart lets a stale editor resurrect deleted players
+  - Acceptance: delete a player, restart the server, a stale copy cannot bring them back
+- [ ] **8.3 Sync dirty-check** (was 11.5)
+  - Skip `applyServerData` while a mod has an in-progress edit (typing/mid-drag) so a poll or SSE push can't wipe it
+  - Acceptance: type in an edit field while another editor's save arrives; your text survives
+- [ ] **8.4 Fix backup download** (was 8.2, known bug #6)
+  - `downloadBackup()` uses `window.open` without the auth header -> 401; download via `fetch` blob + token
+  - Acceptance: an authed user can download a working JSON backup
 
-### Phase 11: Security Hardening
-Backlog from the adversarial review - none urgent for a private LAN app, but all cheap.
-- [ ] **11.1 Hash passwords** - bcrypt is already a dependency but `config/auth.json` stores plaintext; hash on write, verify on login, migrate existing entries
-- [ ] **11.2 Rate limiting** on `/api/login` and `/api/register`
-- [ ] **11.3 Atomic `writeDatabase`** - write temp file + rename so a crash can't corrupt JSON
-- [ ] **11.4 Persist tombstones** in `database.json` (currently in-memory; a restart lets a stale editor resurrect deleted players)
-- [ ] **11.5 Sync dirty-check** - skip `applyServerData` while a mod has an in-progress edit (typing/mid-drag) so a poll can't wipe it
+### Phase 9: Security Hardening (auth gates the whole site)
+- [ ] **9.1 Hash passwords** (was 11.1) - bcrypt already installed but `config/auth.json` is plaintext; hash on write, verify on login, migrate existing entries
+- [ ] **9.2 Rate limiting** (was 11.2) on `/api/login` and `/api/register`
 
-### Phase 12: Supabase Migration (To-Do #2)
-- [ ] Set up Supabase project + tables (guild_config, groups, reserves, guild_members, history, auth)
-- [ ] Add `@supabase/supabase-js`, `.env` with credentials
-- [ ] Rewrite `server.js` data layer (fs -> Supabase) keeping the current API contract (merge/tombstones/SSE semantics preserved)
-- [ ] Backward-compatible migration of existing `database.json`/`history.json`
+### Phase 10: Export Options (feature)
+- [ ] **10.1 Export** (was 8.1) - new `js/export.js`: JSON full backup, CSV player list, Image screenshot, PDF printable roster
 
-### Phase 13: Cron Keep-Alive (To-Do #3) - LAST
-- [ ] Weekly ping to keep Supabase instance alive (`cron.js` or node-cron, or external cron-job.org / UptimeRobot)
-- [ ] `GET /api/health` already exists - reuse it
+### Phase 11: Mobile & Accessibility
+- [ ] **11.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
+- [ ] **11.2 Accessibility** (was 9.2) - ARIA labels, keyboard navigation, color contrast
+
+### Phase 12: Data Model Simplification (known bug #5 - DEFERRED, high blast radius)
+- [ ] `guildMembers` from `{ sat: [], sun: [] }` to a single array
+  - Touches every client file + server readers; only worth the risk if the day-split actually causes bugs in practice. Phase 10 exports may make the need concrete.
+
+### RECORDED ONLY - NOT PLANNED (To-Do list)
+Kept on record for context; **not work to be done**.
+- **Supabase migration** (was To-Do #2): move JSON storage to Postgres/Supabase. Would rewrite the whole data layer; the current JSON store + merge engine works for this LAN guild tool.
+- **Cron keep-alive** (was To-Do #3): weekly ping to keep a Supabase instance alive. Only relevant if Supabase is ever adopted.
 
 ---
 
@@ -243,7 +241,7 @@ guild-war-management/            (git repo, branch main)
 ├── WebImplementationPlan.md     done (THIS FILE)
 ├── .gitignore                   done (node_modules, data/, config/auth.json, backups/, .kilo, .freebuff)
 ├── config/
-│   └── auth.json                done (git-ignored, plaintext passwords - Phase 11.1)
+│   └── auth.json                done (git-ignored, plaintext passwords - Phase 9.1)
 ├── data/
 │   ├── database.json            done (git-ignored)
 │   └── history.json             done (git-ignored)
@@ -268,7 +266,7 @@ guild-war-management/            (git repo, branch main)
     ├── theme.js                 done - theme management
     ├── toast.js                 done - toast system
     └── data.js                  done - sample/fallback data
-    (export.js, cron.js - to be created in Phases 8/13)
+    (export.js - Phase 10; cron.js - not planned, see Recorded To-Dos)
 ```
 
 ---
@@ -286,12 +284,12 @@ guild-war-management/            (git repo, branch main)
 | Phase 6: Admin Tools & Editing Polish | done | 100% |
 | Phase 7: Power-User Interactions | ✅ complete | 100% |
 | Phase 7B: Roles, Admin Mgmt & Usability | ✅ complete | 100% |
-| Phase 8: Export & Backup | pending | 0% |
-| Phase 9: Mobile & Accessibility | pending | 0% |
-| Phase 10: Data Model Simplification | pending | 0% |
-| Phase 11: Security Hardening | pending | 0% |
-| Phase 12: Supabase Migration | pending | 0% |
-| Phase 13: Cron Keep-Alive | pending | 0% |
+| Phase 8: Data Integrity & Sync Hardening | pending | 0% |
+| Phase 9: Security Hardening | pending | 0% |
+| Phase 10: Export Options | pending | 0% |
+| Phase 11: Mobile & Accessibility | pending | 0% |
+| Phase 12: Data Model Simplification | deferred | 0% |
+| Recorded (not planned): Supabase + Cron | recorded only | - |
 
 **Overall Progress:** ~94%
 
@@ -305,13 +303,13 @@ guild-war-management/            (git repo, branch main)
 | 2 | No right-click context menu | ✅ Fixed in Phase 7.1 (context-menu.js) |
 | 3 | No extended keyboard shortcuts (C/M/E/Delete) | ✅ Fixed in Phase 7.2 (click-to-select + keys) |
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
-| 5 | guildMembers day-specific (should be single array) | Phase 10 |
-| 6 | Backup download 401s (window.open without auth header) | Phase 8.2 |
-| 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 11.1 |
-| 8 | No rate limiting on login/register | Phase 11.2 |
-| 9 | Non-atomic writeDatabase (crash can corrupt JSON) | Phase 11.3 |
-| 10 | Tombstones in-memory only (lost on restart) | Phase 11.4 |
-| 11 | Poll can wipe an in-progress edit (no dirty-check) | Phase 11.5 |
+| 5 | guildMembers day-specific (should be single array) | Phase 12 (deferred - high blast radius) |
+| 6 | Backup download 401s (window.open without auth header) | Phase 8.4 |
+| 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 9.1 |
+| 8 | No rate limiting on login/register | Phase 9.2 |
+| 9 | Non-atomic writeDatabase (crash can corrupt JSON) | Phase 8.1 |
+| 10 | Tombstones in-memory only (lost on restart) | Phase 8.2 |
+| 11 | Poll can wipe an in-progress edit (no dirty-check) | Phase 8.3 |
 | 12 | New Mod button broken (401 - no auth header, and never enabled on selection) | ✅ Fixed in Phase 7B |
 | 13 | No way to add admins (no SuperAdmin role, roles hardcoded) | ✅ Fixed in Phase 7B (SuperAdmin, data-driven roles) |
 
@@ -332,8 +330,8 @@ guild-war-management/            (git repo, branch main)
 - ~~4.1 Auto-Scroll on Drag Start~~ - removed by request (2026-08-18)
 
 ### Future considerations
-- Discord integration (standalone module, after Phase 13)
+- Discord integration (standalone module, after the current roadmap)
 - Multi-line notes, custom group colors, per-day announcements
-- Migrate to single-array guildMembers (Phase 10) unlocks cleaner exports
+- Migrate to single-array guildMembers (Phase 12) unlocks cleaner exports
 
 *Last Updated: 2026-08-18*
