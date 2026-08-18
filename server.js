@@ -7,6 +7,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 // Middleware
 app.use(cors());
@@ -112,6 +113,81 @@ function getUserRole(user) {
 }
 
 // ============================================
+// PASSWORD HASHING (Phase 9.1)
+// ============================================
+const BCRYPT_ROUNDS = 10;
+
+// A bcrypt hash looks like $2a$/$2b$/$2y$ + cost + salt.
+function isHashed(pw) {
+    return typeof pw === 'string' && /^\$2[aby]\$\d{2}\$/.test(pw);
+}
+
+function hashPassword(plain) {
+    return bcrypt.hashSync(String(plain == null ? '' : plain), BCRYPT_ROUNDS);
+}
+
+// Verify a login attempt against the stored value (hash or legacy plaintext).
+function verifyPassword(attempt, stored) {
+    if (typeof stored !== 'string') return false;
+    if (isHashed(stored)) {
+        try { return bcrypt.compareSync(String(attempt == null ? '' : attempt), stored); }
+        catch (e) { return false; }
+    }
+    // Legacy plaintext (pre-migration); the boot migration hashes these, but
+    // this keeps hand-edited files working until the next restart.
+    return stored === attempt;
+}
+
+// Migrate any plaintext passwords in auth.json to bcrypt hashes (boot-time).
+function migratePlaintextPasswords() {
+    const auth = readAuthConfig();
+    if (!auth) return;
+    let changed = false;
+    getAllAuthUsers(auth).forEach(u => {
+        if (u && typeof u.password === 'string' && !isHashed(u.password)) {
+            u.password = hashPassword(u.password);
+            changed = true;
+        }
+    });
+    if (changed && writeAuthConfig(auth)) {
+        console.log('🔐 Migrated plaintext passwords to bcrypt hashes');
+    }
+}
+
+// ============================================
+// RATE LIMITING (Phase 9.2)
+// ============================================
+// Dependency-free fixed-window limiter keyed by client IP.
+const RATE_LIMITS = new Map(); // key -> { count, resetAt }
+const LOGIN_MAX = 20;          // attempts per window per IP
+const REGISTER_MAX = 15;
+const RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(key, max, windowMs) {
+    const now = Date.now();
+    let entry = RATE_LIMITS.get(key);
+    if (!entry || entry.resetAt <= now) {
+        entry = { count: 0, resetAt: now + windowMs };
+        RATE_LIMITS.set(key, entry);
+    }
+    entry.count++;
+    return {
+        allowed: entry.count <= max,
+        retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000))
+    };
+}
+
+function clientIp(req) {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+}
+
+// Sweep expired entries so the map cannot grow unbounded.
+setInterval(() => {
+    const now = Date.now();
+    RATE_LIMITS.forEach((v, k) => { if (v.resetAt <= now) RATE_LIMITS.delete(k); });
+}, 10 * 60 * 1000).unref();
+
+// ============================================
 // AUTHENTICATION FUNCTIONS
 // ============================================
 
@@ -149,7 +225,7 @@ function initAuthConfig() {
             admin: {
                 id: "admin_001",
                 username: "Tertlaim",
-                password: "Sin1234",
+                password: hashPassword('Sin1234'),
                 role: "superadmin",
                 createdAt: new Date().toISOString()
             },
@@ -330,6 +406,11 @@ function initHistory() {
 
 // POST /api/login - Authenticate user, returns session token
 app.post('/api/login', (req, res) => {
+    const rl = checkRateLimit('login:' + clientIp(req), LOGIN_MAX, RATE_WINDOW_MS);
+    if (!rl.allowed) {
+        return res.status(429).json({ success: false, error: 'Too many login attempts. Try again later.', retryAfter: rl.retryAfterSec });
+    }
+
     const { username, password } = req.body;
     const auth = readAuthConfig();
     
@@ -338,7 +419,7 @@ app.post('/api/login', (req, res) => {
     }
 
     // Roles come from the stored user record (superadmin/admin/mod), never hardcoded.
-    const user = getAllAuthUsers(auth).find(u => u && u.username === username && u.password === password);
+    const user = getAllAuthUsers(auth).find(u => u && u.username === username && verifyPassword(password, u.password));
     if (user) {
         const role = getUserRole(user);
         const token = createSession(user.username, role);
@@ -411,7 +492,7 @@ app.post('/api/moderators/add', requireAuth, requireAdmin, (req, res) => {
     auth.moderators.push({
         id: 'mod_' + Date.now(),
         username: username,
-        password: newPassword,
+        password: hashPassword(newPassword),
         role: targetRole,
         createdAt: new Date().toISOString()
     });
@@ -471,7 +552,7 @@ app.post('/api/moderators/reset-password', requireAuth, requireAdmin, (req, res)
     }
 
     const newPassword = auth.settings.defaultModPassword || 'Sin1234';
-    mod.password = newPassword;
+    mod.password = hashPassword(newPassword);
     
     if (writeAuthConfig(auth)) {
         res.json({ 
@@ -498,11 +579,11 @@ app.post('/api/moderators/change-password', requireAuth, (req, res) => {
         return res.status(404).json({ success: false, error: 'Moderator not found' });
     }
 
-    if (mod.password !== oldPassword) {
+    if (!verifyPassword(oldPassword, mod.password)) {
         return res.status(401).json({ success: false, error: 'Current password is incorrect' });
     }
 
-    mod.password = newPassword;
+    mod.password = hashPassword(newPassword);
     
     if (writeAuthConfig(auth)) {
         res.json({ success: true, message: 'Password updated successfully' });
@@ -893,6 +974,11 @@ app.post('/api/data', requireAuth, (req, res) => {
 // This is the ONLY public write path; it cannot modify groups, titles,
 // announcements, or any other data.
 app.post('/api/register', (req, res) => {
+    const rl = checkRateLimit('register:' + clientIp(req), REGISTER_MAX, RATE_WINDOW_MS);
+    if (!rl.allowed) {
+        return res.status(429).json({ success: false, error: 'Too many registration attempts. Try again later.', retryAfter: rl.retryAfterSec });
+    }
+
     const body = req.body || {};
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     const cls = body.class;
@@ -1385,6 +1471,9 @@ app.get('/', (req, res) => {
 initAuthConfig();
 initDatabase();
 initHistory();
+
+// Phase 9.1: hash any legacy plaintext passwords before serving requests.
+migratePlaintextPasswords();
 
 // Phase 8.2: hydrate the tombstone ledger from disk before serving requests,
 // so deletion protection is in place from the first request after a restart.

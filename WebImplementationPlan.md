@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 8 Complete (Data Integrity & Sync Hardening). Next up: Phase 9 - Security Hardening (password hashing, login rate limiting)
+**Status:** Phase 9 Complete (Security Hardening). Next up: Phase 10 - Export Options (JSON/CSV/Image/PDF)
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -13,7 +13,7 @@
 Node.js + Express (server.js) | vanilla JS front-end (no framework) | JSON file storage
 npm start      ->  node server.js   (default port 3000)
 npm run dev    ->  nodemon server.js
-Dependencies: express, cors, bcrypt (installed, NOT yet used - see Phase 9)
+Dependencies: express, cors, bcrypt (now used - password hashing, Phase 9.1)
 ```
 
 ---
@@ -201,9 +201,9 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **8.3 Sync dirty-check** - `beginUserEdit()/endUserEdit()` session counter (edit forms via `toggleEditMode`, drag in flight, announcement editor); `performSync` defers (`_syncDeferred`) while a session is open and re-runs on close. Verified live: injected a simulated newer remote save while editing - the input survived untouched, and cancel re-synced
 - [x] **8.4 Fix backup download** (known bug #6) - `downloadBackup()` now fetches `/api/backup` with the auth header and saves the blob (was `window.open`, always 401); wired a **DOWNLOAD BACKUP (JSON)** button into Admin Tools (mod+, shown via `data-role-show`). Verified: 401 unauth / 200 authed, Bearer header attached
 
-### Phase 9: Security Hardening (auth gates the whole site)
-- [ ] **9.1 Hash passwords** (was 11.1) - bcrypt already installed but `config/auth.json` is plaintext; hash on write, verify on login, migrate existing entries
-- [ ] **9.2 Rate limiting** (was 11.2) on `/api/login` and `/api/register`
+### Phase 9: Security Hardening ✅ COMPLETE (auth gates the whole site)
+- [x] **9.1 Hash passwords** - bcrypt (cost 10) on every password write: boot migration hashes legacy plaintext (verified live - all 4 accounts migrated, original passwords still log in), `moderators/add` (plaintext revealed once in the response for hand-off, hash stored), `reset-password`, `change-password` (bcrypt-verified current pw). `verifyPassword()` falls back to legacy plaintext compare for hand-edited files until next restart. Hashes verified `$2b$10$` on disk
+- [x] **9.2 Rate limiting** - dependency-free in-memory fixed-window limiter (15 min) keyed by IP: login 20 attempts / register 15, then 429 with `retryAfter`; expired entries swept every 10 min. Verified: exactly 20 logins allowed then 429; 15 registrations then 429
 
 ### Phase 10: Export Options (feature)
 - [ ] **10.1 Export** (was 8.1) - new `js/export.js`: JSON full backup, CSV player list, Image screenshot, PDF printable roster
@@ -233,7 +233,7 @@ guild-war-management/            (git repo, branch main)
 ├── WebImplementationPlan.md     done (THIS FILE)
 ├── .gitignore                   done (node_modules, data/, config/auth.json, backups/, .kilo, .freebuff)
 ├── config/
-│   └── auth.json                done (git-ignored, plaintext passwords - Phase 9.1)
+│   └── auth.json                done (git-ignored, bcrypt-hashed passwords)
 ├── data/
 │   ├── database.json            done (git-ignored)
 │   └── history.json             done (git-ignored)
@@ -277,13 +277,13 @@ guild-war-management/            (git repo, branch main)
 | Phase 7: Power-User Interactions | ✅ complete | 100% |
 | Phase 7B: Roles, Admin Mgmt & Usability | ✅ complete | 100% |
 | Phase 8: Data Integrity & Sync Hardening | ✅ complete | 100% |
-| Phase 9: Security Hardening | pending | 0% |
+| Phase 9: Security Hardening | ✅ complete | 100% |
 | Phase 10: Export Options | pending | 0% |
 | Phase 11: Mobile & Accessibility | pending | 0% |
 | Phase 12: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~97%
+**Overall Progress:** ~98%
 
 ---
 
@@ -297,8 +297,8 @@ guild-war-management/            (git repo, branch main)
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
 | 5 | guildMembers day-specific (should be single array) | Phase 12 (deferred - high blast radius) |
 | 6 | Backup download 401s (window.open without auth header) | ✅ Fixed in Phase 8.4 (fetch + auth header + button in Admin Tools) |
-| 7 | `config/auth.json` plaintext passwords (bcrypt unused) | Phase 9.1 |
-| 8 | No rate limiting on login/register | Phase 9.2 |
+| 7 | `config/auth.json` plaintext passwords (bcrypt unused) | ✅ Fixed in Phase 9.1 (bcrypt hashes + boot migration) |
+| 8 | No rate limiting on login/register | ✅ Fixed in Phase 9.2 (20 login / 15 register per 15 min, 429 + retryAfter) |
 | 9 | Non-atomic writeDatabase (crash can corrupt JSON) | ✅ Fixed in Phase 8.1 (temp + rename) |
 | 10 | Tombstones in-memory only (lost on restart) | ✅ Fixed in Phase 8.2 (persisted ledger) |
 | 11 | Poll can wipe an in-progress edit (no dirty-check) | ✅ Fixed in Phase 8.3 (deferred sync) |
