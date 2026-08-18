@@ -141,7 +141,8 @@ async function saveState() {
     }
 }
 
-// ---- Load moderator list (admin only) so Reset PW / Demote controls work ----
+// ---- Load staff list (admin+) so Reset PW / Demote / role display work ----
+// Roles come from the server store (config/auth.json) - nothing is hardcoded here.
 async function loadModerators() {
     try {
         const response = await fetch('/api/moderators/list', {
@@ -150,9 +151,9 @@ async function loadModerators() {
         if (!response.ok) return;
         const result = await response.json();
         window.moderators = {};
-        if (result && Array.isArray(result.moderators)) {
-            result.moderators.forEach(mod => {
-                if (mod && mod.username) window.moderators[mod.username] = mod.role || 'mod';
+        if (result && Array.isArray(result.users)) {
+            result.users.forEach(user => {
+                if (user && user.username) window.moderators[user.username] = user.role || 'mod';
             });
         }
     } catch (error) {
@@ -1068,14 +1069,32 @@ if (clearToReserveBtn) {
 }
 }
 
-// ---- Admin Controls ----
+// ---- Admin Controls (roles are data-driven; SuperAdmin manages admins) ----
 function setupAdminControls() {
     const approveModBtn = document.getElementById('approveModBtn');
+    const approveAdminBtn = document.getElementById('approveAdminBtn');
     const resetModBtn = document.getElementById('resetModBtn');
     const demoteModBtn = document.getElementById('demoteModBtn');
     const modPlayerSelect = document.getElementById('modPlayerSelect');
     const resetModSelect = document.getElementById('resetModSelect');
     const demoteModSelect = document.getElementById('demoteModSelect');
+
+    // Selecting a player enables the New Mod / New Admin buttons (the select is
+    // rebuilt on every render, so the listener is attached here once).
+    if (modPlayerSelect) {
+        modPlayerSelect.addEventListener('change', function() {
+            if (typeof updateApproveButton === 'function') updateApproveButton();
+        });
+    }
+
+    // Shared add-staff flow: role is 'mod' (New Mod) or 'admin' (New Admin, SuperAdmin only)
+    function addStaff(name, role) {
+        return fetch('/api/moderators/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ username: name, role: role })
+        }).then(function(r) { return r.json(); });
+    }
 
     if (approveModBtn) {
         approveModBtn.addEventListener('click', async function() {
@@ -1088,18 +1107,9 @@ function setupAdminControls() {
                 showAlert('Select a player from the list.', 'Error', '❌');
                 return; 
             }
-            if (name === 'Tertlaim') { 
-                showAlert('Admin cannot be demoted.', 'Error', '❌');
-                return; 
-            }
             
             try {
-                const response = await fetch('/api/moderators/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: name })
-                });
-                const result = await response.json();
+                const result = await addStaff(name, 'mod');
                 if (result.success) {
                     showAlert(`Moderator ${name} added. Password: ${result.password}`, 'Success', '✅');
                     await loadModerators();
@@ -1116,6 +1126,36 @@ function setupAdminControls() {
         });
     }
 
+    if (approveAdminBtn) {
+        approveAdminBtn.addEventListener('click', async function() {
+            if (!AuthModule.isSuperAdmin()) { 
+                showAlert('Only SuperAdmin can add admins.', 'Error', '❌');
+                return; 
+            }
+            const name = modPlayerSelect.value;
+            if (!name) { 
+                showAlert('Select a player from the list.', 'Error', '❌');
+                return; 
+            }
+            
+            try {
+                const result = await addStaff(name, 'admin');
+                if (result.success) {
+                    showAlert(`Admin ${name} added. Password: ${result.password}`, 'Success', '✅');
+                    await loadModerators();
+                    updateLastUpdate();
+                    render();
+                    saveState();
+                } else {
+                    showAlert(result.error || 'Failed to add admin.', 'Error', '❌');
+                }
+            } catch (error) {
+                console.error('Error adding admin:', error);
+                showAlert('Error adding admin.', 'Error', '❌');
+            }
+        });
+    }
+
     if (resetModBtn) {
         resetModBtn.addEventListener('click', async function() {
             if (!AuthModule.isAdmin()) { 
@@ -1124,11 +1164,7 @@ function setupAdminControls() {
             }
             const name = resetModSelect.value;
             if (!name) { 
-                showAlert('Select a moderator.', 'Error', '❌');
-                return; 
-            }
-            if (name === 'Tertlaim') { 
-                showAlert('Cannot reset admin.', 'Error', '❌');
+                showAlert('Select a staff member.', 'Error', '❌');
                 return; 
             }
             
@@ -1136,7 +1172,7 @@ function setupAdminControls() {
                 try {
                     const response = await fetch('/api/moderators/reset-password', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                         body: JSON.stringify({ username: name })
                     });
                     const result = await response.json();
@@ -1161,24 +1197,26 @@ function setupAdminControls() {
     if (demoteModBtn) {
         demoteModBtn.addEventListener('click', async function() {
             if (!AuthModule.isAdmin()) { 
-                showAlert('Only admin can demote moderators.', 'Error', '❌');
+                showAlert('Only admin can demote staff.', 'Error', '❌');
                 return; 
             }
             const name = demoteModSelect.value;
             if (!name) { 
-                showAlert('Select a moderator to demote.', 'Error', '❌');
+                showAlert('Select a staff member to demote.', 'Error', '❌');
                 return; 
             }
-            if (name === 'Tertlaim') { 
-                showAlert('Cannot demote admin.', 'Error', '❌');
-                return; 
+            const targetRole = window.moderators && window.moderators[name];
+            // Demoting an admin is SuperAdmin-only; the server enforces this too.
+            if (targetRole === 'admin' && !AuthModule.isSuperAdmin()) {
+                showAlert('Only SuperAdmin can demote admins.', 'Error', '❌');
+                return;
             }
             
-            showConfirmation(`Demote "${name}" from moderator to normal member?`, async function() {
+            showConfirmation(`Demote "${name}" from staff to normal member?`, async function() {
                 try {
                     const response = await fetch('/api/moderators/remove', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                         body: JSON.stringify({ username: name })
                     });
                     const result = await response.json();
@@ -1194,7 +1232,7 @@ function setupAdminControls() {
                     }
                 } catch (error) {
                     console.error('Error demoting:', error);
-                    showAlert('Error demoting moderator.', 'Error', '❌');
+                    showAlert('Error demoting staff.', 'Error', '❌');
                 }
             });
         });
@@ -1329,6 +1367,69 @@ function setupScrollShadow() {
     }
 }
 
+// ---- Collapsible panels (click a header to expand/collapse, persisted) ----
+function saveCollapseState() {
+    try {
+        var collapsed = [];
+        document.querySelectorAll('.collapsible.collapsed').forEach(function(p) {
+            if (p.id) collapsed.push(p.id);
+        });
+        localStorage.setItem('gw_collapsed_panels', JSON.stringify(collapsed));
+    } catch (e) {}
+}
+
+function restoreCollapseState() {
+    try {
+        var raw = localStorage.getItem('gw_collapsed_panels');
+        if (!raw) return;
+        var collapsed = JSON.parse(raw);
+        if (!Array.isArray(collapsed)) return;
+        collapsed.forEach(function(id) {
+            var panel = document.getElementById(id);
+            if (panel) panel.classList.add('collapsed');
+        });
+    } catch (e) {}
+}
+
+function setupCollapsiblePanels() {
+    document.querySelectorAll('.collapsible').forEach(function(panel) {
+        var header = panel.querySelector('h3');
+        if (!header) return;
+        if (!header.querySelector('.collapse-chevron')) {
+            var chevron = document.createElement('span');
+            chevron.className = 'collapse-chevron';
+            chevron.innerHTML = '<i class="fas fa-chevron-up"></i>';
+            header.appendChild(chevron);
+        }
+        header.addEventListener('click', function(e) {
+            // Don't toggle when clicking an interactive child inside the header
+            if (e.target.closest('button, input, select, a')) return;
+            panel.classList.toggle('collapsed');
+            saveCollapseState();
+        });
+    });
+    restoreCollapseState();
+}
+
+// ---- Help & Shortcuts panel (below guild panel) ----
+function renderHelpPanel() {
+    var container = document.getElementById('helpShortcuts');
+    if (!container) return;
+    if (typeof Shortcuts === 'undefined' || !Shortcuts.shortcuts) return;
+    
+    var entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
+        return { combo: combo, description: Shortcuts.shortcuts[combo].description };
+    });
+    
+    container.innerHTML =
+        '<h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs); display:flex; align-items:center; gap:var(--spacing-sm);"><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h4>' +
+        '<div class="help-shortcuts-grid">' +
+        entries.map(function(entry) {
+            return '<div class="help-shortcut-item"><kbd>' + entry.combo.replace(/\+/g, ' + ').toUpperCase() + '</kbd><span>' + entry.description + '</span></div>';
+        }).join('') +
+        '</div>';
+}
+
 // ---- Init ----
 async function init() {
     console.log('Initializing application...');
@@ -1395,6 +1496,12 @@ async function init() {
 			Shortcuts.init();
 			console.log('Shortcuts initialized');
 		}
+
+		// Help & Shortcuts panel (Phase: help/guide)
+		renderHelpPanel();
+
+		// Collapsible panels (persisted per user)
+		setupCollapsiblePanels();
 
 		// Initialize Context Menu + keyboard select (Phase 7)
 		if (typeof ContextMenu !== 'undefined') {

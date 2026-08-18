@@ -62,7 +62,7 @@
             <div class="diagram" id="diagramContainer">
                 
                 <!-- A - ANNOUNCEMENT PANEL (MOVED FROM RIGHT SIDE) -->
-                <div class="panel-section announcement-section" id="announcementPanel">
+                <div class="panel-section announcement-section collapsible" id="announcementPanel">
                     <h3><i class="fas fa-bullhorn"></i> Announcements</h3>
                     <div id="announcementDisplay">
                         <span style="color:var(--text-muted);">No announcements yet.</span>
@@ -83,10 +83,12 @@
                     </button>
                     <span class="panel-label">A</span>
                 </div>
-                <!-- B - GROUP GRID -->
-                <div class="group-grid-container">
-                    <div class="group-grid" id="groupGrid"></div>
-                </div>
+                <!-- B - GROUP GRID (collapsible panel) -->
+                <div class="panel-section collapsible" id="groupsPanel">
+                    <h3 class="panel-header"><i class="fas fa-layer-group"></i> Groups</h3>
+                    <div class="group-grid-container">
+                        <div class="group-grid" id="groupGrid"></div>
+                    </div>
 
 <!-- Group Stats - Below Group Grid -->
 <div class="group-stats-wrapper">
@@ -105,9 +107,11 @@
         </span>
     </div>
 </div>
+                    <span class="panel-label">B</span>
+                </div>
 
                 <!-- C - RESERVES PANEL -->
-                <div class="reserve-area" id="reserveArea">
+                <div class="reserve-area collapsible" id="reserveArea">
                     <div class="reserve-header">
                         <h3><i class="fas fa-users"></i> Reserves · <span id="reserveCount">0</span></h3>
                         <div class="reserve-actions" id="reserveActions" data-auth-show="mod,admin" style="display:none;">
@@ -124,7 +128,7 @@
                 </div>
 
 <!-- D - GUILD MEMBERS PANEL -->
-<div class="guild-member-area" id="guildMemberArea">
+<div class="guild-member-area collapsible" id="guildMemberArea">
     <div class="guild-header">
         <h3><i class="fas fa-users"></i> Guild Members · <span id="guildMemberCount">0</span></h3>
         <div class="guild-actions" id="guildActions" data-auth-show="admin,mod" style="display:none;">
@@ -132,12 +136,33 @@
             <button class="btn btn-sm btn-outline" id="deleteSelectedGuildBtn" data-role-show="admin" style="display:none;"><i class="fas fa-trash"></i> Delete Selected</button>
         </div>
     </div>
-    <div class="guild-member-pool" id="guildMemberPool"></div>
-    <div style="margin-top:var(--spacing-sm); font-size:var(--font-size-xs); color:var(--text-muted);">
-        <i class="fas fa-info-circle"></i> Only admin can delete from master list | Moderators+ can copy to reserves
-    </div>
-    <span class="panel-label">D</span>
-</div>
+    <div class="guild-member-pool" id="guildMemberPool"></div>                    <div style="margin-top:var(--spacing-sm); font-size:var(--font-size-xs); color:var(--text-muted);">
+                        <i class="fas fa-info-circle"></i> Only admin can delete from master list | Moderators+ can copy to reserves
+                    </div>
+                    <span class="panel-label">D</span>
+                </div>
+
+                <!-- HELP & SHORTCUTS PANEL (below Guild panel, collapsible) -->
+                <div class="panel-section collapsible" id="helpPanel">
+                    <h3><i class="fas fa-book-open"></i> Help & Shortcuts</h3>
+                    <div id="helpShortcuts">
+                        <div style="color:var(--text-muted); font-size:var(--font-size-sm); padding:var(--spacing-sm);">Loading shortcuts...</div>
+                    </div>
+                    <div class="help-guide" style="margin-top:var(--spacing-md); font-size:var(--font-size-sm); color:var(--text-secondary); line-height:1.7;">
+                        <h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs);"><i class="fas fa-compass"></i> Quick Guide</h4>
+                        <ul style="margin:0; padding-left:var(--spacing-md); display:flex; flex-direction:column; gap:var(--spacing-xs);">
+                            <li><strong>Register:</strong> fill in your in-game name/class/days and click <em>Click to Register</em>.</li>
+                            <li><strong>Drag &amp; drop</strong> player badges between groups and reserves (mods+).</li>
+                            <li><strong>Right-click</strong> any player for quick actions: copy to reserve, move to a group, edit, or delete.</li>
+                            <li><strong>Keyboard (mods+):</strong> click a player to select it, then <kbd>C</kbd> copy, <kbd>M</kbd> move, <kbd>E</kbd> edit, <kbd>Delete</kbd> delete; <kbd>Esc</kbd> deselects.</li>
+                            <li><strong>Bulk actions:</strong> tick the checkbox on cards/badges (far right) to select, then use the header buttons.</li>
+                            <li><strong>Edit:</strong> the <i class="fas fa-edit"></i> icon (far left) opens inline editing; <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</li>
+                            <li><strong>Groups:</strong> use <em>Group Management</em> in Admin Tools to add/remove groups; the trash icon on a group card removes it.</li>
+                            <li><strong>Collapse panels:</strong> click any panel header to expand/collapse it and save screen space.</li>
+                        </ul>
+                    </div>
+                    <span class="panel-label">?</span>
+                </div>
 
             </div>
 
@@ -145,7 +170,7 @@
             <div class="side-panel" id="sidePanel">
                 
                 <!-- E - REGISTER PANEL -->
-                <div class="panel-section">
+                <div class="panel-section collapsible" id="registerPanel">
                     <h3><i class="fas fa-user-plus"></i> Register</h3>
                     <form id="registerForm">
                         <div class="form-group">
@@ -194,7 +219,7 @@
                 </div>
 
                 <!-- F - ADMIN/MODERATOR PANEL -->
-                <div class="panel-section" id="adminPanel">
+                <div class="panel-section collapsible" id="adminPanel">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--spacing-sm);">
                         <h3 style="margin:0;"><i class="fas fa-user-shield"></i> Admin · Moderators</h3>
                     </div>
@@ -206,6 +231,7 @@
                                 <option value="">-- select player --</option>
                             </select>
                             <button class="btn" id="approveModBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--bg-active);">New Mod</button>
+                            <button class="btn" id="approveAdminBtn" data-role-show="superadmin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-gold); color:var(--text-inverse);">New Admin</button>
                         </div>
                         <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">
                             <select id="resetModSelect" style="flex:2; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-full); padding:var(--spacing-xs) var(--spacing-md); color:var(--text-primary); min-width:100px;">
@@ -220,7 +246,7 @@
                             <button class="btn" id="demoteModBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-red);">Demote</button>
                         </div>
                         <div style="margin-top:var(--spacing-xs); font-size:var(--font-size-xs); color:var(--text-muted);">
-                            <i class="fas fa-info-circle"></i> admins: promote/demote mods, reset passwords
+                            <i class="fas fa-info-circle"></i> admins: promote/demote mods, reset passwords | SuperAdmin: also manages admins
                         </div>
                     </div>
                     <div style="margin-top:var(--spacing-md); border-top:1px solid var(--border-color); padding-top:var(--spacing-md);">
@@ -232,7 +258,7 @@
                 </div>
 
                 <!-- G - ADMIN TOOLS PANEL (WITH GROUP MANAGEMENT INSIDE) -->
-                <div class="panel-section" id="adminToolsPanel" data-role-show="admin,mod" style="display:none;">
+                <div class="panel-section collapsible" id="adminToolsPanel" data-role-show="admin,mod" style="display:none;">
                     <h3><i class="fas fa-tools"></i> Admin Tools</h3>
                     
                     <!-- Group Management (inside Admin Tools) -->
@@ -276,7 +302,7 @@
                 </div>
 
                 <!-- H - HISTORY PANEL -->
-                <div class="panel-section" id="historyPanel" data-role-show="admin,mod">
+                <div class="panel-section collapsible" id="historyPanel" data-role-show="admin,mod">
                     <h3><i class="fas fa-history"></i> Recent Changes</h3>
                     <div id="historyList" style="max-height:60vh; overflow-y:auto; font-size:var(--font-size-sm);">
                         <div style="color:var(--text-muted); text-align:center; padding:var(--spacing-sm);">Loading history...</div>

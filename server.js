@@ -67,12 +67,36 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// Middleware: requires admin role
+// Middleware: requires admin or superadmin role
 function requireAdmin(req, res, next) {
-    if (!req.session || req.session.role !== 'admin') {
+    if (!req.session || (req.session.role !== 'admin' && req.session.role !== 'superadmin')) {
         return res.status(403).json({ success: false, error: 'Admin access required.' });
     }
     next();
+}
+
+// Middleware: requires superadmin role (managing admins is SuperAdmin-only)
+function requireSuperAdmin(req, res, next) {
+    if (!req.session || req.session.role !== 'superadmin') {
+        return res.status(403).json({ success: false, error: 'SuperAdmin access required.' });
+    }
+    next();
+}
+
+// All auth users (owner + staff) as one role-aware list, so roles are data-driven
+// (stored in config/auth.json) instead of hardcoded per username.
+function getAllAuthUsers(auth) {
+    const users = [];
+    if (auth && auth.admin) users.push(auth.admin);
+    if (auth && Array.isArray(auth.moderators)) {
+        for (const mod of auth.moderators) users.push(mod);
+    }
+    return users;
+}
+
+// Effective role for a stored user record (defaults to 'mod' for legacy entries)
+function getUserRole(user) {
+    return (user && user.role) || 'mod';
 }
 
 // ============================================
@@ -114,7 +138,7 @@ function initAuthConfig() {
                 id: "admin_001",
                 username: "Tertlaim",
                 password: "Sin1234",
-                role: "admin",
+                role: "superadmin",
                 createdAt: new Date().toISOString()
             },
             moderators: [],
@@ -270,32 +294,17 @@ app.post('/api/login', (req, res) => {
         return res.status(500).json({ success: false, error: 'Auth config error' });
     }
 
-    // Check admin
-    if (auth.admin && auth.admin.username === username) {
-        if (password === auth.admin.password) {
-            const token = createSession(auth.admin.username, 'admin');
-            return res.json({ 
-                success: true, 
-                name: auth.admin.username, 
-                role: 'admin',
-                token: token
-            });
-        }
-    }
-
-    // Check moderators
-    if (auth.moderators) {
-        for (let mod of auth.moderators) {
-            if (mod.username === username && password === mod.password) {
-                const token = createSession(mod.username, 'mod');
-                return res.json({ 
-                    success: true, 
-                    name: mod.username, 
-                    role: 'mod',
-                    token: token
-                });
-            }
-        }
+    // Roles come from the stored user record (superadmin/admin/mod), never hardcoded.
+    const user = getAllAuthUsers(auth).find(u => u && u.username === username && u.password === password);
+    if (user) {
+        const role = getUserRole(user);
+        const token = createSession(user.username, role);
+        return res.json({ 
+            success: true, 
+            name: user.username, 
+            role: role,
+            token: token
+        });
     }
 
     res.status(401).json({ 
@@ -324,7 +333,7 @@ app.get('/api/session', requireAuth, (req, res) => {
     });
 });
 
-// GET /api/moderators/list - Get list of moderators (admin only)
+// GET /api/moderators/list - Get all auth users + roles (admin+)
 app.get('/api/moderators/list', requireAuth, requireAdmin, (req, res) => {
     const auth = readAuthConfig();
     if (!auth) {
@@ -332,25 +341,27 @@ app.get('/api/moderators/list', requireAuth, requireAdmin, (req, res) => {
     }
     
     res.json({
-        moderators: auth.moderators.map(mod => ({ username: mod.username, role: mod.role }))
+        users: getAllAuthUsers(auth).map(u => ({ username: u.username, role: getUserRole(u) }))
     });
 });
 
-// POST /api/moderators/add - Add new moderator (admin only)
+// POST /api/moderators/add - Add staff (mod by default; admin requires SuperAdmin)
 app.post('/api/moderators/add', requireAuth, requireAdmin, (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
     const auth = readAuthConfig();
     
     if (!auth) {
         return res.status(500).json({ success: false, error: 'Auth config error' });
     }
 
-    if (auth.admin.username === username) {
-        return res.status(400).json({ success: false, error: 'Cannot add admin as moderator' });
+    // Only 'mod' and 'admin' can be created here; superadmin is never assignable.
+    const targetRole = role === 'admin' ? 'admin' : 'mod';
+    if (targetRole === 'admin' && req.session.role !== 'superadmin') {
+        return res.status(403).json({ success: false, error: 'Only SuperAdmin can add admins.' });
     }
-    
-    if (auth.moderators.some(mod => mod.username === username)) {
-        return res.status(400).json({ success: false, error: 'User is already a moderator' });
+
+    if (getAllAuthUsers(auth).some(u => u.username === username)) {
+        return res.status(400).json({ success: false, error: 'User is already staff (mod or admin)' });
     }
 
     const newPassword = password || auth.settings.defaultModPassword || 'Sin1234';
@@ -358,14 +369,15 @@ app.post('/api/moderators/add', requireAuth, requireAdmin, (req, res) => {
         id: 'mod_' + Date.now(),
         username: username,
         password: newPassword,
-        role: 'mod',
+        role: targetRole,
         createdAt: new Date().toISOString()
     });
 
     if (writeAuthConfig(auth)) {
         res.json({ 
             success: true, 
-            message: `Moderator ${username} added successfully`,
+            message: `${targetRole === 'admin' ? 'Admin' : 'Moderator'} ${username} added successfully`,
+            role: targetRole,
             password: newPassword
         });
     } else {
@@ -373,7 +385,7 @@ app.post('/api/moderators/add', requireAuth, requireAdmin, (req, res) => {
     }
 });
 
-// POST /api/moderators/remove - Remove moderator (admin only)
+// POST /api/moderators/remove - Remove staff (admins can remove mods; SuperAdmin can remove admins)
 app.post('/api/moderators/remove', requireAuth, requireAdmin, (req, res) => {
     const { username } = req.body;
     const auth = readAuthConfig();
@@ -384,13 +396,18 @@ app.post('/api/moderators/remove', requireAuth, requireAdmin, (req, res) => {
 
     const index = auth.moderators.findIndex(mod => mod.username === username);
     if (index === -1) {
-        return res.status(404).json({ success: false, error: 'Moderator not found' });
+        return res.status(404).json({ success: false, error: 'Staff member not found' });
+    }
+
+    // Demoting an admin is SuperAdmin-only; the owner (auth.admin) is never listed here.
+    if (getUserRole(auth.moderators[index]) === 'admin' && req.session.role !== 'superadmin') {
+        return res.status(403).json({ success: false, error: 'Only SuperAdmin can demote admins.' });
     }
 
     auth.moderators.splice(index, 1);
     
     if (writeAuthConfig(auth)) {
-        res.json({ success: true, message: `Moderator ${username} removed` });
+        res.json({ success: true, message: `${username} removed from staff` });
     } else {
         res.status(500).json({ success: false, error: 'Failed to save auth config' });
     }

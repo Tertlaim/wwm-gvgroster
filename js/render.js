@@ -87,13 +87,25 @@ function renderAdminPanel() {
         var editAnnouncementBtn = document.getElementById('editAnnouncementBtn');
         
         if (adminList) {
-            adminList.innerHTML = '<span class="admin-tag"><i class="fas fa-crown"></i> Lead: Tertlaim</span>';
-            for (var name in window.moderators) {
+            // Staff list is data-driven (window.moderators = { name: role });
+            // no usernames are hardcoded here.
+            adminList.innerHTML = '';
+            var staffNames = Object.keys(window.moderators || {});
+            var roleRank = { superadmin: 0, admin: 1, mod: 2 };
+            staffNames.sort(function(a, b) {
+                var ra = roleRank[window.moderators[a]] !== undefined ? roleRank[window.moderators[a]] : 3;
+                var rb = roleRank[window.moderators[b]] !== undefined ? roleRank[window.moderators[b]] : 3;
+                return ra - rb;
+            });
+            staffNames.forEach(function(name) {
+                var role = window.moderators[name] || 'mod';
+                var icon = role === 'superadmin' ? 'fa-crown' : role === 'admin' ? 'fa-shield-halved' : 'fa-check-circle';
+                var label = role === 'superadmin' ? 'Lead' : role === 'admin' ? 'Admin' : 'Mod';
                 var tag = document.createElement('span');
                 tag.className = 'admin-tag';
-                tag.innerHTML = '<i class="fas fa-check-circle"></i> Mod: ' + (typeof esc === 'function' ? esc(name) : name);
+                tag.innerHTML = '<i class="fas ' + icon + '"></i> ' + label + ': ' + (typeof esc === 'function' ? esc(name) : name);
                 adminList.appendChild(tag);
-            }
+            });
         }
         
         if (adminPanel) adminPanel.style.display = 'block';
@@ -124,7 +136,8 @@ function updateModSelects() {
                 names[allPlayers[i].name] = true;
             }
             for (var name in names) {
-                if (name && !window.moderators[name] && name !== 'Tertlaim') {
+                // Anyone already on staff (any role) can't be re-added
+                if (name && !window.moderators[name]) {
                     var opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name;
@@ -133,12 +146,17 @@ function updateModSelects() {
             }
         }
 
+        var isSuperAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isSuperAdmin() : false;
         var selects = [resetModSelect, demoteModSelect];
         for (var s = 0; s < selects.length; s++) {
             var select = selects[s];
             if (select) {
                 select.innerHTML = '<option value="">-- select mod --</option>';
                 for (var name in window.moderators) {
+                    var role = window.moderators[name];
+                    // SuperAdmin itself can't be demoted/reset; admins only appear for SuperAdmin
+                    if (role === 'superadmin') continue;
+                    if (role === 'admin' && !isSuperAdmin) continue;
                     var opt = document.createElement('option');
                     opt.value = name;
                     opt.textContent = name;
@@ -154,9 +172,14 @@ function updateModSelects() {
 function updateApproveButton() {
     try {
         var approveModBtn = document.getElementById('approveModBtn');
+        var approveAdminBtn = document.getElementById('approveAdminBtn');
         var modPlayerSelect = document.getElementById('modPlayerSelect');
+        var hasSelection = !!modPlayerSelect && !!modPlayerSelect.value;
         if (approveModBtn) {
-            approveModBtn.disabled = !modPlayerSelect || !modPlayerSelect.value;
+            approveModBtn.disabled = !hasSelection;
+        }
+        if (approveAdminBtn) {
+            approveAdminBtn.disabled = !hasSelection;
         }
     } catch (error) {
         console.error('Error in updateApproveButton:', error);

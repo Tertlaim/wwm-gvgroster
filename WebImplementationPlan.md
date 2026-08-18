@@ -174,6 +174,22 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
   - Implemented in `js/context-menu.js` (selection + actions) + `js/shortcuts.js` (keys); legend auto-lists the new keys
   - Note: plan originally put selection in `dragdrop.js`; it lives in `context-menu.js` instead so selection and the actions it drives share one module
 
+### Phase 7B: Roles & Admin Management + UI Usability ✅ COMPLETE
+**User-reported: "can't add a new mod/admin"; wanted SuperAdmin above admin, data-driven roles, help legend + collapsible panels.**
+
+- [x] **SuperAdmin role** above Admin - `Tertlaim` is SuperAdmin (stored in `config/auth.json`, git-ignored)
+  - Roles are fully data-driven: `server.js` resolves sessions from stored user records (superadmin/admin/mod); no usernames or roles hardcoded in client/server logic (removed the old hardcoded `'Tertlaim'` checks in render.js/main.js)
+  - Login, `/api/moderators/*`, `requireAdmin` all role-aware; new `requireSuperAdmin` guards admin management
+- [x] **New Mod / New Admin fixed** (the original bug had TWO causes):
+  - `/api/moderators/add` fetch had NO auth header -> 401 since Phase 4.4 (now sends `getAuthHeader()`)
+  - New Mod button was never enabled: no `change` listener on the player select (added; `updateApproveButton` fires on selection)
+  - SuperAdmin-only **New Admin** button (`data-role-show="superadmin"`) creates admins; admins can only add/demote mods (server enforces: 403 otherwise); re-adding existing staff -> 400
+  - Demote: admins demote mods; SuperAdmin can also demote admins; the owner can never be demoted
+  - Verified E2E: full role matrix via API (add admin/add mod/403 guards), real UI New Mod -> Demote cycle on the live server (account created then removed, auth.json restored)
+- [x] **Help & Shortcuts panel** below the Guild panel (collapsible) - keyboard shortcuts grid auto-built from the `Shortcuts` registry + an 8-item Quick Guide (register, drag & drop, right-click menu, keyboard select, bulk, editing, groups, collapsing)
+- [x] **Collapsible panels** for all editable panels (A-H + Help): click a panel header to expand/collapse, chevron indicator, state persisted in `localStorage` (`gw_collapsed_panels`), survives reloads
+- **Roles storage note:** accounts/roles stay in `config/auth.json` (the git-ignored auth database) rather than `data/database.json` - credentials must not flow through the merge engine or SSE broadcast, which would leak hashed/plaintext passwords to every viewer. Data-driven, versioned out of the repo = not hardcoded.
+
 ### Phase 8: Export & Data Portability
 - [ ] **8.1 Export options** (was plan 4.4)
   - New: `js/export.js`; touch: `index.html`
@@ -268,6 +284,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 5: Concurrency (Merge + SSE) | done | 100% |
 | Phase 6: Admin Tools & Editing Polish | done | 100% |
 | Phase 7: Power-User Interactions | ✅ complete | 100% |
+| Phase 7B: Roles, Admin Mgmt & Usability | ✅ complete | 100% |
 | Phase 8: Export & Backup | pending | 0% |
 | Phase 9: Mobile & Accessibility | pending | 0% |
 | Phase 10: Data Model Simplification | pending | 0% |
@@ -275,7 +292,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 12: Supabase Migration | pending | 0% |
 | Phase 13: Cron Keep-Alive | pending | 0% |
 
-**Overall Progress:** ~91%
+**Overall Progress:** ~93%
 
 ---
 
@@ -294,6 +311,8 @@ guild-war-management/            (git repo, branch main)
 | 9 | Non-atomic writeDatabase (crash can corrupt JSON) | Phase 11.3 |
 | 10 | Tombstones in-memory only (lost on restart) | Phase 11.4 |
 | 11 | Poll can wipe an in-progress edit (no dirty-check) | Phase 11.5 |
+| 12 | New Mod button broken (401 - no auth header, and never enabled on selection) | ✅ Fixed in Phase 7B |
+| 13 | No way to add admins (no SuperAdmin role, roles hardcoded) | ✅ Fixed in Phase 7B (SuperAdmin, data-driven roles) |
 
 ---
 

@@ -52,12 +52,26 @@ const AuthModule = {
         } catch (e) {}
     },
     
+    // SuperAdmin sits above Admin; admins and superadmins are both "admin" for
+    // role checks, and roles come from the server store (never hardcoded).
+    isSuperAdmin: function() {
+        return this.currentUser && this.currentUser.role === 'superadmin';
+    },
+    
     isAdmin: function() {
-        return this.currentUser && this.currentUser.role === 'admin';
+        return this.currentUser && (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin');
     },
     
     isMod: function() {
-        return this.currentUser && (this.currentUser.role === 'admin' || this.currentUser.role === 'mod');
+        return this.currentUser && (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin' || this.currentUser.role === 'mod');
+    },
+    
+    // Friendly display label for a stored role
+    getRoleLabel: function(role) {
+        if (role === 'superadmin') return 'SuperAdmin';
+        if (role === 'admin') return 'Admin';
+        if (role === 'mod') return 'Moderator';
+        return role || '';
     },
     
     isLoggedIn: function() {
@@ -97,6 +111,7 @@ const AuthModule = {
     
     updateUI: function() {
         const isLoggedIn = this.isLoggedIn();
+        const isSuperAdmin = this.isSuperAdmin();
         const isAdmin = this.isAdmin();
         const isMod = this.isMod();
         
@@ -105,9 +120,9 @@ const AuthModule = {
         
         if (authWidget) {
             if (isLoggedIn) {
-                const roleIcon = isAdmin ? 'crown' : 'user-shield';
+                const roleIcon = isSuperAdmin ? 'crown' : isAdmin ? 'shield-halved' : 'user-shield';
                 const safeName = typeof esc === 'function' ? esc(this.getUserName() || '') : (this.getUserName() || '');
-                const safeRole = typeof esc === 'function' ? esc(this.getUserRole() || '') : (this.getUserRole() || '');
+                const safeRole = typeof esc === 'function' ? esc(this.getRoleLabel(this.getUserRole()) || '') : (this.getRoleLabel(this.getUserRole()) || '');
                 authWidget.innerHTML = 
                     '<div class="user-badge-small">' +
                         '<i class="fas fa-' + roleIcon + '"></i> ' +
@@ -139,7 +154,10 @@ const AuthModule = {
         
         if (userRoleDisplay) {
             if (isLoggedIn) {
-                if (isAdmin) {
+                if (isSuperAdmin) {
+                    userRoleDisplay.textContent = '👑 You are a SuperAdmin';
+                    userRoleDisplay.style.color = '#f5c542';
+                } else if (isAdmin) {
                     userRoleDisplay.textContent = '👑 You are an Admin';
                     userRoleDisplay.style.color = '#f5c542';
                 } else if (isMod) {
@@ -194,6 +212,7 @@ const AuthModule = {
         document.querySelectorAll('[data-role-show]').forEach(function(el) {
             var roles = el.dataset.roleShow.split(',');
             var hasAccess = roles.some(function(role) {
+                if (role === 'superadmin') return self.isSuperAdmin();
                 if (role === 'admin') return self.isAdmin();
                 if (role === 'mod') return self.isMod();
                 if (role === 'public') return !self.isLoggedIn();
@@ -243,6 +262,10 @@ const AuthModule = {
                     AuthModule.login({ name: result.name, role: result.role, token: result.token });
                     loginModal.classList.remove('active');
                     if (loginError) loginError.textContent = '';
+                    // Load staff list so the admin panel shows roles immediately
+                    if (AuthModule.isAdmin() && typeof loadModerators === 'function') {
+                        await loadModerators();
+                    }
                     if (typeof render === 'function') render();
                     if (typeof saveState === 'function') saveState();
                     // Moderators are prompted to change their default password
