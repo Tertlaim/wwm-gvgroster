@@ -2,7 +2,7 @@
 // DRAGDROP - Drag and drop handlers
 // ============================================================
 
-var dragData = null;
+let dragData = null;
 
 function attachDragListeners() {
     document.removeEventListener('dragstart', handleDragStart);
@@ -32,21 +32,21 @@ function handleDragStart(e) {
         return false; 
     }
     
-    var el = e.target.closest('.guild-card, [draggable="true"]');
+    const el = e.target.closest('.guild-card, [draggable="true"]');
     if (!el) return;
     
-    var name = el.dataset.name;
-    var cls = el.dataset.class;
-    var role = el.dataset.role || 'Member';
-    var playerId = el.dataset.playerId || null;
-    var group = el.dataset.group || null;
-    var reserveIndex = el.dataset.reserveIndex !== undefined ? parseInt(el.dataset.reserveIndex) : null;
-    var guildIndex = el.dataset.guildIndex !== undefined ? parseInt(el.dataset.guildIndex) : null;
-    var type = el.dataset.type || null;
+    const name = el.dataset.name;
+    const cls = el.dataset.class;
+    const role = el.dataset.role || 'Member';
+    const playerId = el.dataset.playerId || null;
+    const group = el.dataset.group || null;
+    const reserveIndex = el.dataset.reserveIndex !== undefined ? parseInt(el.dataset.reserveIndex) : null;
+    const guildIndex = el.dataset.guildIndex !== undefined ? parseInt(el.dataset.guildIndex) : null;
+    const type = el.dataset.type || null;
     
-    var isFromGuild = type === 'guild' || el.classList.contains('guild-card') || el.classList.contains('guild-member-badge');
-    var isFromReserve = type === 'reserve' || el.classList.contains('reserve-badge');
-    var isFromGroup = type === 'group' || el.classList.contains('player-badge');
+    const isFromGuild = type === 'guild' || el.classList.contains('guild-card') || el.classList.contains('guild-member-badge');
+    const isFromReserve = type === 'reserve' || el.classList.contains('reserve-badge');
+    const isFromGroup = type === 'group' || el.classList.contains('player-badge');
     
     dragData = { 
         name: name, 
@@ -73,7 +73,7 @@ function handleDragStart(e) {
 }
 
 function handleDragEnd(e) {
-    var el = e.target.closest('[draggable="true"]');
+    const el = e.target.closest('[draggable="true"]');
     if (el) el.classList.remove('dragging');
     document.querySelectorAll('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid')
         .forEach(function(c) { c.classList.remove('drag-over'); });
@@ -89,12 +89,12 @@ function handleDragOver(e) {
 
 function handleDragEnter(e) { 
     e.preventDefault(); 
-    var t = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid'); 
+    const t = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid'); 
     if (t) t.classList.add('drag-over'); 
 }
 
 function handleDragLeave(e) { 
-    var t = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid'); 
+    const t = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid'); 
     if (t) t.classList.remove('drag-over'); 
 }
 
@@ -113,17 +113,17 @@ function handleDrop(e) {
         return;
     }
     
-    var target = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid');
+    const target = e.target.closest('.group-card, .reserve-area, .guild-member-pool, .player-list, .reserve-pool, .guild-cards-grid');
     if (!target) {
         dragData = null;
         return;
     }
     
-    var targetGroup = null;
-    var targetIsReserve = false;
-    var targetIsGuild = false;
+    let targetGroup = null;
+    let targetIsReserve = false;
+    let targetIsGuild = false;
     
-    var groupCard = target.closest('.group-card');
+    const groupCard = target.closest('.group-card');
     if (groupCard) {
         targetGroup = groupCard.dataset.group;
     }
@@ -136,34 +136,34 @@ function handleDrop(e) {
         targetIsGuild = true;
     }
     
-    var playerList = target.closest('.player-list');
+    const playerList = target.closest('.player-list');
     if (playerList && !targetGroup) {
-        var parentCard = playerList.closest('.group-card');
+        const parentCard = playerList.closest('.group-card');
         if (parentCard) {
             targetGroup = parentCard.dataset.group;
         }
     }
     
-    var day = window.currentDay;
-    var g = getGroups();
-    var r = getReserves();
-    var gm = getGuildMembers();
+    const day = window.currentDay;
+    const g = getGroups();
+    const r = getReserves();
+    const gm = getGuildMembers();
     
     if (targetGroup && !g[targetGroup]) {
         dragData = null;
         return;
     }
     
-    var name = dragData.name;
-    var cls = dragData.class;
-    var role = dragData.role;
-    var group = dragData.group;
-    var reserveIndex = dragData.reserveIndex;
-    var guildIndex = dragData.guildIndex;
-    var playerId = dragData.playerId;
-    var isFromGroup = dragData.isFromGroup;
-    var isFromReserve = dragData.isFromReserve;
-    var isFromGuild = dragData.isFromGuild;
+    const name = dragData.name;
+    const cls = dragData.class;
+    const role = dragData.role;
+    const group = dragData.group;
+    const reserveIndex = dragData.reserveIndex;
+    const guildIndex = dragData.guildIndex;
+    const playerId = dragData.playerId;
+    const isFromGroup = dragData.isFromGroup;
+    const isFromReserve = dragData.isFromReserve;
+    const isFromGuild = dragData.isFromGuild;
     
     // ---- RESERVE TO RESERVE: BLOCK (prevent useless duplicate) ----
     if (isFromReserve && targetIsReserve) {
@@ -175,12 +175,12 @@ function handleDrop(e) {
     
     // ---- DUPLICATE CHECKS FOR GROUPS ----
     if (targetGroup) {
-        var duplicateCount = 0;
-        var groupKeys = Object.keys(g);
-        for (var i = 0; i < groupKeys.length; i++) {
-            var key = groupKeys[i];
+        let duplicateCount = 0;
+        const groupKeys = Object.keys(g);
+        for (let i = 0; i < groupKeys.length; i++) {
+            const key = groupKeys[i];
             if (g[key] && g[key].players) {
-                for (var j = 0; j < g[key].players.length; j++) {
+                for (let j = 0; j < g[key].players.length; j++) {
                     if (g[key].players[j].name === name && g[key].players[j].class === cls) {
                         duplicateCount++;
                     }
@@ -189,11 +189,11 @@ function handleDrop(e) {
         }
         
         if (duplicateCount > 0) {
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
             showToast('"' + name + '" already exists in a group for ' + dayName + '. Duplicates will be highlighted.', 'warning', 3000);
         }
         
-        var totalPlayers = getTotalGroupPlayers(day);
+        const totalPlayers = getTotalGroupPlayers(day);
         if (totalPlayers >= 30 && !isFromGroup) {
             showToast('Warning: Groups have ' + totalPlayers + '/30 players.', 'warning', 3000);
         }
@@ -208,9 +208,9 @@ function handleDrop(e) {
                 return;
             }
             if (isFromGroup || isFromReserve) {
-                var existsInGuild = false;
-                var guildList = getGuildMembers();
-                for (var i = 0; i < guildList.length; i++) {
+                let existsInGuild = false;
+                const guildList = getGuildMembers();
+                for (let i = 0; i < guildList.length; i++) {
                     if (guildList[i].name === name && guildList[i].class === cls) {
                         existsInGuild = true;
                         break;
@@ -226,8 +226,8 @@ function handleDrop(e) {
         }
         
         if (!canAddToGuildMembers(day)) {
-            var currentCount = getGuildMemberCount(day);
-            var limit = getGuildMemberLimit();
+            const currentCount = getGuildMemberCount(day);
+            const limit = getGuildMemberLimit();
             showToast('Guild Members is full (' + currentCount + '/' + limit + ').', 'error', 3000);
             dragData = null;
             render();
@@ -236,17 +236,17 @@ function handleDrop(e) {
     }
     
     // ---- EXECUTE MOVE/COPY ----
-    var shouldRemoveFromSource = false;
-    var shouldAddToTarget = false;
-    var playerToMove = null;
-    var movedPlayer = null;
-    var movedFrom = null;
-    var movedTo = null;
+    let shouldRemoveFromSource = false;
+    let shouldAddToTarget = false;
+    let playerToMove = null;
+    let movedPlayer = null;
+    let movedFrom = null;
+    let movedTo = null;
     
     // Find player data from source
     if (isFromGuild) {
         if (playerId) {
-            for (var i = 0; i < gm.length; i++) {
+            for (let i = 0; i < gm.length; i++) {
                 if (gm[i].id === playerId) {
                     playerToMove = gm[i];
                     break;
@@ -254,7 +254,7 @@ function handleDrop(e) {
             }
         }
         if (!playerToMove) {
-            for (var i = 0; i < gm.length; i++) {
+            for (let i = 0; i < gm.length; i++) {
                 if (gm[i].name === name && gm[i].class === cls) {
                     playerToMove = gm[i];
                     break;
@@ -275,7 +275,7 @@ function handleDrop(e) {
         movedFrom = 'guild';
         movedTo = targetGroup;
     } else if (isFromReserve && targetIsGuild) {
-        var existsInGuild = isPlayerInGuildMembers(day, name, cls);
+        const existsInGuild = isPlayerInGuildMembers(day, name, cls);
         if (existsInGuild) {
             shouldRemoveFromSource = true;
             shouldAddToTarget = false;
@@ -287,7 +287,7 @@ function handleDrop(e) {
             movedTo = 'guild';
         }
     } else if (isFromGroup && targetIsGuild) {
-        var existsInGuild = isPlayerInGuildMembers(day, name, cls);
+        const existsInGuild = isPlayerInGuildMembers(day, name, cls);
         if (existsInGuild) {
             shouldRemoveFromSource = true;
             shouldAddToTarget = false;
@@ -331,10 +331,10 @@ function handleDrop(e) {
     // ---- EXECUTE ----
     if (shouldRemoveFromSource) {
         if (group && g && g[group]) {
-            var arr = g[group].players;
-            var idx = -1;
+            const arr = g[group].players;
+            let idx = -1;
             if (playerId) {
-                for (var i = 0; i < arr.length; i++) {
+                for (let i = 0; i < arr.length; i++) {
                     if (arr[i].id === playerId) {
                         idx = i;
                         break;
@@ -342,7 +342,7 @@ function handleDrop(e) {
                 }
             }
             if (idx === -1) {
-                for (var i = 0; i < arr.length; i++) {
+                for (let i = 0; i < arr.length; i++) {
                     if (arr[i].name === name && arr[i].class === cls) {
                         idx = i;
                         break;
@@ -354,8 +354,8 @@ function handleDrop(e) {
                 arr.splice(idx, 1);
             }
         } else if (isFromReserve && playerId && r) {
-            var reserveIdx = -1;
-            for (var i = 0; i < r.length; i++) {
+            let reserveIdx = -1;
+            for (let i = 0; i < r.length; i++) {
                 if (r[i].id === playerId) {
                     reserveIdx = i;
                     break;
@@ -370,8 +370,8 @@ function handleDrop(e) {
             r.splice(reserveIndex, 1);
         } else if (isFromGuild && playerToMove) {
             movedPlayer = playerToMove;
-            for (var d = 0; d < ['sat', 'sun'].length; d++) {
-                var dayKey = ['sat', 'sun'][d];
+            for (let d = 0; d < ['sat', 'sun'].length; d++) {
+                const dayKey = ['sat', 'sun'][d];
                 if (window.guildMembers && window.guildMembers[dayKey]) {
                     window.guildMembers[dayKey] = window.guildMembers[dayKey].filter(function(p) {
                         return p.id !== playerToMove.id;
@@ -402,7 +402,7 @@ function handleDrop(e) {
     if (shouldAddToTarget) {
         if (targetIsReserve) {
             if (r) {
-                var playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
+                const playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
                 if (!playerData.id) playerData.id = generatePlayerId();
                 r.push(playerData);
                 if (!movedPlayer) movedPlayer = playerData;
@@ -418,7 +418,7 @@ function handleDrop(e) {
             }
             if (canAddToGuildMembers(day)) {
                 if (gm && !isPlayerInGuildMembers(day, name, cls)) {
-                    var playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
+                    const playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
                     if (!playerData.id) playerData.id = generatePlayerId();
                     gm.push(playerData);
                     if (!movedPlayer) movedPlayer = playerData;
@@ -427,7 +427,7 @@ function handleDrop(e) {
                 }
             }
         } else if (targetGroup && g && g[targetGroup]) {
-            var playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
+            const playerData = movedPlayer ? { ...movedPlayer } : { name: name, class: cls, role: role };
             if (!playerData.id) playerData.id = generatePlayerId();
             g[targetGroup].players.push(playerData);
             if (!movedPlayer) movedPlayer = playerData;
@@ -444,10 +444,10 @@ function handleDrop(e) {
     // ---- LOG TO HISTORY ----
     if (movedPlayer && (shouldRemoveFromSource || shouldAddToTarget)) {
         if (typeof History !== 'undefined' && History.add) {
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
-            var actionType = 'move';
-            var fromDisplay = movedFrom || 'unknown';
-            var toDisplay = movedTo || 'unknown';
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            let actionType = 'move';
+            let fromDisplay = movedFrom || 'unknown';
+            let toDisplay = movedTo || 'unknown';
             
             if (shouldRemoveFromSource && !shouldAddToTarget) {
                 actionType = 'delete';

@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 10 + 10B Complete (Export Options + Guild CSV import/export). Next up: Phase 11 - Mobile & Accessibility
+**Status:** Phase 10 + 10B Complete + code-quality pass (const/let, CSS classes, vendored FA, a11y, theme colors). Next up: Phase 11 - Code Quality & Refactoring
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -224,11 +224,20 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - [x] **Public staff list** - new `GET /api/staff` (names + roles only, no credentials) lets public viewers see who the admins/moderators are in the Admin panel (was empty for public); staff list also loads for everyone on init
 - [x] **Admin icon fix** - `fa-shield-halved` -> `fa-shield-alt` in the staff list, user widget, and roles legend (FA 6.0.0-beta3 does not ship the renamed icon)
 
-### Phase 11: Mobile & Accessibility
-- [ ] **11.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
-- [ ] **11.2 Accessibility** (was 9.2) - ARIA labels, keyboard navigation, color contrast
+### Phase 11: Code Quality & Refactoring (structural - planned, not started)
+From the 2026-08-18 review; all items are behavior-preserving and verified by the existing manual regression suite.
+- [ ] **11.1 Split `server.js`** (~1400 lines) into `server/auth.js`, `server/data.js` (read/write/merge/tombstones/atomic), `server/history.js`, `server/rate-limit.js`, `server/routes/*.js`
+- [ ] **11.2 Split `main.js`** (~1600 lines): extract sync engine, admin tools, help panel, collapsibles, init into modules (like the newer module files)
+- [ ] **11.3 Shared `js/utils.js`** - `esc`, `getAuthHeader`, `_downloadBlob`/download helpers, CSV parser (currently duplicated in api.js / export.js / main.js / render-helpers.js)
+- [ ] **11.4 Diffed/targeted rendering** - replace full `render()` rebuilds on save with panel-level DOM updates (fixes focus loss + DOM churn; keeps the Phase 8.3 dirty-check as a safety net)
+- [ ] **11.5 `App.state` consolidation** - single state object for `window.groups/reserves/guildMembers/moderators/lastUpdateTime` (makes sync/render/test simpler)
+- [ ] **11.6 Finish the CSS-class migration** for the remaining ~66 inline `style=` in index.html + JS-generated markup (utilities: btn-auto/btn-xl/btn-active/flex-row-sm/select-field/modal-sm already added)
 
-### Phase 12: Data Model Simplification (known bug #5 - DEFERRED, high blast radius)
+### Phase 12: Mobile & Accessibility
+- [ ] **12.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
+- [ ] **12.2 Accessibility** (was 9.2) - ARIA labels (partial done), keyboard navigation, color contrast, modal focus trap (done), icon-button labels
+
+### Phase 13: Data Model Simplification (known bug #5 - DEFERRED, high blast radius)
 - [ ] `guildMembers` from `{ sat: [], sun: [] }` to a single array
   - Touches every client file + server readers; only worth the risk if the day-split actually causes bugs in practice. Phase 10 exports may make the need concrete.
 
@@ -296,8 +305,9 @@ guild-war-management/            (git repo, branch main)
 | Phase 9: Security Hardening | ✅ complete | 100% |
 | Phase 10: Export Options | ✅ complete | 100% |
 | Phase 10B: Guild CSV Import/Export + Public Staff | ✅ complete | 100% |
-| Phase 11: Mobile & Accessibility | pending | 0% |
-| Phase 12: Data Model Simplification | deferred | 0% |
+| Phase 11: Code Quality & Refactoring | pending | 0% |
+| Phase 12: Mobile & Accessibility | pending | 0% |
+| Phase 13: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
 **Overall Progress:** ~99.5%
@@ -312,7 +322,7 @@ guild-war-management/            (git repo, branch main)
 | 2 | No right-click context menu | ✅ Fixed in Phase 7.1 (context-menu.js) |
 | 3 | No extended keyboard shortcuts (C/M/E/Delete) | ✅ Fixed in Phase 7.2 (click-to-select + keys) |
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
-| 5 | guildMembers day-specific (should be single array) | Phase 12 (deferred - high blast radius) |
+| 5 | guildMembers day-specific (should be single array) | Phase 13 (deferred - high blast radius) |
 | 6 | Backup download 401s (window.open without auth header) | ✅ Fixed in Phase 8.4 (fetch + auth header + button in Admin Tools) |
 | 7 | `config/auth.json` plaintext passwords (bcrypt unused) | ✅ Fixed in Phase 9.1 (bcrypt hashes + boot migration) |
 | 8 | No rate limiting on login/register | ✅ Fixed in Phase 9.2 (20 login / 15 register per 15 min, 429 + retryAfter) |
@@ -341,7 +351,7 @@ guild-war-management/            (git repo, branch main)
 ### Future considerations
 - Discord integration (standalone module, after the current roadmap)
 - Multi-line notes, custom group colors, per-day announcements
-- Migrate to single-array guildMembers (Phase 12) unlocks cleaner exports
+- Migrate to single-array guildMembers (Phase 13) unlocks cleaner exports
 - ~~**CSV import of guild members (Admin+)**~~ -> IMPLEMENTED as Phase 10B (export + file upload + paste import near the Guild panel)
 - **JSON restore (Admin+)** - the backup currently has NO upload path: restoring means stopping the server, replacing `data/database.json`, restarting (manual, documented). A Restore-from-backup upload (validate JSON, overwrite via the atomic writer, full history entry) is the natural companion to the CSV import feature and would make backups genuinely usable end-to-end.
 

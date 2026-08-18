@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="css/responsive.css" />
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="vendor/font-awesome/all.min.css" />
 </head>
 <body>
     <div class="app" id="app">
@@ -70,10 +70,10 @@
                     <div id="announcementEditor" style="display:none; margin-top:var(--spacing-sm);">
                         <textarea id="announcementInput" rows="4" maxlength="500" placeholder="Enter announcement..."></textarea>
                         <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm);">
-                            <button class="btn btn-sm" id="saveAnnouncementBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <button class="btn btn-sm btn-auto" id="saveAnnouncementBtn">
                                 <i class="fas fa-save"></i> Save
                             </button>
-                            <button class="btn btn-sm btn-outline" id="cancelAnnouncementBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <button class="btn btn-sm btn-outline btn-auto" id="cancelAnnouncementBtn">
                                 <i class="fas fa-times"></i> Cancel
                             </button>
                         </div>
@@ -115,14 +115,14 @@
                 <div class="reserve-area collapsible" id="reserveArea">
                     <div class="reserve-header">
                         <h3><i class="fas fa-users"></i> Reserves · <span id="reserveCount">0</span></h3>
-                        <div class="reserve-actions" id="reserveActions" data-auth-show="mod,admin" style="display:none;">
+                        <div class="reserve-actions" id="reserveActions" data-role-show="mod" style="display:none;">
                             <button class="btn btn-sm btn-outline" id="selectAllReservesBtn" style="display:none;"><i class="fas fa-check-double"></i> Select All</button>
                             <button class="btn btn-sm btn-outline" id="moveToGuildBtn" style="display:none;"><i class="fas fa-arrow-down"></i> Move to Guild</button>
                             <button class="btn btn-sm btn-outline" id="deleteSelectedReservesBtn" style="display:none; background:var(--accent-red); color:white;"><i class="fas fa-trash"></i> Delete Selected</button>
                         </div>
                     </div>
                     <div class="reserve-pool" id="reservePool"></div>
-                    <div class="draggable-hint" id="dragHint" data-auth-show="mod,admin" style="display:none;">
+                    <div class="draggable-hint" id="dragHint" data-role-show="mod" style="display:none;">
                         <i class="fas fa-arrows-alt"></i> drag names between groups & reserves (mods+)
                     </div>
                     <span class="panel-label">C</span>
@@ -132,7 +132,7 @@
 <div class="guild-member-area collapsible" id="guildMemberArea">
     <div class="guild-header">
         <h3><i class="fas fa-users"></i> Guild Members · <span id="guildMemberCount">0</span></h3>
-        <div class="guild-actions" id="guildActions" data-auth-show="admin,mod" style="display:none;">
+        <div class="guild-actions" id="guildActions" data-role-show="mod" style="display:none;">
             <button class="btn btn-sm btn-outline" id="moveToReserveBtn"><i class="fas fa-arrow-right"></i> Copy to Reserve</button>
             <button class="btn btn-sm btn-outline" id="deleteSelectedGuildBtn" data-role-show="admin" style="display:none;"><i class="fas fa-trash"></i> Delete Selected</button>
         </div>
@@ -141,10 +141,10 @@
                     <!-- Guild member CSV export/import (admin+) - Phase 10B -->
                     <div id="guildCsvTools" class="guild-csv-tools" data-role-show="admin" style="display:none;">
                         <span style="font-size:var(--font-size-xs); color:var(--text-muted);"><i class="fas fa-file-csv"></i> Guild Member List:</span>
-                        <button class="btn btn-sm" id="guildCsvExportBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                        <button class="btn btn-sm btn-auto" id="guildCsvExportBtn">
                             <i class="fas fa-download"></i> Export CSV
                         </button>
-                        <button class="btn btn-sm" id="guildCsvImportBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                        <button class="btn btn-sm btn-auto" id="guildCsvImportBtn">
                             <i class="fas fa-upload"></i> Import CSV
                         </button>
                         <span style="font-size:var(--font-size-xs); color:var(--text-muted);">edit in Excel, save as CSV, import back</span>
@@ -183,10 +183,10 @@
                     <div style="margin-top:var(--spacing-md); font-size:var(--font-size-sm); color:var(--text-secondary); line-height:1.7;">
                         <h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs);"><i class="fas fa-file-export"></i> Export Roster</h4>
                         <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap;">
-                            <button class="btn btn-sm" id="exportPdfBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <button class="btn btn-sm btn-auto" id="exportPdfBtn">
                                 <i class="fas fa-print"></i> PDF / Print
                             </button>
-                            <button class="btn btn-sm" id="exportImageBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <button class="btn btn-sm btn-auto" id="exportImageBtn">
                                 <i class="fas fa-image"></i> Image (PNG)
                             </button>
                         </div>
@@ -253,21 +253,21 @@
                     <div id="userRoleDisplay" style="margin-bottom:var(--spacing-sm); font-size:var(--font-size-md); color:var(--accent-gold);"></div>
                     <div class="admin-badge" id="adminList"></div>
                     <div class="mod-area" id="modArea" data-role-show="admin" style="display:none;">
-                        <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">
-                            <select id="modPlayerSelect" style="flex:2; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-full); padding:var(--spacing-xs) var(--spacing-md); color:var(--text-primary); min-width:100px;">
+                        <div class="flex-row-sm">
+                            <select id="modPlayerSelect" class="select-field">
                                 <option value="">-- select player --</option>
                             </select>
-                            <button class="btn" id="approveModBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--bg-active);">New Mod</button>
+                            <button class="btn btn-active" id="approveModBtn">New Mod</button>
                             <button class="btn" id="approveAdminBtn" data-role-show="superadmin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-gold); color:var(--text-inverse);">New Admin</button>
                         </div>
-                        <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">
-                            <select id="resetModSelect" style="flex:2; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-full); padding:var(--spacing-xs) var(--spacing-md); color:var(--text-primary); min-width:100px;">
+                        <div class="flex-row-sm">
+                            <select id="resetModSelect" class="select-field">
                                 <option value="">-- select mod --</option>
                             </select>
-                            <button class="btn" id="resetModBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--bg-active);">Reset PW</button>
+                            <button class="btn btn-active" id="resetModBtn">Reset PW</button>
                         </div>
-                        <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">
-                            <select id="demoteModSelect" style="flex:2; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-full); padding:var(--spacing-xs) var(--spacing-md); color:var(--text-primary); min-width:100px;">
+                        <div class="flex-row-sm">
+                            <select id="demoteModSelect" class="select-field">
                                 <option value="">-- select mod --</option>
                             </select>
                             <button class="btn" id="demoteModBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-red);">Demote</button>
@@ -299,7 +299,7 @@
                                 <label>ADD NEW GROUP :</label>
                                 <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap;">
                                     <input type="text" id="newGroupTitle" placeholder="Group name" style="flex:1; min-width:100px;" />
-                                    <button class="btn btn-sm" id="addGroupBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                                    <button class="btn btn-sm btn-auto" id="addGroupBtn">
                                         <i class="fas fa-plus"></i> Add
                                     </button>
                                 </div>
@@ -337,7 +337,7 @@
                     <div id="historyList" style="max-height:60vh; overflow-y:auto; font-size:var(--font-size-sm);">
                         <div style="color:var(--text-muted); text-align:center; padding:var(--spacing-sm);">Loading history...</div>
                     </div>
-                    <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">
+                    <div class="flex-row-sm">
                         <button class="btn btn-sm btn-outline" id="clearHistoryBtn" data-role-show="admin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-red); color:white; border:none;">
                             <i class="fas fa-trash"></i> Clear
                         </button>
@@ -399,24 +399,24 @@
 
     <!-- CONFIRMATION MODAL -->
     <div class="modal-overlay" id="confirmationModal">
-        <div class="modal-box" style="max-width: 400px;">
+        <div class="modal-box modal-sm">
             <h2><i class="fas fa-question-circle"></i> Confirm Action</h2>
             <p id="confirmationMessage" style="text-align:center; margin: var(--spacing-md) 0; color: var(--text-secondary);"></p>
             <div style="display:flex; gap:var(--spacing-sm); justify-content:center;">
-                <button class="btn" id="confirmActionBtn" style="width:auto; padding:var(--spacing-sm) var(--spacing-xl);"><i class="fas fa-check"></i> Confirm</button>
-                <button class="btn btn-outline" id="cancelActionBtn" style="width:auto; padding:var(--spacing-sm) var(--spacing-xl);"><i class="fas fa-times"></i> Cancel</button>
+                <button class="btn btn-xl" id="confirmActionBtn"><i class="fas fa-check"></i> Confirm</button>
+                <button class="btn btn-outline btn-xl" id="cancelActionBtn"><i class="fas fa-times"></i> Cancel</button>
             </div>
         </div>
     </div>
 
     <!-- ALERT MODAL -->
     <div class="modal-overlay" id="alertModal">
-        <div class="modal-box" style="max-width: 400px;">
+        <div class="modal-box modal-sm">
             <div style="text-align:center; font-size:2.5rem; margin-bottom:var(--spacing-sm);" id="alertIcon">⚠️</div>
             <h2 id="alertTitle" style="text-align:center;">Alert</h2>
             <p id="alertMessage" style="text-align:center; margin: var(--spacing-md) 0; color: var(--text-secondary); font-size:var(--font-size-lg); line-height:1.6;"></p>
             <div style="display:flex; gap:var(--spacing-sm); justify-content:center; margin-top:var(--spacing-md);">
-                <button class="btn" id="alertOkBtn" style="width:auto; padding:var(--spacing-sm) var(--spacing-xl);"><i class="fas fa-check"></i> OK</button>
+                <button class="btn btn-xl" id="alertOkBtn"><i class="fas fa-check"></i> OK</button>
             </div>
         </div>
     </div>

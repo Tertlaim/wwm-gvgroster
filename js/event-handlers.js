@@ -2,7 +2,7 @@
 //  EVENT HANDLERS - Unified event management
 // ============================================================
 
-var EventHandlers = {};
+const EventHandlers = {};
 
 EventHandlers.toggleEditMode = function(element, enable) {
     if (!element) return;
@@ -15,33 +15,33 @@ EventHandlers.toggleEditMode = function(element, enable) {
         if (typeof endUserEdit === 'function') endUserEdit();
     }
     
-    var displayMode = element.querySelectorAll('.display-mode');
-    var editMode = element.querySelectorAll('.edit-mode');
-    var actionButtons = element.querySelectorAll('.action-buttons');
+    const displayMode = element.querySelectorAll('.display-mode');
+    const editMode = element.querySelectorAll('.edit-mode');
+    const actionButtons = element.querySelectorAll('.action-buttons');
     // The return-to-reserves arrow is a two-step action; pause it while editing
     // so it does not crowd the save/cancel buttons.
-    var returnButtons = element.querySelectorAll('[data-action="return"]');
+    const returnButtons = element.querySelectorAll('[data-action="return"]');
     
-    for (var i = 0; i < displayMode.length; i++) {
+    for (let i = 0; i < displayMode.length; i++) {
         displayMode[i].style.display = enable ? 'none' : '';
     }
-    for (var i = 0; i < editMode.length; i++) {
+    for (let i = 0; i < editMode.length; i++) {
         editMode[i].style.display = enable ? '' : 'none';
     }
-    for (var i = 0; i < actionButtons.length; i++) {
+    for (let i = 0; i < actionButtons.length; i++) {
         actionButtons[i].style.display = enable ? '' : 'none';
     }
-    for (var i = 0; i < returnButtons.length; i++) {
+    for (let i = 0; i < returnButtons.length; i++) {
         returnButtons[i].style.display = enable ? 'none' : '';
     }
     
     if (enable) {
-        var input = element.querySelector('.edit-input');
+        const input = element.querySelector('.edit-input');
         if (input) {
             setTimeout(function() {
                 input.focus();
                 // Set cursor to end, but allow clicking anywhere
-                var length = input.value.length;
+                const length = input.value.length;
                 input.setSelectionRange(length, length);
             }, 10);
         }
@@ -49,39 +49,39 @@ EventHandlers.toggleEditMode = function(element, enable) {
 };
 
 EventHandlers.saveItem = function(event) {
-    var button = event.target.closest('[data-action="save"]');
+    const button = event.target.closest('[data-action="save"]');
     if (!button) return;
     
-    var element = button.closest('[data-editable]');
+    const element = button.closest('[data-editable]');
     if (!element) {
         console.warn('No editable element found');
         showToast('Failed to update player. Please try again.', 'error', 2000);
         return;
     }
     
-    var input = element.querySelector('.edit-input');
+    const input = element.querySelector('.edit-input');
     if (!input) {
         console.warn('No input found');
         showToast('Failed to update player. Please try again.', 'error', 2000);
         return;
     }
     
-    var value = input.value.trim();
+    const value = input.value.trim();
     if (!value) {
         showToast('Name cannot be empty.', 'error', 2000);
         return;
     }
     
-    var type = element.dataset.type;
-    var group = element.dataset.group;
-    var playerId = element.dataset.playerId;
-    var storedIndex = element.dataset.index !== undefined ? parseInt(element.dataset.index) : null;
-    var reserveIndex = element.dataset.reserveIndex !== undefined ? parseInt(element.dataset.reserveIndex) : null;
-    var guildIndex = element.dataset.guildIndex !== undefined ? parseInt(element.dataset.guildIndex) : null;
+    const type = element.dataset.type;
+    const group = element.dataset.group;
+    const playerId = element.dataset.playerId;
+    const storedIndex = element.dataset.index !== undefined ? parseInt(element.dataset.index) : null;
+    const reserveIndex = element.dataset.reserveIndex !== undefined ? parseInt(element.dataset.reserveIndex) : null;
+    const guildIndex = element.dataset.guildIndex !== undefined ? parseInt(element.dataset.guildIndex) : null;
     
-    var playerName = element.dataset.name;
-    var playerClass = element.dataset.class;
-    var oldRole = element.dataset.role || 'Member';
+    const playerName = element.dataset.name;
+    const playerClass = element.dataset.class;
+    const oldRole = element.dataset.role || 'Member';
     
     console.log('=== SAVE ITEM ===');
     console.log('Type:', type);
@@ -90,26 +90,26 @@ EventHandlers.saveItem = function(event) {
     console.log('Player Class:', playerClass);
     
     // Get current data
-    var g = typeof getGroups === 'function' ? getGroups() : {};
-    var r = typeof getReserves === 'function' ? getReserves() : [];
-    var gm = typeof getGuildMembers === 'function' ? getGuildMembers() : [];
+    const g = typeof getGroups === 'function' ? getGroups() : {};
+    const r = typeof getReserves === 'function' ? getReserves() : [];
+    const gm = typeof getGuildMembers === 'function' ? getGuildMembers() : [];
     
-    var updated = false;
-    var playerData = null;
-    var clsSelect = element.querySelector('.class-select');
-    var roleSelect = element.querySelector('.role-select');
-    var cls = clsSelect ? clsSelect.value : playerClass;
-    var role = roleSelect ? roleSelect.value : 'Member';
+    let updated = false;
+    let playerData = null;
+    const clsSelect = element.querySelector('.class-select');
+    const roleSelect = element.querySelector('.role-select');
+    const cls = clsSelect ? clsSelect.value : playerClass;
+    const role = roleSelect ? roleSelect.value : 'Member';
     
     // ----- UPDATE BASED ON TYPE -----
     
     if (type === 'group' && group && g && g[group]) {
-        var players = g[group].players;
+        const players = g[group].players;
         
         // Try to find by ID first
         if (playerId) {
-            var foundIndex = -1;
-            for (var i = 0; i < players.length; i++) {
+            let foundIndex = -1;
+            for (let i = 0; i < players.length; i++) {
                 if (players[i].id === playerId) {
                     foundIndex = i;
                     break;
@@ -125,7 +125,7 @@ EventHandlers.saveItem = function(event) {
         
         // If not found by ID, try stored index
         if (!updated && storedIndex !== null && storedIndex >= 0 && storedIndex < players.length) {
-            var existingPlayer = players[storedIndex];
+            const existingPlayer = players[storedIndex];
             if (existingPlayer.name === playerName && existingPlayer.class === playerClass) {
                 playerData = { id: existingPlayer.id || generatePlayerId(), name: value, class: cls, role: role };
                 players[storedIndex] = playerData;
@@ -136,7 +136,7 @@ EventHandlers.saveItem = function(event) {
         
         // If still not found, try to find by name+class as fallback
         if (!updated) {
-            for (var i = 0; i < players.length; i++) {
+            for (let i = 0; i < players.length; i++) {
                 if (players[i].name === playerName && players[i].class === playerClass) {
                     playerData = { id: players[i].id || generatePlayerId(), name: value, class: cls, role: role };
                     players[i] = playerData;
@@ -149,7 +149,7 @@ EventHandlers.saveItem = function(event) {
     } 
     else if (type === 'reserve' && reserveIndex !== null && reserveIndex !== undefined) {
         if (r && reserveIndex >= 0 && reserveIndex < r.length) {
-            var existingPlayer = r[reserveIndex];
+            const existingPlayer = r[reserveIndex];
             if (existingPlayer.id === playerId || (existingPlayer.name === playerName && existingPlayer.class === playerClass)) {
                 playerData = { id: existingPlayer.id || generatePlayerId(), name: value, class: cls, role: role };
                 r[reserveIndex] = playerData;
@@ -160,7 +160,7 @@ EventHandlers.saveItem = function(event) {
         
         // If not found by index, try name+class
         if (!updated && r) {
-            for (var i = 0; i < r.length; i++) {
+            for (let i = 0; i < r.length; i++) {
                 if (r[i].name === playerName && r[i].class === playerClass) {
                     playerData = { id: r[i].id || generatePlayerId(), name: value, class: cls, role: role };
                     r[i] = playerData;
@@ -172,12 +172,12 @@ EventHandlers.saveItem = function(event) {
         }
     } 
     else if (type === 'guild' && guildIndex !== null && guildIndex !== undefined) {
-        var days = ['sat', 'sun'];
-        var found = false;
+        const days = ['sat', 'sun'];
+        let found = false;
         
         days.forEach(function(day) {
             if (window.guildMembers && window.guildMembers[day]) {
-                for (var i = 0; i < window.guildMembers[day].length; i++) {
+                for (let i = 0; i < window.guildMembers[day].length; i++) {
                     if (window.guildMembers[day][i].id === playerId) {
                         window.guildMembers[day][i].name = value;
                         window.guildMembers[day][i].class = cls;
@@ -194,7 +194,7 @@ EventHandlers.saveItem = function(event) {
         if (!found) {
             days.forEach(function(day) {
                 if (window.guildMembers && window.guildMembers[day]) {
-                    for (var i = 0; i < window.guildMembers[day].length; i++) {
+                    for (let i = 0; i < window.guildMembers[day].length; i++) {
                         if (window.guildMembers[day][i].name === playerName && window.guildMembers[day][i].class === playerClass) {
                             window.guildMembers[day][i].name = value;
                             window.guildMembers[day][i].class = cls;
@@ -211,10 +211,10 @@ EventHandlers.saveItem = function(event) {
         if (found && playerData) {
             // Also update in groups and reserves
             days.forEach(function(day) {
-                var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+                const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 groupKeys.forEach(function(key) {
                     if (window.groups && window.groups[day] && window.groups[day][key]) {
-                        for (var i = 0; i < window.groups[day][key].players.length; i++) {
+                        for (let i = 0; i < window.groups[day][key].players.length; i++) {
                             if (window.groups[day][key].players[i].id === playerId || 
                                 (window.groups[day][key].players[i].name === playerName && window.groups[day][key].players[i].class === playerClass)) {
                                 window.groups[day][key].players[i].name = value;
@@ -225,7 +225,7 @@ EventHandlers.saveItem = function(event) {
                     }
                 });
                 if (window.reserves && window.reserves[day]) {
-                    for (var i = 0; i < window.reserves[day].length; i++) {
+                    for (let i = 0; i < window.reserves[day].length; i++) {
                         if (window.reserves[day][i].id === playerId ||
                             (window.reserves[day][i].name === playerName && window.reserves[day][i].class === playerClass)) {
                             window.reserves[day][i].name = value;
@@ -247,8 +247,8 @@ EventHandlers.saveItem = function(event) {
         
         // ---- LOG TO HISTORY ----
         if (typeof History !== 'undefined' && History.add) {
-            var day = window.currentDay || 'sat';
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            const day = window.currentDay || 'sat';
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
             
             History.add('edit', {
                 playerId: playerData.id || playerId,
@@ -270,24 +270,24 @@ EventHandlers.saveItem = function(event) {
 };
 
 EventHandlers.cancelEdit = function(event) {
-    var button = event.target.closest('[data-action="cancel"]');
+    const button = event.target.closest('[data-action="cancel"]');
     if (!button) return;
     
-    var element = button.closest('[data-editable]');
+    const element = button.closest('[data-editable]');
     if (element) {
         EventHandlers.toggleEditMode(element, false);
     }
 };
 
 EventHandlers.handleEditClick = function(event) {
-    var button = event.target.closest('[data-action="edit"]');
+    const button = event.target.closest('[data-action="edit"]');
     if (!button) return;
     
-    var element = button.closest('[data-editable]');
+    const element = button.closest('[data-editable]');
     if (element) {
-        var type = element.dataset.type;
-        var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const type = element.dataset.type;
+        const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
         
         if (type === 'guild' && !isAdmin) {
             showToast('Only admin can edit guild members.', 'error', 2000);
@@ -304,18 +304,18 @@ EventHandlers.handleEditClick = function(event) {
 EventHandlers.handleEditKeydown = function(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        var element = event.target.closest('[data-editable]');
+        const element = event.target.closest('[data-editable]');
         if (element) {
-            var saveBtn = element.querySelector('[data-action="save"]');
+            const saveBtn = element.querySelector('[data-action="save"]');
             if (saveBtn) {
                 saveBtn.click();
             }
         }
     } else if (event.key === 'Escape') {
         event.preventDefault();
-        var element = event.target.closest('[data-editable]');
+        const element = event.target.closest('[data-editable]');
         if (element) {
-            var cancelBtn = element.querySelector('[data-action="cancel"]');
+            const cancelBtn = element.querySelector('[data-action="cancel"]');
             if (cancelBtn) {
                 cancelBtn.click();
             }
@@ -325,10 +325,10 @@ EventHandlers.handleEditKeydown = function(event) {
 
 EventHandlers.setupEditListeners = function() {
     document.addEventListener('click', function(e) {
-        var target = e.target.closest('[data-action]');
+        const target = e.target.closest('[data-action]');
         if (!target) return;
         
-        var action = target.dataset.action;
+        const action = target.dataset.action;
         
         switch(action) {
             case 'edit':
@@ -359,33 +359,33 @@ EventHandlers.setupEditListeners = function() {
 };
 
 EventHandlers.handleReturnToReserve = function(event) {
-    var button = event.target.closest('[data-action="return"]');
+    const button = event.target.closest('[data-action="return"]');
     if (!button) return;
     
-    var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+    const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
     if (!isMod) {
         showToast('Only moderators can return players to reserves.', 'error', 2000);
         return;
     }
     
-    var element = button.closest('[data-editable]');
+    const element = button.closest('[data-editable]');
     if (!element) return;
     
-    var playerId = element.dataset.playerId;
-    var group = element.dataset.group;
-    var playerName = element.dataset.name;
-    var playerClass = element.dataset.class;
-    var playerRole = element.dataset.role || 'Member';
-    var day = window.currentDay;
+    const playerId = element.dataset.playerId;
+    const group = element.dataset.group;
+    const playerName = element.dataset.name;
+    const playerClass = element.dataset.class;
+    const playerRole = element.dataset.role || 'Member';
+    const day = window.currentDay;
     
-    var g = getGroups(); // This gets groups for current day
-    var r = getReserves(); // This gets reserves for current day
-    var movedPlayer = null;
-    var foundIndex = -1;
+    const g = getGroups(); // This gets groups for current day
+    const r = getReserves(); // This gets reserves for current day
+    let movedPlayer = null;
+    let foundIndex = -1;
     
     // Find the player by ID in the group
     if (group && g && g[group] && g[group].players) {
-        for (var i = 0; i < g[group].players.length; i++) {
+        for (let i = 0; i < g[group].players.length; i++) {
             if (g[group].players[i].id === playerId) {
                 foundIndex = i;
                 movedPlayer = g[group].players[i];
@@ -395,7 +395,7 @@ EventHandlers.handleReturnToReserve = function(event) {
         
         // If not found by ID, try name+class as fallback
         if (!movedPlayer) {
-            for (var i = 0; i < g[group].players.length; i++) {
+            for (let i = 0; i < g[group].players.length; i++) {
                 if (g[group].players[i].name === playerName && g[group].players[i].class === playerClass) {
                     foundIndex = i;
                     movedPlayer = g[group].players[i];
@@ -426,7 +426,7 @@ EventHandlers.handleReturnToReserve = function(event) {
             
             // ---- LOG TO HISTORY ----
             if (typeof History !== 'undefined' && History.add && movedPlayer) {
-                var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+                const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
                 History.add('move', {
                     playerId: movedPlayer.id || null,
                     playerName: movedPlayer.name,
@@ -449,42 +449,42 @@ EventHandlers.handleReturnToReserve = function(event) {
 };
 
 EventHandlers.handleDeleteItem = function(event) {
-    var button = event.target.closest('[data-action="delete"]');
+    const button = event.target.closest('[data-action="delete"]');
     if (!button) return;
     
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
     if (!isAdmin) {
         showToast('Only admin can delete guild members.', 'error', 2000);
         return;
     }
     
-    var element = button.closest('[data-editable]');
+    const element = button.closest('[data-editable]');
     if (!element) return;
     
-    var type = element.dataset.type;
+    const type = element.dataset.type;
     if (type !== 'guild') return;
     
-    var name = element.dataset.name;
-    var cls = element.dataset.class;
-    var playerId = element.dataset.playerId;
+    const name = element.dataset.name;
+    const cls = element.dataset.class;
+    const playerId = element.dataset.playerId;
     
     if (typeof showConfirmation === 'function') {
         showConfirmation('Remove "' + name + '" from guild members?', function() {
-            var days = ['sat', 'sun'];
-            var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-            var removedPlayer = null;
+            const days = ['sat', 'sun'];
+            const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
+            let removedPlayer = null;
             
             // Full delete - tombstone so stale copies can't resurrect the player
             if (playerId && typeof trackDeletedPlayerIds === 'function') {
                 trackDeletedPlayerIds(playerId);
             }
             
-            for (var d = 0; d < days.length; d++) {
-                var day = days[d];
+            for (let d = 0; d < days.length; d++) {
+                const day = days[d];
                 
                 // Remove from guild members
                 if (window.guildMembers && window.guildMembers[day]) {
-                    for (var i = 0; i < window.guildMembers[day].length; i++) {
+                    for (let i = 0; i < window.guildMembers[day].length; i++) {
                         if (window.guildMembers[day][i].id === playerId || 
                             (window.guildMembers[day][i].name === name && window.guildMembers[day][i].class === cls)) {
                             removedPlayer = window.guildMembers[day][i];
@@ -495,11 +495,11 @@ EventHandlers.handleDeleteItem = function(event) {
                 }
                 
                 // Remove from groups
-                for (var k = 0; k < groupKeys.length; k++) {
-                    var key = groupKeys[k];
+                for (let k = 0; k < groupKeys.length; k++) {
+                    const key = groupKeys[k];
                     if (window.groups && window.groups[day] && window.groups[day][key]) {
-                        var newPlayers = [];
-                        for (var p = 0; p < window.groups[day][key].players.length; p++) {
+                        const newPlayers = [];
+                        for (let p = 0; p < window.groups[day][key].players.length; p++) {
                             if (window.groups[day][key].players[p].id !== playerId &&
                                 !(window.groups[day][key].players[p].name === name && window.groups[day][key].players[p].class === cls)) {
                                 newPlayers.push(window.groups[day][key].players[p]);
@@ -511,8 +511,8 @@ EventHandlers.handleDeleteItem = function(event) {
                 
                 // Remove from reserves
                 if (window.reserves && window.reserves[day]) {
-                    var newReserves = [];
-                    for (var p = 0; p < window.reserves[day].length; p++) {
+                    const newReserves = [];
+                    for (let p = 0; p < window.reserves[day].length; p++) {
                         if (window.reserves[day][p].id !== playerId &&
                             !(window.reserves[day][p].name === name && window.reserves[day][p].class === cls)) {
                             newReserves.push(window.reserves[day][p]);
@@ -542,28 +542,28 @@ EventHandlers.handleDeleteItem = function(event) {
 
 EventHandlers.setupTitleListeners = function() {
     document.addEventListener('click', function(e) {
-        var target = e.target.closest('[data-title-action]');
+        const target = e.target.closest('[data-title-action]');
         if (!target) return;
         
-        var action = target.dataset.titleAction;
+        const action = target.dataset.titleAction;
         // The remove button sits at the card's bottom-right, OUTSIDE .group-title;
         // only edit/save/cancel require the title container.
-        var container = target.closest('.group-title');
+        const container = target.closest('.group-title');
         if (action !== 'remove' && !container) return;
         
-        var display = container ? container.querySelector('.title-display') : null;
-        var editInput = container ? container.querySelector('.title-edit') : null;
-        var editBtn = container ? container.querySelector('.title-edit-btn') : null;
-        var saveBtn = container ? container.querySelector('.title-save-btn') : null;
-        var cancelBtn = container ? container.querySelector('.title-cancel-btn') : null;
-        var groupKey = target.dataset.group || (container ? container.dataset.group : null);
+        const display = container ? container.querySelector('.title-display') : null;
+        const editInput = container ? container.querySelector('.title-edit') : null;
+        const editBtn = container ? container.querySelector('.title-edit-btn') : null;
+        const saveBtn = container ? container.querySelector('.title-save-btn') : null;
+        const cancelBtn = container ? container.querySelector('.title-cancel-btn') : null;
+        const groupKey = target.dataset.group || (container ? container.dataset.group : null);
         
         if (!groupKey) {
             console.warn('No group key found for title action');
             return;
         }
         
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
         
         switch(action) {
             case 'edit':
@@ -579,29 +579,29 @@ EventHandlers.setupTitleListeners = function() {
                 editInput.value = display.textContent;
                 setTimeout(function() { 
                     editInput.focus(); 
-                    var length = editInput.value.length;
+                    const length = editInput.value.length;
                     editInput.setSelectionRange(length, length);
                 }, 10);
                 break;
                 
             case 'save':
                 if (!isMod) return;
-                var newTitle = editInput.value.trim();
+                const newTitle = editInput.value.trim();
                 if (!newTitle) {
                     showToast('Title cannot be empty.', 'error', 2000);
                     return;
                 }
                 
-                var day = window.currentDay;
-                var groups = window.groups && window.groups[day] ? window.groups[day] : {};
-                var oldTitle = display.textContent;
+                const day = window.currentDay;
+                const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+                const oldTitle = display.textContent;
                 
                 if (groups && groups[groupKey]) {
                     groups[groupKey].title = newTitle;
                     display.textContent = newTitle;
                     
                     if (typeof History !== 'undefined' && History.add) {
-                        var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+                        const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
                         History.add('group_edit', {
                             details: `${oldTitle} → ${newTitle}`,
                             oldValue: oldTitle,
@@ -640,18 +640,18 @@ EventHandlers.setupTitleListeners = function() {
                     showToast('Only moderators can remove groups.', 'error', 2000);
                     return;
                 }
-                var day = window.currentDay || 'sat';
+                const removeDay = window.currentDay || 'sat';
                 // Prefer the human-readable title from the card (the button lives at
                 // the card's bottom-right, outside the title row).
-                var groupCard = target.closest('.group-card');
-                var titleEl = groupCard ? groupCard.querySelector('.title-display') : null;
-                var groupTitle = (titleEl && titleEl.textContent) ? titleEl.textContent : (display ? display.textContent : groupKey);
+                const groupCard = target.closest('.group-card');
+                const titleEl = groupCard ? groupCard.querySelector('.title-display') : null;
+                const groupTitle = (titleEl && titleEl.textContent) ? titleEl.textContent : (display ? display.textContent : groupKey);
                 if (typeof showConfirmation === 'function') {
                     showConfirmation('Remove group "' + groupTitle + '"?', function() {
-                        removeGroup(day, groupKey);
+                        removeGroup(removeDay, groupKey);
                     });
                 } else {
-                    removeGroup(day, groupKey);
+                    removeGroup(removeDay, groupKey);
                 }
                 break;
         }
@@ -700,17 +700,17 @@ EventHandlers.setupCheckboxListeners = function() {
 };
 
 EventHandlers.updateActionButtons = function() {
-    var reserveCheckboxes = document.querySelectorAll('.reserve-checkbox:checked');
-    var guildCheckboxes = document.querySelectorAll('.guild-checkbox:checked');
+    const reserveCheckboxes = document.querySelectorAll('.reserve-checkbox:checked');
+    const guildCheckboxes = document.querySelectorAll('.guild-checkbox:checked');
     
-    var moveToGuildBtn = document.getElementById('moveToGuildBtn');
-    var deleteSelectedGuildBtn = document.getElementById('deleteSelectedGuildBtn');
-    var moveToReserveBtn = document.getElementById('moveToReserveBtn');
-    var deleteSelectedReservesBtn = document.getElementById('deleteSelectedReservesBtn');
-    var selectAllBtn = document.getElementById('selectAllReservesBtn');
+    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
+    const deleteSelectedGuildBtn = document.getElementById('deleteSelectedGuildBtn');
+    const moveToReserveBtn = document.getElementById('moveToReserveBtn');
+    const deleteSelectedReservesBtn = document.getElementById('deleteSelectedReservesBtn');
+    const selectAllBtn = document.getElementById('selectAllReservesBtn');
     
-    var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-    var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+    const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
     
     if (moveToGuildBtn) {
         moveToGuildBtn.style.display = (reserveCheckboxes.length > 0 && (isAdmin || isMod)) ? 'inline-flex' : 'none';
@@ -719,7 +719,7 @@ EventHandlers.updateActionButtons = function() {
         deleteSelectedReservesBtn.style.display = (reserveCheckboxes.length > 0 && (isAdmin || isMod)) ? 'inline-flex' : 'none';
     }
     if (selectAllBtn) {
-        var totalCheckboxes = document.querySelectorAll('.reserve-checkbox');
+        const totalCheckboxes = document.querySelectorAll('.reserve-checkbox');
         selectAllBtn.style.display = (totalCheckboxes.length > 0 && (isAdmin || isMod)) ? 'inline-flex' : 'none';
     }
     
@@ -732,7 +732,7 @@ EventHandlers.updateActionButtons = function() {
 };
 
 EventHandlers.showSaveFeedback = function(element) {
-    var indicator = document.createElement('span');
+    const indicator = document.createElement('span');
     indicator.className = 'save-indicator';
     indicator.innerHTML = '✓ Saved!';
     indicator.style.cssText = 

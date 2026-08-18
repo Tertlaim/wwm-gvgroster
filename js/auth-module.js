@@ -127,10 +127,10 @@ const AuthModule = {
                     '<div class="user-badge-small">' +
                         '<i class="fas fa-' + roleIcon + '"></i> ' +
                         safeName + ' (' + safeRole + ')' +
-                        '<button class="logout-btn-small" id="changePwBtn" title="Change password"><i class="fas fa-key"></i></button>' +
-                        '<button class="logout-btn-small" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> logout</button>' +
+                        '<button class="logout-btn-small" id="changePwBtn" title="Change password" aria-label="Change password"><i class="fas fa-key"></i></button>' +
+                        '<button class="logout-btn-small" id="logoutBtn" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> logout</button>' +
                     '</div>';
-                var logoutBtn = document.getElementById('logoutBtn');
+                const logoutBtn = document.getElementById('logoutBtn');
                 if (logoutBtn) {
                     logoutBtn.addEventListener('click', function() {
                         AuthModule.logout();
@@ -138,12 +138,12 @@ const AuthModule = {
                         if (typeof saveState === 'function') saveState();
                     });
                 }
-                var changePwBtn = document.getElementById('changePwBtn');
+                const changePwBtn = document.getElementById('changePwBtn');
                 if (changePwBtn) {
                     changePwBtn.addEventListener('click', function() {
-                        var changePwModal = document.getElementById('changePwModal');
+                        const changePwModal = document.getElementById('changePwModal');
                         if (changePwModal) changePwModal.classList.add('active');
-                        var oldPwInput = document.getElementById('oldPwInput');
+                        const oldPwInput = document.getElementById('oldPwInput');
                         if (oldPwInput) oldPwInput.focus();
                     });
                 }
@@ -152,10 +152,10 @@ const AuthModule = {
                     '<button class="login-btn-small" id="loginOpenBtn">' +
                         '<i class="fas fa-sign-in-alt"></i> Mod Login' +
                     '</button>';
-                var loginBtn = document.getElementById('loginOpenBtn');
+                const loginBtn = document.getElementById('loginOpenBtn');
                 if (loginBtn) {
                     loginBtn.addEventListener('click', function() {
-                        var loginModal = document.getElementById('loginModal');
+                        const loginModal = document.getElementById('loginModal');
                         if (loginModal) loginModal.classList.add('active');
                     });
                 }
@@ -188,7 +188,7 @@ const AuthModule = {
         }
         
         // Update player role dropdown
-        var playerRoleSelect = document.getElementById('playerRole');
+        const playerRoleSelect = document.getElementById('playerRole');
         if (playerRoleSelect) {
             playerRoleSelect.disabled = !isMod;
             if (!isMod) {
@@ -198,35 +198,12 @@ const AuthModule = {
     },
     
     updateVisibility: function() {
-        var self = this;
+        const self = this;
         
-        document.querySelectorAll('[data-auth-show]').forEach(function(el) {
-            var roles = el.dataset.authShow.split(',');
-            var show = roles.some(function(role) {
-                if (role === 'all') return self.isLoggedIn();
-                if (role === 'admin') return self.isAdmin();
-                if (role === 'mod') return self.isMod();
-                if (role === 'public') return !self.isLoggedIn();
-                return false;
-            });
-            el.style.display = show ? '' : 'none';
-        });
-        
-        document.querySelectorAll('[data-auth-hide]').forEach(function(el) {
-            var roles = el.dataset.authHide.split(',');
-            var hide = roles.some(function(role) {
-                if (role === 'all') return self.isLoggedIn();
-                if (role === 'admin') return self.isAdmin();
-                if (role === 'mod') return self.isMod();
-                if (role === 'public') return !self.isLoggedIn();
-                return false;
-            });
-            el.style.display = hide ? 'none' : '';
-        });
-        
+        // Unified visibility: one data-role-show mechanism (no data-auth-show).
         document.querySelectorAll('[data-role-show]').forEach(function(el) {
-            var roles = el.dataset.roleShow.split(',');
-            var hasAccess = roles.some(function(role) {
+            const roles = el.dataset.roleShow.split(',');
+            const hasAccess = roles.some(function(role) {
                 if (role === 'superadmin') return self.isSuperAdmin();
                 if (role === 'admin') return self.isAdmin();
                 if (role === 'mod') return self.isMod();
@@ -238,10 +215,10 @@ const AuthModule = {
     },
     
     setupLoginListeners: function() {
-        var loginForm = document.getElementById('loginForm');
-        var loginModal = document.getElementById('loginModal');
-        var loginCloseBtn = document.getElementById('loginCloseBtn');
-        var loginError = document.getElementById('loginError');
+        const loginForm = document.getElementById('loginForm');
+        const loginModal = document.getElementById('loginModal');
+        const loginCloseBtn = document.getElementById('loginCloseBtn');
+        const loginError = document.getElementById('loginError');
         
         if (loginCloseBtn) {
             loginCloseBtn.addEventListener('click', function() {
@@ -262,8 +239,8 @@ const AuthModule = {
         if (loginForm) {
             loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                var user = document.getElementById('loginUser').value.trim();
-                var pass = document.getElementById('loginPass').value.trim();
+                const user = document.getElementById('loginUser').value.trim();
+                const pass = document.getElementById('loginPass').value.trim();
                 if (loginError) loginError.textContent = '';
                 
                 if (!user || !pass) {
@@ -271,7 +248,7 @@ const AuthModule = {
                     return;
                 }
                 
-                var result = await loginUser(user, pass);
+                const result = await loginUser(user, pass);
                 if (result && result.success) {
                     // Store session token for server-side auth (Phase 4.4)
                     AuthModule.login({ name: result.name, role: result.role, token: result.token });
@@ -285,9 +262,9 @@ const AuthModule = {
                     if (typeof saveState === 'function') saveState();
                     // Moderators are prompted to change their default password
                     if (result.role === 'mod') {
-                        var changePwModal = document.getElementById('changePwModal');
+                        const changePwModal = document.getElementById('changePwModal');
                         if (changePwModal) changePwModal.classList.add('active');
-                        var oldPwInput = document.getElementById('oldPwInput');
+                        const oldPwInput = document.getElementById('oldPwInput');
                         if (oldPwInput) oldPwInput.focus();
                     }
                 } else {

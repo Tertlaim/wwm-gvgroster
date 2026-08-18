@@ -6,7 +6,7 @@
 // The same actions power the Phase 7.2 keyboard shortcuts (C / M / E / Delete)
 // via the click-to-select flow (ContextMenu.selectedEl).
 
-var ContextMenu = {
+const ContextMenu = {
     menu: null,
     targetEl: null,
     selectedEl: null,
@@ -20,19 +20,19 @@ var ContextMenu = {
     },
     
     createMenu: function() {
-        var menu = document.createElement('div');
+        const menu = document.createElement('div');
         menu.id = 'contextMenu';
         menu.className = 'context-menu';
         document.body.appendChild(menu);
         this.menu = menu;
         
-        var self = this;
+        const self = this;
         menu.addEventListener('click', function(e) {
             // Submenu entry (Move to Group target) - handle first
-            var moveItem = e.target.closest('[data-cm-move]');
+            const moveItem = e.target.closest('[data-cm-move]');
             if (moveItem) {
-                var el = self.targetEl;
-                var targetGroup = moveItem.dataset.cmMove;
+                const el = self.targetEl;
+                const targetGroup = moveItem.dataset.cmMove;
                 self.close();
                 if (el && targetGroup) {
                     self.moveToGroup(el, targetGroup);
@@ -40,10 +40,10 @@ var ContextMenu = {
                 return;
             }
             
-            var item = e.target.closest('[data-cm-action]');
+            const item = e.target.closest('[data-cm-action]');
             if (!item) return;
-            var action = item.dataset.cmAction;
-            var target = self.targetEl;
+            const action = item.dataset.cmAction;
+            const target = self.targetEl;
             self.close();
             if (!target) return;
             
@@ -62,14 +62,14 @@ var ContextMenu = {
     },
     
     setupContextListener: function() {
-        var self = this;
+        const self = this;
         document.addEventListener('contextmenu', function(e) {
-            var el = e.target.closest('[data-editable], .guild-card');
+            const el = e.target.closest('[data-editable], .guild-card');
             if (!el || !el.dataset || !el.dataset.type) {
                 self.close();
                 return;
             }
-            var items = self.buildItems(el);
+            const items = self.buildItems(el);
             if (items.length === 0) {
                 // Public viewers have no actions - leave the native menu alone
                 self.close();
@@ -82,10 +82,10 @@ var ContextMenu = {
     
     // Which menu items apply to this element for the current user
     buildItems: function(el) {
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
-        var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-        var type = el.dataset.type;
-        var items = [];
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+        const type = el.dataset.type;
+        const items = [];
         
         if (isMod && type !== 'reserve') {
             items.push({ action: 'copy', icon: 'fa-arrow-right', label: 'Copy to Reserve' });
@@ -103,17 +103,17 @@ var ContextMenu = {
     },
     
     open: function(e, el, items) {
-        var menu = this.menu;
+        const menu = this.menu;
         menu.innerHTML = '';
         
-        var header = document.createElement('div');
+        const header = document.createElement('div');
         header.className = 'context-menu-header';
         header.textContent = (el.dataset.name || 'Player');
         menu.appendChild(header);
         
-        var self = this;
+        const self = this;
         items.forEach(function(item) {
-            var div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'context-menu-item' + (item.danger ? ' danger' : '');
             div.dataset.cmAction = item.action;
             div.innerHTML = '<i class="fas ' + item.icon + '"></i><span>' + item.label + '</span>';
@@ -130,10 +130,10 @@ var ContextMenu = {
         menu.classList.add('visible');
         
         // Position near the cursor, flipping when near the right/bottom edge
-        var menuWidth = menu.offsetWidth;
-        var menuHeight = menu.offsetHeight;
-        var left = e.clientX + 4;
-        var top = e.clientY + 4;
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        let left = e.clientX + 4;
+        let top = e.clientY + 4;
         if (left + menuWidth > window.innerWidth - 8) {
             left = e.clientX - menuWidth - 4;
         }
@@ -145,20 +145,20 @@ var ContextMenu = {
     },
     
     buildGroupSubmenu: function() {
-        var sub = document.createElement('div');
+        const sub = document.createElement('div');
         sub.className = 'context-menu-submenu';
-        var g = (typeof getGroups === 'function') ? getGroups() : {};
-        var keys = Object.keys(g);
+        const g = (typeof getGroups === 'function') ? getGroups() : {};
+        const keys = Object.keys(g);
         if (keys.length === 0) {
             sub.innerHTML = '<div class="context-menu-item" style="cursor:default; color:var(--text-muted);">No groups</div>';
             return sub;
         }
-        var self = this;
+        const self = this;
         keys.sort().forEach(function(key) {
-            var div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'context-menu-item';
             div.dataset.cmMove = key;
-            var title = (g[key] && g[key].title) ? g[key].title : key;
+            const title = (g[key] && g[key].title) ? g[key].title : key;
             div.innerHTML = '<i class="fas fa-layer-group"></i><span>' + esc(title) + '</span>';
             sub.appendChild(div);
         });
@@ -167,13 +167,13 @@ var ContextMenu = {
     
     // ---- Click-to-select (Phase 7.2 keyboard flow) ----
     setupSelection: function() {
-        var self = this;
+        const self = this;
         document.addEventListener('click', function(e) {
             // Clicking controls (buttons/inputs/selects/menu) never selects
             if (e.target.closest('button, input, select, a, textarea, [data-action], .context-menu')) {
                 return;
             }
-            var el = e.target.closest('[data-editable], .guild-card');
+            const el = e.target.closest('[data-editable], .guild-card');
             if (el && el.dataset && el.dataset.type) {
                 self.select(el);
             } else {
@@ -198,7 +198,7 @@ var ContextMenu = {
     },
     
     setupCloseListeners: function() {
-        var self = this;
+        const self = this;
         document.addEventListener('click', function() {
             self.close();
         });
@@ -228,20 +228,20 @@ var ContextMenu = {
     // player, positioned next to the element, with the submenu already open.
     openMoveMenu: function(el) {
         if (!el) return;
-        var menu = this.menu;
+        const menu = this.menu;
         if (!menu) return;
         
-        var items = this.buildItems(el);
-        var hasMove = items.some(function(i) { return i.submenu; });
+        const items = this.buildItems(el);
+        const hasMove = items.some(function(i) { return i.submenu; });
         if (!hasMove) return;
         
         menu.innerHTML = '';
-        var header = document.createElement('div');
+        const header = document.createElement('div');
         header.className = 'context-menu-header';
         header.textContent = 'Move ' + (el.dataset.name || 'player');
         menu.appendChild(header);
         
-        var div = document.createElement('div');
+        const div = document.createElement('div');
         div.className = 'context-menu-item has-submenu';
         div.dataset.cmAction = 'move';
         div.innerHTML = '<i class="fas fa-arrows-alt"></i><span>Move to Group</span>';
@@ -251,11 +251,11 @@ var ContextMenu = {
         this.targetEl = el;
         menu.classList.add('visible', 'submenu-open');
         
-        var rect = el.getBoundingClientRect();
-        var menuWidth = menu.offsetWidth;
-        var menuHeight = menu.offsetHeight;
-        var left = rect.left;
-        var top = rect.bottom + 4;
+        const rect = el.getBoundingClientRect();
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
+        let left = rect.left;
+        let top = rect.bottom + 4;
         if (left + menuWidth > window.innerWidth - 8) {
             left = window.innerWidth - menuWidth - 8;
         }
@@ -273,19 +273,19 @@ var ContextMenu = {
     // Resolve the live player object backing a rendered element
     findPlayer: function(el) {
         if (!el || !el.dataset) return null;
-        var type = el.dataset.type;
-        var playerId = el.dataset.playerId;
+        const type = el.dataset.type;
+        const playerId = el.dataset.playerId;
         if (!playerId) return null;
         
         if (type === 'group' && el.dataset.group) {
-            var g = (typeof getGroups === 'function') ? getGroups() : {};
-            var list = g[el.dataset.group] && g[el.dataset.group].players;
+            const g = (typeof getGroups === 'function') ? getGroups() : {};
+            const list = g[el.dataset.group] && g[el.dataset.group].players;
             if (list) return list.find(function(p) { return p.id === playerId; }) || null;
         } else if (type === 'reserve') {
-            var r = (typeof getReserves === 'function') ? getReserves() : [];
+            const r = (typeof getReserves === 'function') ? getReserves() : [];
             return r.find(function(p) { return p.id === playerId; }) || null;
         } else if (type === 'guild') {
-            var gm = (typeof getGuildMembers === 'function') ? getGuildMembers() : [];
+            const gm = (typeof getGuildMembers === 'function') ? getGuildMembers() : [];
             return gm.find(function(p) { return p.id === playerId; }) || null;
         }
         return null;
@@ -293,18 +293,18 @@ var ContextMenu = {
     
     copyToReserve: function(el) {
         if (!el) return;
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
         if (!isMod) {
             showToast('Only moderators and admins can copy to reserves.', 'error', 3000);
             return;
         }
-        var player = this.findPlayer(el);
+        const player = this.findPlayer(el);
         if (!player) {
             showToast('Player not found.', 'error', 2000);
             return;
         }
-        var day = window.currentDay || 'sat';
-        var r = getReserves();
+        const day = window.currentDay || 'sat';
+        const r = getReserves();
         if (r.some(function(p) { return p.id === player.id; })) {
             showToast('"' + player.name + '" is already in Reserves.', 'warning', 3000);
             return;
@@ -318,24 +318,24 @@ var ContextMenu = {
     
     moveToGroup: function(el, targetGroup) {
         if (!el || !targetGroup) return;
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
         if (!isMod) {
             showToast('Only moderators can move players.', 'error', 3000);
             return;
         }
-        var day = window.currentDay || 'sat';
-        var g = getGroups();
+        const day = window.currentDay || 'sat';
+        const g = getGroups();
         if (!g[targetGroup]) {
             showToast('Target group not found.', 'error', 2000);
             return;
         }
-        var player = this.findPlayer(el);
+        const player = this.findPlayer(el);
         if (!player) {
             showToast('Player not found.', 'error', 2000);
             return;
         }
-        var type = el.dataset.type;
-        var sourceGroup = el.dataset.group || null;
+        const type = el.dataset.type;
+        const sourceGroup = el.dataset.group || null;
         
         if (type === 'group' && sourceGroup === targetGroup) {
             showToast('"' + player.name + '" is already in that group.', 'warning', 3000);
@@ -343,7 +343,7 @@ var ContextMenu = {
         }
         
         // Mirror the drag & drop duplicate warning (still allowed, highlighted)
-        var duplicateCount = 0;
+        let duplicateCount = 0;
         Object.keys(g).forEach(function(key) {
             if (g[key] && g[key].players) {
                 g[key].players.forEach(function(p) {
@@ -352,11 +352,11 @@ var ContextMenu = {
             }
         });
         if (duplicateCount > 0) {
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
             showToast('"' + player.name + '" already exists in a group for ' + dayName + '. Duplicates will be highlighted.', 'warning', 3000);
         }
         
-        var movedFrom = null;
+        let movedFrom = null;
         
         // Remove from source (tracked so stale merges keep the move)
         if (type === 'guild') {
@@ -374,7 +374,7 @@ var ContextMenu = {
             if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('group', day, player.id, sourceGroup);
             movedFrom = sourceGroup;
         } else if (type === 'reserve') {
-            var r = getReserves();
+            const r = getReserves();
             window.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
             if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('reserve', day, player.id);
             movedFrom = 'reserve';
@@ -385,8 +385,8 @@ var ContextMenu = {
         window.groups[day] = g;
         
         if (typeof History !== 'undefined' && History.add) {
-            var dayName = day === 'sat' ? 'Saturday' : 'Sunday';
-            var toTitle = (g[targetGroup] && g[targetGroup].title) ? g[targetGroup].title : targetGroup;
+            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
+            const toTitle = (g[targetGroup] && g[targetGroup].title) ? g[targetGroup].title : targetGroup;
             History.add('move', {
                 playerId: player.id || null,
                 playerName: player.name,
@@ -399,15 +399,15 @@ var ContextMenu = {
         
         if (typeof updateLastUpdate === 'function') updateLastUpdate();
         if (typeof render === 'function') render();
-        var targetTitle = (g[targetGroup] && g[targetGroup].title) ? g[targetGroup].title : targetGroup;
+        const targetTitle = (g[targetGroup] && g[targetGroup].title) ? g[targetGroup].title : targetGroup;
         showToast('Moved ' + player.name + ' to ' + targetTitle, 'success', 2000);
     },
     
     editPlayer: function(el) {
         if (!el) return;
-        var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
-        var type = el.dataset.type;
+        const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const type = el.dataset.type;
         
         if (type === 'guild' && !isAdmin) {
             showToast('Only admin can edit guild members.', 'error', 2000);
@@ -419,29 +419,29 @@ var ContextMenu = {
         }
         
         if (el.classList.contains('guild-card')) {
-            var player = this.findPlayer(el);
+            const player = this.findPlayer(el);
             if (player && typeof RenderHelpers !== 'undefined' && RenderHelpers.enterGuildCardEditMode) {
                 RenderHelpers.enterGuildCardEditMode(el, player);
             }
         } else {
             // Trigger the badge's normal edit flow (permission checks + UI)
-            var btn = el.querySelector('[data-action="edit"]');
+            const btn = el.querySelector('[data-action="edit"]');
             if (btn) btn.click();
         }
     },
     
     deletePlayer: function(el) {
         if (!el) return;
-        var isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-        var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
-        var type = el.dataset.type;
-        var player = this.findPlayer(el);
+        const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        const type = el.dataset.type;
+        const player = this.findPlayer(el);
         if (!player) {
             showToast('Player not found.', 'error', 2000);
             return;
         }
-        var day = window.currentDay || 'sat';
-        var self = this;
+        const day = window.currentDay || 'sat';
+        const self = this;
         
         if (type === 'guild') {
             if (!isAdmin) {
@@ -461,10 +461,10 @@ var ContextMenu = {
                 showToast('Only admin can delete players.', 'error', 2000);
                 return;
             }
-            var group = el.dataset.group;
+            const group = el.dataset.group;
             if (typeof showConfirmation === 'function') {
                 showConfirmation('Remove "' + player.name + '" from the group? (Guild/Reserves entries are kept)', function() {
-                    var g = getGroups();
+                    const g = getGroups();
                     if (g[group]) {
                         g[group].players = g[group].players.filter(function(p) { return p.id !== player.id; });
                         window.groups[day] = g;
@@ -491,7 +491,7 @@ var ContextMenu = {
             }
             if (typeof showConfirmation === 'function') {
                 showConfirmation('Remove "' + player.name + '" from Reserves?', function() {
-                    var r = getReserves();
+                    const r = getReserves();
                     window.reserves[day] = r.filter(function(p) { return p.id !== player.id; });
                     if (typeof trackPlayerRemovals === 'function') trackPlayerRemovals('reserve', day, player.id);
                     if (typeof History !== 'undefined' && History.add) {
