@@ -383,19 +383,52 @@
     margin-top: var(--spacing-sm);
 }
 
-/* ===== PRINT ROSTER (Phase 10) ===== */
+/* ===== PRINT ROSTER (Phase 10): shareable, table-formatted ===== */
 #printRoster {
     display: none;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
 }
 #printRoster h1 { margin: 0 0 4px; font-size: 22px; }
-#printRoster .print-sub { margin: 0 0 16px; font-size: 12px; color: #555; }
-#printRoster h2 { margin: 14px 0 8px; font-size: 17px; border-bottom: 2px solid #333; padding-bottom: 4px; }
-#printRoster h3 { margin: 12px 0 4px; font-size: 14px; }
-#printRoster ul { margin: 0 0 8px 20px; padding: 0; }
-#printRoster li { font-size: 12px; line-height: 1.5; }
+#printRoster .print-sub { margin: 0 0 18px; font-size: 12px; color: #555; }
+#printRoster h2 { margin: 8px 0 10px; font-size: 17px; border-bottom: 2px solid #333; padding-bottom: 4px; }
+#printRoster table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 14px;
+    font-size: 12px;
+}
+#printRoster th,
+#printRoster td {
+    border: 1px solid #999;
+    padding: 5px 9px;
+    text-align: left;
+    vertical-align: top;
+}
+#printRoster th {
+    background: #e8e8e8;
+    font-weight: 700;
+}
+#printRoster .print-day-table td.group-name {
+    font-weight: 700;
+    width: 26%;
+}
+#printRoster .print-day-table .print-reserve-row td {
+    background: #f2f2f2;
+}
+#printRoster .print-reserve-row td.group-name {
+    color: #444;
+}
+#printRoster .print-guild-table tbody tr:nth-child(even) td {
+    background: #f7f7f7;
+}
 #printRoster .print-day-break { page-break-before: always; }
-#printRoster .print-empty { color: #999; font-style: italic; font-size: 12px; }
+#printRoster .print-empty { color: #999; font-style: italic; }
 @media print {
     #printRoster { display: block; }
     #printRoster .print-day-break { break-before: page; }
+    #printRoster th,
+    #printRoster td { border: 1px solid #888; }
+    #printRoster thead { display: table-header-group; }
+    #printRoster tr { break-inside: avoid; }
 }

@@ -171,7 +171,7 @@
                             <li><strong>Collapse panels:</strong> click any panel header to expand/collapse it and save screen space.</li>
                             <li><strong>Live sync:</strong> moderator changes reach everyone automatically. While you are typing or dragging, incoming updates wait until you finish, so your work is never wiped.</li>
                             <li><strong>Roles:</strong> SuperAdmin (<i class="fas fa-crown"></i>) manages admins &amp; mods &middot; Admin (<i class="fas fa-shield-alt"></i>) manages mods &middot; Moderator (<i class="fas fa-user-shield"></i>) edits the roster.</li>
-                            <li><strong>Export:</strong> anyone can download the roster as an <em>Image</em> or <em>PDF</em>; moderators+ can also get the <em>CSV</em> player list and the <em>JSON</em> backup (see below).</li>
+                            <li><strong>Export:</strong> anyone can download the roster as a shareable <em>Image</em> or <em>PDF</em> (tables, ready to send). Admins can also export/import the Guild Member list as <em>CSV</em> and download the <em>JSON</em> backup from Admin Tools.</li>
                         </ul>
                     </div>
 
@@ -185,15 +185,9 @@
                             <button class="btn btn-sm" id="exportImageBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
                                 <i class="fas fa-image"></i> Image (PNG)
                             </button>
-                            <button class="btn btn-sm" id="exportCsvBtn" data-role-show="mod" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
-                                <i class="fas fa-file-csv"></i> CSV Players
-                            </button>
-                            <button class="btn btn-sm" id="exportJsonBtn" data-role-show="admin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
-                                <i class="fas fa-download"></i> JSON Backup
-                            </button>
                         </div>
                         <div style="font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--spacing-xs);">
-                            <i class="fas fa-info-circle"></i> Image &amp; PDF: everyone &middot; CSV player list: moderators+ &middot; JSON backup: admins+ (JSON also in Admin Tools)
+                            <i class="fas fa-info-circle"></i> Image &amp; PDF: everyone &middot; Guild Member CSV export/import &amp; JSON backup: admins+ (in Admin Tools / near the Guild panel)
                         </div>
                     </div>
                     <span class="panel-label">E</span>
