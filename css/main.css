@@ -1,0 +1,65 @@
+/* ============================================================
+   MAIN - Base styles with CSS variables
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg-body);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-lg) var(--spacing-md);
+    color: var(--text-primary);
+    transition: background var(--transition-normal), color var(--transition-normal);
+}
+
+.app {
+    max-width: 1480px;
+    width: 100%;
+    background: var(--bg-app);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    box-shadow: 0 20px 40px var(--shadow-color);
+    color: var(--text-primary);
+    transition: background var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: var(--spacing-xl);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 800px) {
+    .grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .app {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg);
+    }
+    
+    body {
+        padding: var(--spacing-sm);
+    }
+}
+
+@media (max-width: 500px) {
+    .app {
+        padding: var(--spacing-sm);
+        border-radius: var(--radius-md);
+    }
+    
+    body {
+        padding: var(--spacing-xs);
+    }
+}

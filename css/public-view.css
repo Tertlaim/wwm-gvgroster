@@ -1,0 +1,104 @@
+/* ============================================================
+   PUBLIC VIEW - Public display styles (UPDATED with variables)
+   ============================================================ */
+
+.player-badge.public-view .player-info.public-layout {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 1;
+    width: 100%;
+}
+
+.player-badge.public-view .player-info.public-layout .class-tag {
+    background: var(--bg-input);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.player-badge.public-view .player-info.public-layout .name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0 var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+.player-badge.public-view .player-info.public-layout .role-name {
+    margin-left: auto;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.player-badge.public-view .player-info.public-layout .role-name.commander {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+.player-badge.public-view .player-info.public-layout .role-name.vice-commander {
+    background: var(--accent-blue);
+    color: var(--text-inverse);
+}
+
+.player-badge.public-view .player-info.public-layout .role-name.healer {
+    background: var(--accent-green);
+    color: var(--text-inverse);
+}
+
+.player-badge.public-view .player-info.public-layout .role-name.member {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+}
+
+/* ===== DUPLICATE WARNING ===== */
+.player-badge.duplicate-warning {
+    border-left: 4px solid var(--accent-amber);
+    border-right: 4px solid var(--accent-amber);
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.player-badge.duplicate-warning .name {
+    color: var(--accent-amber);
+}
+
+.player-badge.duplicate-warning .name::after {
+    content: ' ⚠️';
+    color: var(--accent-amber);
+    font-size: var(--font-size-sm);
+}
+
+.player-badge.duplicate-warning .class-tag,
+.player-badge.duplicate-warning .role-name {
+    border: 1px solid var(--accent-amber);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+    .player-badge.public-view .player-info.public-layout {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+    
+    .player-badge.public-view .player-info.public-layout .role-name {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .player-badge.public-view .player-info.public-layout .class-tag {
+        font-size: var(--font-size-xs);
+    }
+    
+    .player-badge.public-view .player-info.public-layout .name {
+        font-size: var(--font-size-sm);
+    }
+}

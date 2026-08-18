@@ -1,0 +1,278 @@
+/* ============================================================
+   RESPONSIVE - Media queries (UPDATED with variables)
+   ============================================================ */
+
+/* ===== TABLETS AND SMALL DESKTOPS ===== */
+@media (max-width: 1024px) {
+    .grid {
+        grid-template-columns: 1fr 280px;
+        gap: var(--spacing-lg);
+    }
+    
+    .group-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-md);
+    }
+}
+
+/* ===== MOBILE LANDSCAPE ===== */
+@media (max-width: 800px) {
+    .grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-lg);
+    }
+    
+    .group-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    
+    .reserve-pool {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .guild-member-pool {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .reserve-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .guild-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .guild-actions {
+        justify-content: center;
+    }
+    
+    .reserve-actions {
+        justify-content: center;
+    }
+    
+    .day-tabs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .last-update {
+        margin-left: 0;
+        text-align: center;
+    }
+    
+    .header-title h1 {
+        font-size: 1.6rem;
+    }
+    
+    .app {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg);
+    }
+}
+
+/* ===== MOBILE PORTRAIT ===== */
+@media (max-width: 500px) {
+    .app {
+        padding: var(--spacing-sm);
+        border-radius: var(--radius-md);
+    }
+    
+    .group-grid {
+        gap: var(--spacing-sm);
+    }
+    
+    .group-card {
+        padding: var(--spacing-sm);
+        border-radius: var(--radius-md);
+    }
+    
+    .reserve-pool {
+        grid-template-columns: 1fr;
+    }
+    
+    .guild-member-pool {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-title h1 {
+        font-size: 1.3rem;
+        letter-spacing: 2px;
+    }
+    
+    .subtitle {
+        font-size: var(--font-size-sm);
+        letter-spacing: 1px;
+    }
+    
+    .day-tab {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs) var(--spacing-md);
+    }
+    
+    .last-update {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    /* Hide labels on very small screens */
+    .panel-label {
+        display: none !important;
+    }
+    
+    /* Full width buttons */
+    .btn-sm {
+        width: 100% !important;
+    }
+    
+    .reserve-actions .btn,
+    .guild-actions .btn {
+        width: 100% !important;
+    }
+    
+    /* Modal adjustments */
+    .modal-box {
+        padding: var(--spacing-md) var(--spacing-sm);
+        max-width: 98%;
+        margin: var(--spacing-sm) auto;
+        border-radius: var(--radius-md);
+    }
+}
+
+/* ===== SMALL MOBILE ===== */
+@media (max-width: 400px) {
+    .app {
+        padding: var(--spacing-xs);
+    }
+    
+    .header-title h1 {
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+    }
+    
+    .title-group i {
+        font-size: 1.2rem;
+    }
+    
+    .subtitle {
+        font-size: var(--font-size-xs);
+    }
+    
+    .day-tab {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .player-badge {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .reserve-badge {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .guild-member-badge {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .btn {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+    
+    .form-group input,
+    .form-group select {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .app {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        border-radius: 0 !important;
+    }
+    
+    .header-wrapper {
+        position: static !important;
+        background: white !important;
+        border-bottom: 2px solid #ddd !important;
+    }
+    
+    .sticky-tabs {
+        position: static !important;
+        background: white !important;
+    }
+    
+    .theme-toggle {
+        display: none !important;
+    }
+    
+    .btn {
+        display: none !important;
+    }
+    
+    .player-badge.admin-view .actions-left,
+    .player-badge.admin-view .actions-right,
+    .reserve-badge.admin-view .reserve-actions-left,
+    .reserve-badge.admin-view .reserve-actions-right,
+    .guild-member-badge .guild-actions-left,
+    .guild-member-badge .guild-actions-right {
+        display: none !important;
+    }
+    
+    .guild-checkbox,
+    .reserve-checkbox {
+        display: none !important;
+    }
+    
+    .group-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    
+    .panel-label {
+        opacity: 0.5 !important;
+    }
+}
+
+/* ===== DARK MODE PRINT OVERRIDE ===== */
+@media print and (prefers-color-scheme: dark) {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .app {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .group-card {
+        background: #f5f5f5 !important;
+        color: black !important;
+    }
+    
+    .player-badge {
+        background: #e8e8e8 !important;
+        color: black !important;
+        border-color: #ccc !important;
+    }
+}

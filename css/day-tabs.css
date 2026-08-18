@@ -1,0 +1,119 @@
+/* ============================================================
+   DAY TABS - Sticky tabs below header
+   ============================================================ */
+
+.sticky-tabs {
+    position: sticky;
+    top: 72px; /* Height of header wrapper */
+    z-index: 99;
+    background: var(--bg-app);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.25rem 0;
+    margin-bottom: 1rem;
+}
+
+.sticky-tabs::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(180deg, var(--shadow-color) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+    pointer-events: none;
+}
+
+.sticky-tabs.scrolled::after {
+    opacity: 0.2;
+}
+
+.day-tabs {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.day-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-size: var(--font-size-lg);
+    transition: all var(--transition-fast);
+    font-weight: 500;
+}
+
+.day-tab i {
+    margin-right: 0.3rem;
+}
+
+.day-tab.active {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+    font-weight: 600;
+    box-shadow: 0 0 20px var(--accent-gold-glow);
+}
+
+.day-tab:hover:not(.active) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.day-tab:active:not(.active) {
+    transform: scale(0.95);
+}
+
+.last-update {
+    margin-left: auto;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    padding: 0.3rem 0.8rem;
+    background: var(--bg-input);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+/* ===== RESPONSIVE TABS ===== */
+@media (max-width: 800px) {
+    .sticky-tabs {
+        top: 100px; /* Height of header wrapper on mobile */
+    }
+    
+    .day-tabs {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding: 0.25rem 0;
+    }
+    
+    .day-tab {
+        text-align: center;
+        padding: 0.4rem 1rem;
+        font-size: var(--font-size-md);
+    }
+    
+    .last-update {
+        margin-left: 0;
+        text-align: center;
+        font-size: var(--font-size-xs);
+    }
+}
+
+@media (max-width: 500px) {
+    .sticky-tabs {
+        top: 85px;
+    }
+    
+    .day-tab {
+        font-size: var(--font-size-sm);
+        padding: 0.3rem 0.8rem;
+    }
+}

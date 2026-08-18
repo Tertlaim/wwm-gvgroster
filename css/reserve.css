@@ -1,0 +1,418 @@
+/* ============================================================
+   RESERVE - Reserve area styles (UPDATED with variables)
+   ============================================================ */
+
+.reserve-area {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-top: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    position: relative;
+}
+
+.reserve-area .panel-label {
+    position: absolute;
+    bottom: var(--spacing-sm);
+    right: var(--spacing-md);
+    font-size: var(--font-size-md);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-style: italic;
+    opacity: 0.7;
+    letter-spacing: 1px;
+    user-select: none;
+    pointer-events: none;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid rgba(111, 138, 168, 0.2);
+    border-radius: var(--radius-sm);
+    background: rgba(10, 26, 43, 0.4);
+}
+
+.reserve-area.drag-over {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--accent-blue);
+}
+
+.reserve-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.reserve-header h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 400;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: 0;
+}
+
+.reserve-header h3 i {
+    color: var(--accent-purple);
+}
+
+.reserve-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.reserve-pool {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+    min-height: 40px;
+}
+
+.reserve-pool.drag-over {
+    background: rgba(96, 165, 250, 0.05);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+}
+
+/* ===== RESERVE BADGE ===== */
+.reserve-badge {
+    background: var(--bg-active);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    border: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    min-height: 28px;
+    overflow: hidden;
+    transition: all var(--transition-fast);
+}
+
+.reserve-badge:hover {
+    border-color: var(--border-active);
+}
+
+/* ===== PUBLIC RESERVE VIEW ===== */
+.reserve-badge.public-view .player-info.public-layout {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.reserve-badge.public-view .player-info.public-layout .class-tag {
+    background: var(--bg-input);
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.reserve-badge.public-view .player-info.public-layout .name {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0 var(--spacing-xs);
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reserve-badge.public-view .player-info.public-layout .role-name {
+    margin-left: auto;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.reserve-badge.public-view .player-info.public-layout .role-name.commander {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.public-view .player-info.public-layout .role-name.vice-commander {
+    background: var(--accent-blue);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.public-view .player-info.public-layout .role-name.healer {
+    background: var(--accent-green);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.public-view .player-info.public-layout .role-name.member {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+}
+
+/* ===== ADMIN RESERVE VIEW ===== */
+.reserve-badge.admin-view {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--spacing-sm);
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.reserve-badge.admin-view .reserve-checkbox {
+    accent-color: var(--accent-gold);
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.reserve-badge.admin-view .reserve-actions-left {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.reserve-badge.admin-view .reserve-actions-left button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    padding: 0 var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.reserve-badge.admin-view .reserve-actions-left button:hover {
+    color: var(--accent-gold);
+}
+
+.reserve-badge.admin-view .reserve-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.reserve-badge.admin-view .reserve-info .class-tag {
+    background: var(--bg-input);
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.reserve-badge.admin-view .reserve-info .role-tag {
+    background: var(--bg-input);
+    padding: 0 var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.reserve-badge.admin-view .reserve-info .role-tag.commander {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.admin-view .reserve-info .role-tag.vice-commander {
+    background: var(--accent-blue);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.admin-view .reserve-info .role-tag.healer {
+    background: var(--accent-green);
+    color: var(--text-inverse);
+}
+
+.reserve-badge.admin-view .reserve-info .role-tag.member {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+}
+
+.reserve-badge.admin-view .reserve-info .name {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 30px;
+}
+
+.reserve-badge.admin-view .reserve-info .name-edit {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+    width: auto;
+    min-width: 40px;
+    padding: var(--spacing-xs) var(--spacing-xs);
+    border-radius: var(--radius-sm);
+}
+
+.reserve-badge.admin-view .reserve-info .name-edit:focus {
+    background: var(--bg-input);
+    outline: 1px solid var(--accent-gold);
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+}
+
+.reserve-badge.admin-view .reserve-info .class-select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    max-width: 55px;
+    outline: none;
+}
+
+.reserve-badge.admin-view .reserve-info .class-select:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+}
+
+.reserve-badge.admin-view .reserve-info .role-select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    max-width: 55px;
+    outline: none;
+}
+
+.reserve-badge.admin-view .reserve-info .role-select:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+}
+
+.reserve-badge.admin-view .reserve-actions-right {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.reserve-badge.admin-view .reserve-actions-right button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    padding: 0 var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.reserve-badge.admin-view .reserve-actions-right button:hover {
+    color: var(--accent-gold);
+}
+
+.reserve-badge.admin-view .reserve-actions-right .save-btn:hover {
+    color: var(--accent-green);
+}
+
+.reserve-badge.admin-view .reserve-actions-right .cancel-btn:hover {
+    color: var(--accent-red);
+}
+
+.draggable-hint {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
+}
+
+/* ===== RESERVE ACTION BUTTONS ===== */
+.reserve-actions .btn {
+    white-space: nowrap;
+}
+
+#selectAllReservesBtn {
+    background: var(--bg-active) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    font-size: var(--font-size-sm) !important;
+    padding: var(--spacing-xs) var(--spacing-md) !important;
+    border: 1px solid var(--border-color) !important;
+    transition: all var(--transition-fast) !important;
+}
+
+#selectAllReservesBtn:hover {
+    background: var(--border-active) !important;
+    transform: scale(0.98);
+}
+
+#deleteSelectedReservesBtn {
+    background: var(--accent-red) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: var(--font-size-sm) !important;
+    padding: var(--spacing-xs) var(--spacing-md) !important;
+    border: none !important;
+    transition: all var(--transition-fast) !important;
+}
+
+#deleteSelectedReservesBtn:hover {
+    opacity: 0.8 !important;
+    transform: scale(0.98);
+}
+
+#moveToGuildBtn {
+    background: var(--accent-green) !important;
+    color: var(--text-inverse) !important;
+    font-weight: 600 !important;
+    font-size: var(--font-size-sm) !important;
+    padding: var(--spacing-xs) var(--spacing-md) !important;
+    border: none !important;
+    transition: all var(--transition-fast) !important;
+}
+
+#moveToGuildBtn:hover {
+    opacity: 0.8 !important;
+    transform: scale(0.98);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 800px) {
+    .reserve-pool {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .reserve-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .reserve-actions {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 500px) {
+    .reserve-pool {
+        grid-template-columns: 1fr;
+    }
+    
+    .reserve-area {
+        padding: var(--spacing-sm);
+    }
+    
+    .reserve-actions .btn {
+        font-size: var(--font-size-xs) !important;
+        padding: var(--spacing-xs) var(--spacing-sm) !important;
+    }
+}
