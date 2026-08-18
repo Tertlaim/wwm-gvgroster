@@ -120,7 +120,7 @@ const AuthModule = {
         
         if (authWidget) {
             if (isLoggedIn) {
-                const roleIcon = isSuperAdmin ? 'crown' : isAdmin ? 'shield-halved' : 'user-shield';
+                const roleIcon = isSuperAdmin ? 'crown' : isAdmin ? 'shield-alt' : 'user-shield';
                 const safeName = typeof esc === 'function' ? esc(this.getUserName() || '') : (this.getUserName() || '');
                 const safeRole = typeof esc === 'function' ? esc(this.getRoleLabel(this.getUserRole()) || '') : (this.getRoleLabel(this.getUserRole()) || '');
                 authWidget.innerHTML = 

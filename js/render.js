@@ -99,7 +99,7 @@ function renderAdminPanel() {
             });
             staffNames.forEach(function(name) {
                 var role = window.moderators[name] || 'mod';
-                var icon = role === 'superadmin' ? 'fa-crown' : role === 'admin' ? 'fa-shield-halved' : 'fa-check-circle';
+                var icon = role === 'superadmin' ? 'fa-crown' : role === 'admin' ? 'fa-shield-alt' : 'fa-check-circle';
                 var label = role === 'superadmin' ? 'Lead' : role === 'admin' ? 'Admin' : 'Mod';
                 var tag = document.createElement('span');
                 tag.className = 'admin-tag';

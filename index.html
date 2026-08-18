@@ -134,7 +134,19 @@
             <button class="btn btn-sm btn-outline" id="deleteSelectedGuildBtn" data-role-show="admin" style="display:none;"><i class="fas fa-trash"></i> Delete Selected</button>
         </div>
     </div>
-    <div class="guild-member-pool" id="guildMemberPool"></div>                    <div style="margin-top:var(--spacing-sm); font-size:var(--font-size-xs); color:var(--text-muted);">
+    <div class="guild-member-pool" id="guildMemberPool"></div>
+                    <!-- Guild member CSV export/import (admin+) - Phase 10B -->
+                    <div id="guildCsvTools" class="guild-csv-tools" data-role-show="admin" style="display:none;">
+                        <span style="font-size:var(--font-size-xs); color:var(--text-muted);"><i class="fas fa-file-csv"></i> Guild Member List:</span>
+                        <button class="btn btn-sm" id="guildCsvExportBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                        <button class="btn btn-sm" id="guildCsvImportBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <i class="fas fa-upload"></i> Import CSV
+                        </button>
+                        <span style="font-size:var(--font-size-xs); color:var(--text-muted);">edit in Excel, save as CSV, import back</span>
+                    </div>
+                    <div style="margin-top:var(--spacing-sm); font-size:var(--font-size-xs); color:var(--text-muted);">
                         <i class="fas fa-info-circle"></i> Only admin can delete from master list | Moderators+ can copy to reserves
                     </div>
                     <span class="panel-label">D</span>
@@ -158,7 +170,7 @@
                             <li data-help-role="mod"><strong>Groups:</strong> use <em>Group Management</em> in Admin Tools to add/remove groups; the trash icon on a group card removes it.</li>
                             <li><strong>Collapse panels:</strong> click any panel header to expand/collapse it and save screen space.</li>
                             <li><strong>Live sync:</strong> moderator changes reach everyone automatically. While you are typing or dragging, incoming updates wait until you finish, so your work is never wiped.</li>
-                            <li><strong>Roles:</strong> SuperAdmin (<i class="fas fa-crown"></i>) manages admins &amp; mods &middot; Admin (<i class="fas fa-shield-halved"></i>) manages mods &middot; Moderator (<i class="fas fa-user-shield"></i>) edits the roster.</li>
+                            <li><strong>Roles:</strong> SuperAdmin (<i class="fas fa-crown"></i>) manages admins &amp; mods &middot; Admin (<i class="fas fa-shield-alt"></i>) manages mods &middot; Moderator (<i class="fas fa-user-shield"></i>) edits the roster.</li>
                             <li><strong>Export:</strong> anyone can download the roster as an <em>Image</em> or <em>PDF</em>; moderators+ can also get the <em>CSV</em> player list and the <em>JSON</em> backup (see below).</li>
                         </ul>
                     </div>
@@ -176,12 +188,12 @@
                             <button class="btn btn-sm" id="exportCsvBtn" data-role-show="mod" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
                                 <i class="fas fa-file-csv"></i> CSV Players
                             </button>
-                            <button class="btn btn-sm" id="exportJsonBtn" data-role-show="mod" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                            <button class="btn btn-sm" id="exportJsonBtn" data-role-show="admin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
                                 <i class="fas fa-download"></i> JSON Backup
                             </button>
                         </div>
                         <div style="font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--spacing-xs);">
-                            <i class="fas fa-info-circle"></i> Image &amp; PDF: everyone &middot; CSV &amp; JSON backup: moderators+ (JSON also in Admin Tools)
+                            <i class="fas fa-info-circle"></i> Image &amp; PDF: everyone &middot; CSV player list: moderators+ &middot; JSON backup: admins+ (JSON also in Admin Tools)
                         </div>
                     </div>
                     <span class="panel-label">E</span>
@@ -317,7 +329,7 @@
                         <button class="btn btn-warning btn-sm" id="clearToReserveBtn" data-role-show="mod,admin" style="display:none; background:var(--accent-amber); color:var(--text-inverse); font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">
                             <i class="fas fa-arrow-right"></i> EMPTY NAMES INTO RESERVE LISTING (FRESH START)
                         </button>
-                        <button class="btn btn-sm" id="downloadBackupBtn" data-role-show="mod,admin" style="display:none; width:100%; padding:var(--spacing-sm); font-weight:600;">
+                        <button class="btn btn-sm" id="downloadBackupBtn" data-role-show="admin" style="display:none; width:100%; padding:var(--spacing-sm); font-weight:600;">
                             <i class="fas fa-download"></i> DOWNLOAD BACKUP (JSON)
                         </button>
                         <div style="font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--spacing-xs); text-align:center;">
@@ -413,6 +425,40 @@
             <p id="alertMessage" style="text-align:center; margin: var(--spacing-md) 0; color: var(--text-secondary); font-size:var(--font-size-lg); line-height:1.6;"></p>
             <div style="display:flex; gap:var(--spacing-sm); justify-content:center; margin-top:var(--spacing-md);">
                 <button class="btn" id="alertOkBtn" style="width:auto; padding:var(--spacing-sm) var(--spacing-xl);"><i class="fas fa-check"></i> OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINT ROSTER (Phase 10: shown only when printing/saving PDF) -->
+    <div id="printRoster" aria-hidden="true"></div>
+
+    <!-- CSV IMPORT MODAL (Phase 10B: admin-only guild member import) -->
+    <div class="modal-overlay" id="guildImportModal">
+        <div class="modal-box" style="max-width: 520px; max-height: 85vh; overflow-y: auto;">
+            <h2 style="text-align:center; margin-bottom:var(--spacing-md);"><i class="fas fa-file-import"></i> Import Guild Members (CSV)</h2>
+            <div style="font-size:var(--font-size-sm); color:var(--text-secondary); margin-bottom:var(--spacing-md); line-height:1.6;">
+                <i class="fas fa-info-circle"></i> Export the list to CSV, edit it in Excel (columns: <strong>Name, Class, Role</strong>), save as CSV, then import it back here.
+                Or paste rows directly (one per line: <em>Name,Class,Role</em>). Class: Tank/DPS/Heal &middot; Role: Member/Commander/Vice Commander/Healer (blank = default).
+            </div>
+            <div class="form-group">
+                <label>IMPORT DAYS :</label>
+                <div class="day-checkboxes">
+                    <label class="checkbox-label"><input type="checkbox" id="guildImportSat" value="sat" checked /> <span>Saturday</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="guildImportSun" value="sun" checked /> <span>Sunday</span></label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>CSV FILE (optional):</label>
+                <input type="file" id="guildImportFile" accept=".csv,text/csv" />
+            </div>
+            <div class="form-group">
+                <label>OR PASTE ROWS (Name,Class,Role per line):</label>
+                <textarea id="guildImportText" rows="6" placeholder="Antony,Heal,Vice Commander&#10;Bayu,DPS,Commander&#10;Crackles,Heal,Healer" style="width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+            <div id="guildImportPreview" style="font-size:var(--font-size-sm); color:var(--text-secondary); margin:var(--spacing-sm) 0; white-space:pre-wrap;"></div>
+            <div style="display:flex; gap:var(--spacing-sm); justify-content:center; margin-top:var(--spacing-md);">
+                <button class="btn btn-sm" id="guildImportApplyBtn" style="background:var(--accent-gold); color:var(--text-inverse);"><i class="fas fa-check"></i> Add to Guild Members</button>
+                <button class="btn btn-sm btn-outline" id="guildImportCancelBtn">Cancel</button>
             </div>
         </div>
     </div>

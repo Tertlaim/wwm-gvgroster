@@ -141,13 +141,14 @@ async function saveState() {
     }
 }
 
-// ---- Load staff list (admin+) so Reset PW / Demote / role display work ----
-// Roles come from the server store (config/auth.json) - nothing is hardcoded here.
+// ---- Load staff list (everyone) so the Admin panel shows who the
+// admins/moderators are, and Reset PW / Demote / role display work. ----
+// Roles come from the public /api/staff endpoint (names + roles only,
+// never credentials) - nothing is hardcoded here.
 async function loadModerators() {
     try {
-        const response = await fetch('/api/moderators/list', {
-            headers: getAuthHeader()
-        });
+        const headers = getAuthHeader();
+        const response = await fetch('/api/staff', headers && Object.keys(headers).length ? { headers: headers } : undefined);
         if (!response.ok) return;
         const result = await response.json();
         window.moderators = {};
@@ -157,7 +158,7 @@ async function loadModerators() {
             });
         }
     } catch (error) {
-        console.error('Error loading moderators:', error);
+        console.error('Error loading staff:', error);
     }
 }
 
@@ -981,8 +982,8 @@ function setupAdminTools() {
     
     if (downloadBackupBtn) {
         downloadBackupBtn.addEventListener('click', function() {
-            if (!AuthModule.getToken()) {
-                showToast('Please login to download a backup.', 'error', 3000);
+            if (!AuthModule.isAdmin()) {
+                showToast('Only admins can download a backup.', 'error', 3000);
                 return;
             }
             downloadBackup();
@@ -1518,10 +1519,8 @@ async function init() {
         AuthModule.init();
         console.log('AuthModule initialized');
         
-        // Load moderator list so Reset PW / Demote controls have options
-        if (AuthModule.isAdmin()) {
-            loadModerators();
-        }
+        // Load staff list for everyone (public info: who the admins/mods are)
+        await loadModerators();
         
         // Load data
         var loaded = await loadState();

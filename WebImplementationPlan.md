@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 10 Complete (Export Options). Next up: Phase 11 - Mobile & Accessibility
+**Status:** Phase 10 + 10B Complete (Export Options + Guild CSV import/export). Next up: Phase 11 - Mobile & Accessibility
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -124,6 +124,7 @@ POST /api/login                       - Authenticate -> session token
 POST /api/logout                      - End session
 GET  /api/session                     - Check session (auth)
 GET  /api/moderators/list             - List moderators (admin)
+GET  /api/staff                        - Public staff list (names + roles only, no credentials)
 POST /api/moderators/add              - Add mod (admin)
 POST /api/moderators/remove           - Demote mod (admin)
 POST /api/moderators/reset-password   - Reset mod password (admin)
@@ -212,6 +213,12 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
   - CSV: one row per player per day (Day, Name, Class, Role, Location) with placement mapped from groups/reserves, Excel BOM, escaped cells; verified live (56 rows, correct placement)
   - Image: 1400px-wide canvas, dark themed, per-day groups/reserves/guild list; verified (1400x1172 PNG download)
   - Help & Shortcuts panel also updated with: roles legend (crown/shield/user-shield), Live-sync explanation, Export availability; distinct role icons in the user widget (SuperAdmin crown, Admin shield, Moderator swords)
+  - **Refinements (user feedback):** roster image is now two columns (Saturday | Sunday) with ONE guild-member table (both days share the same list); PDF prints a dedicated printable roster (page 1 Saturday, page 2 Sunday with reserves per day, following pages the Guild Members table; the app UI incl. Register panel is hidden in print); JSON backup restricted to admins+ (both buttons); the Admin icon uses `fa-shield-alt` (the `fa-shield-halved` class does not render in FA 6.0.0-beta3)
+
+### Phase 10B: Guild CSV Import/Export + Public Staff ✅ COMPLETE
+- [x] **Guild member CSV (admin+)** - buttons near the Guild Members panel: **Export CSV** (Name,Class,Role master list, round-trips through Excel) and **Import CSV** (modal: upload a file OR paste rows `Name,Class,Role`; day selection; live preview counting new/duplicate/bad rows; dedupe by name+class incl. within the file; 30-per-list cap; validation of class/role; history entry; saves through the normal pipeline). Verified end-to-end in-browser (preview 2 new / 1 dup / 1 bad, apply added to both days, save+history called)
+- [x] **Public staff list** - new `GET /api/staff` (names + roles only, no credentials) lets public viewers see who the admins/moderators are in the Admin panel (was empty for public); staff list also loads for everyone on init
+- [x] **Admin icon fix** - `fa-shield-halved` -> `fa-shield-alt` in the staff list, user widget, and roles legend (FA 6.0.0-beta3 does not ship the renamed icon)
 
 ### Phase 11: Mobile & Accessibility
 - [ ] **11.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
@@ -284,11 +291,12 @@ guild-war-management/            (git repo, branch main)
 | Phase 8: Data Integrity & Sync Hardening | ✅ complete | 100% |
 | Phase 9: Security Hardening | ✅ complete | 100% |
 | Phase 10: Export Options | ✅ complete | 100% |
+| Phase 10B: Guild CSV Import/Export + Public Staff | ✅ complete | 100% |
 | Phase 11: Mobile & Accessibility | pending | 0% |
 | Phase 12: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~99%
+**Overall Progress:** ~99.5%
 
 ---
 
@@ -330,7 +338,7 @@ guild-war-management/            (git repo, branch main)
 - Discord integration (standalone module, after the current roadmap)
 - Multi-line notes, custom group colors, per-day announcements
 - Migrate to single-array guildMembers (Phase 12) unlocks cleaner exports
-- **CSV import of guild members (Admin+)** - assessed: NOT difficult or resource-heavy for a LAN tool. CSV parsing is cheap (cap file size ~100KB, ~a few hundred rows); the real work is validation/merge semantics: dedupe by name+class, per-day selection, the 30-players-per-list cap, keeping stable player ids, history logging, and a dry-run preview before applying. Reuses the exact same save/merge path as drag & drop, so no new infrastructure.
+- ~~**CSV import of guild members (Admin+)**~~ -> IMPLEMENTED as Phase 10B (export + file upload + paste import near the Guild panel)
 - **JSON restore (Admin+)** - the backup currently has NO upload path: restoring means stopping the server, replacing `data/database.json`, restarting (manual, documented). A Restore-from-backup upload (validate JSON, overwrite via the atomic writer, full history entry) is the natural companion to the CSV import feature and would make backups genuinely usable end-to-end.
 
 *Last Updated: 2026-08-18*
