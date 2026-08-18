@@ -1,0 +1,99 @@
+/* ============================================================
+   ANNOUNCEMENT - Announcement styles (UPDATED for left side)
+   ============================================================ */
+
+.announcement-section {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    position: relative;
+}
+
+.announcement-section .panel-label {
+    position: absolute;
+    bottom: var(--spacing-sm);
+    right: var(--spacing-md);
+    font-size: var(--font-size-md);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-style: italic;
+    opacity: 0.7;
+    letter-spacing: 1px;
+    user-select: none;
+    pointer-events: none;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid rgba(111, 138, 168, 0.2);
+    border-radius: var(--radius-sm);
+    background: rgba(10, 26, 43, 0.4);
+}
+
+.announcement-section h3 {
+    font-weight: 400;
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: 0 0 var(--spacing-sm) 0;
+}
+
+#announcementDisplay {
+    background: var(--bg-input);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    min-height: 60px;
+    border: 1px solid var(--border-color);
+    white-space: pre-wrap;
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    transition: all var(--transition-fast);
+}
+
+#announcementDisplay:empty::before {
+    content: 'No announcements yet.';
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+#announcementInput {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    resize: vertical;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+}
+
+#announcementInput:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+    outline: none;
+}
+
+#announcementInput::placeholder {
+    color: var(--text-muted);
+}
+
+@media (max-width: 500px) {
+    .announcement-section {
+        padding: var(--spacing-sm);
+    }
+    
+    #announcementDisplay {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-sm);
+        min-height: 50px;
+    }
+    
+    #announcementInput {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-sm);
+    }
+}

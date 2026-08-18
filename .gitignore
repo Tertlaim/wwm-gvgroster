@@ -1,0 +1,28 @@
+# Sensitive / live data (recreated automatically on server start)
+config/auth.json
+data/
+
+# Local tooling state
+.kilo/
+.freebuff/
+backups/
+
+# Node
+node_modules/
+npm-debug.log*
+.env
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log

@@ -1,0 +1,276 @@
+/* ============================================================
+   ADMIN VIEW - Admin editing styles (UPDATED with variables)
+   ============================================================ */
+
+.player-badge.admin-view {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.player-badge.admin-view .actions-left {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.player-badge.admin-view .actions-left button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    padding: 0 var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.player-badge.admin-view .actions-left button:hover {
+    color: var(--accent-gold);
+}
+
+.player-badge.admin-view .player-tags {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.player-badge.admin-view .player-tags .class-tag {
+    background: var(--bg-input);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: inline-block;
+}
+
+.player-badge.admin-view .player-tags .role-tag {
+    background: var(--bg-input);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: inline-block;
+    margin-left: auto;
+}
+
+.player-badge.admin-view .player-tags .role-tag.commander {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+.player-badge.admin-view .player-tags .role-tag.vice-commander {
+    background: var(--accent-blue);
+    color: var(--text-inverse);
+}
+
+.player-badge.admin-view .player-tags .role-tag.healer {
+    background: var(--accent-green);
+    color: var(--text-inverse);
+}
+
+.player-badge.admin-view .player-tags .role-tag.member {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+}
+
+.player-badge.admin-view .player-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    min-width: 60px;
+}
+
+.player-badge.admin-view .player-info .name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.player-badge.admin-view .player-info .name-edit {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: var(--font-size-md);
+    width: auto;
+    min-width: 60px;
+    padding: var(--spacing-xs) var(--spacing-xs);
+    border-radius: var(--radius-sm);
+}
+
+.player-badge.admin-view .player-info .name-edit:focus {
+    background: var(--bg-input);
+    outline: 1px solid var(--accent-gold);
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+}
+
+/* ===== DUPLICATE WARNING ===== */
+.player-badge.duplicate-warning {
+    border-left: 4px solid var(--accent-amber);
+    border-right: 4px solid var(--accent-amber);
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.player-badge.duplicate-warning .name {
+    color: var(--accent-amber);
+}
+
+.player-badge.duplicate-warning .name::after {
+    content: ' ⚠️';
+    color: var(--accent-amber);
+    font-size: var(--font-size-sm);
+}
+
+.player-badge.duplicate-warning .role-tag,
+.player-badge.duplicate-warning .class-tag {
+    border: 1px solid var(--accent-amber);
+}
+
+/* ===== EDIT MODE ===== */
+.player-badge.admin-view.editing {
+    border-left: 3px solid var(--accent-gold);
+    background: rgba(245, 197, 66, 0.08);
+    transition: all var(--transition-normal);
+}
+
+.player-badge.admin-view.editing .edit-input {
+    background: var(--bg-input);
+    border: 2px solid var(--accent-gold);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: var(--font-size-md);
+    width: auto;
+    min-width: 60px;
+    outline: none;
+}
+
+.player-badge.admin-view.editing .edit-input:focus {
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+    border-color: var(--accent-gold);
+}
+
+.player-badge.admin-view.editing .class-select,
+.player-badge.admin-view.editing .role-select {
+    border: 2px solid var(--accent-gold);
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    outline: none;
+}
+
+.player-badge.admin-view .actions-right {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.player-badge.admin-view .actions-right button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    padding: 0 var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.player-badge.admin-view .actions-right button:hover {
+    color: var(--accent-gold);
+}
+
+.player-badge.admin-view .actions-right .return-btn:hover {
+    color: var(--accent-blue);
+}
+
+.player-badge.admin-view .actions-right .save-btn:hover {
+    color: var(--accent-green);
+}
+
+.player-badge.admin-view .actions-right .cancel-btn:hover {
+    color: var(--accent-red);
+}
+
+.player-badge.admin-view .class-select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.player-badge.admin-view .class-select:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+}
+
+.player-badge.admin-view .role-select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.player-badge.admin-view .role-select:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+}
+
+/* ===== SAVE INDICATOR ===== */
+.save-indicator {
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent-green);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+    animation: fadeInOut 1.5s ease forwards;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+    20% { opacity: 1; transform: translateY(-50%) scale(1); }
+    80% { opacity: 1; transform: translateY(-50%) scale(1); }
+    100% { opacity: 0; transform: translateY(-50%) scale(0.8); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+    .player-badge.admin-view {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        gap: var(--spacing-xs);
+    }
+    
+    .player-badge.admin-view .player-info .name-edit {
+        font-size: var(--font-size-sm);
+        min-width: 40px;
+    }
+    
+    .save-indicator {
+        right: -50px;
+        font-size: var(--font-size-xs);
+    }
+}

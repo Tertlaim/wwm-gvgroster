@@ -1,0 +1,151 @@
+/* ============================================================
+   CSS VARIABLES - Theme System
+   ============================================================ */
+
+:root {
+    /* ===== DARK THEME (Default - Night Battle) ===== */
+    
+    /* Backgrounds */
+    --bg-body: #0a1628;
+    --bg-app: #0f1f35;
+    --bg-card: #0d1a2b;
+    --bg-panel: #13263f;
+    --bg-input: #0a1a2b;
+    --bg-hover: #1a3350;
+    --bg-active: #1d3b57;
+    
+    /* Text */
+    --text-primary: #e8f0fe;
+    --text-secondary: #cbd5e1;
+    --text-muted: #6f8aa8;
+    --text-inverse: #0b1a2f;
+    
+    /* Borders */
+    --border-color: #1a3350;
+    --border-light: #2b4a6a;
+    --border-active: #3b5f7e;
+    
+    /* Accents */
+    --accent-gold: #f5c542;
+    --accent-gold-hover: #ffd966;
+    --accent-gold-glow: rgba(245, 197, 66, 0.3);
+    
+    --accent-blue: #60a5fa;
+    --accent-green: #4ade80;
+    --accent-red: #dc2626;
+    --accent-amber: #f59e0b;
+    --accent-purple: #a78bfa;
+    
+    /* Shadows */
+    --shadow-color: rgba(0, 0, 0, 0.6);
+    --shadow-glow: rgba(245, 197, 66, 0.15);
+    --shadow-card: 0 4px 8px rgba(0, 0, 0, 0.3);
+    
+    /* Gradients */
+    --gradient-header: linear-gradient(135deg, #0f1f35 0%, #13263f 100%);
+    --gradient-card: linear-gradient(135deg, #0d1a2b 0%, #13263f 100%);
+    
+    /* Borders */
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+    --radius-full: 9999px;
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+    
+    /* Font */
+    --font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+    --font-size-xs: 0.6rem;
+    --font-size-sm: 0.75rem;
+    --font-size-md: 0.85rem;
+    --font-size-lg: 1rem;
+    --font-size-xl: 1.2rem;
+    --font-size-xxl: 2.2rem;
+}
+
+/* ===== LIGHT THEME ===== */
+[data-theme="light"] {
+    /* Backgrounds */
+    --bg-body: #ece4d9;
+    --bg-app: #f5efe8;
+    --bg-card: #ffffff;
+    --bg-panel: #ede5da;
+    --bg-input: #ffffff;
+    --bg-hover: #f0e8dd;
+    --bg-active: #e8ddd0;
+    
+    /* Text */
+    --text-primary: #1a1a2e;
+    --text-secondary: #2d2d44;
+    --text-muted: #6b6b7a;
+    --text-inverse: #f5efe8;
+    
+    /* Borders */
+    --border-color: #c4b5a0;
+    --border-light: #d4c5b0;
+    --border-active: #b4a590;
+    
+    /* Accents */
+    --accent-gold: #d4a830;
+    --accent-gold-hover: #e8b840;
+    --accent-gold-glow: rgba(212, 168, 48, 0.3);
+    
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-red: #dc2626;
+    --accent-amber: #d97706;
+    --accent-purple: #8b5cf6;
+    
+    /* Shadows */
+    --shadow-color: rgba(0, 0, 0, 0.15);
+    --shadow-glow: rgba(212, 168, 48, 0.15);
+    --shadow-card: 0 4px 8px rgba(0, 0, 0, 0.1);
+    
+    /* Gradients */
+    --gradient-header: linear-gradient(135deg, #f5efe8 0%, #ede5da 100%);
+    --gradient-card: linear-gradient(135deg, #ffffff 0%, #f5efe8 100%);
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-body);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-gold);
+}
+
+/* ===== SELECTION ===== */
+::selection {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+/* ===== FOCUS VISIBLE ===== */
+:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+}

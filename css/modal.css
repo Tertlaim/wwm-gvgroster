@@ -1,0 +1,215 @@
+/* ============================================================
+   MODAL - Modal overlay styles (UPDATED with variables)
+   ============================================================ */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-box {
+    background: var(--bg-app);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 30px 60px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    position: relative;
+    margin: 0 auto;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { 
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-box h2 {
+    font-weight: 400;
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+    color: var(--accent-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.modal-box .form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.modal-box .form-group label {
+    color: var(--text-secondary);
+}
+
+.modal-box .btn {
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+}
+
+.modal-box .btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-sm);
+}
+
+.modal-box .btn-outline:hover {
+    background: var(--bg-hover);
+    transform: scale(0.98);
+}
+
+.modal-error {
+    color: var(--accent-red);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+}
+
+.modal-success {
+    color: var(--accent-green);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+}
+
+.disabled-input {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.class-icon {
+    display: inline-block;
+    margin-right: var(--spacing-xs);
+}
+
+/* ===== CONFIRMATION MODAL ===== */
+#confirmationModal .modal-box {
+    max-width: 400px;
+}
+
+#confirmationModal .modal-box p {
+    text-align: center;
+    margin: var(--spacing-md) 0;
+    color: var(--text-secondary);
+}
+
+#confirmationModal .btn {
+    width: auto;
+    padding: var(--spacing-sm) var(--spacing-xl);
+}
+
+/* ===== ALERT/ERROR MODAL ===== */
+#alertModal .modal-box {
+    max-width: 400px;
+}
+
+#alertModal .modal-box p {
+    text-align: center;
+    margin: var(--spacing-md) 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+    line-height: 1.6;
+}
+
+#alertModal .modal-box .alert-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+#alertModal .btn {
+    width: auto;
+    padding: var(--spacing-sm) var(--spacing-xl);
+}
+
+/* ===== PREVIEW MODAL ===== */
+#previewModal .modal-box {
+    max-width: 450px;
+}
+
+#previewModal .modal-box p {
+    margin: var(--spacing-sm) 0;
+    color: var(--text-secondary);
+}
+
+#previewModal .modal-box p strong {
+    color: var(--accent-gold);
+}
+
+/* ===== LOGIN MODAL ===== */
+#loginModal .modal-box {
+    max-width: 400px;
+}
+
+/* ===== CHANGE PASSWORD MODAL ===== */
+#changePwModal .modal-box {
+    max-width: 400px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+    .modal-box {
+        padding: var(--spacing-lg) var(--spacing-md);
+        max-width: 95%;
+        margin: var(--spacing-md) auto;
+        border-radius: var(--radius-lg);
+    }
+    
+    .modal-box h2 {
+        font-size: var(--font-size-lg);
+        margin-bottom: var(--spacing-md);
+    }
+    
+    #confirmationModal .btn,
+    #alertModal .btn {
+        padding: var(--spacing-sm) var(--spacing-lg);
+        font-size: var(--font-size-sm);
+    }
+    
+    #previewModal .modal-box p {
+        font-size: var(--font-size-sm);
+    }
+}
+
+@media (max-width: 400px) {
+    .modal-box {
+        padding: var(--spacing-md) var(--spacing-sm);
+        border-radius: var(--radius-md);
+    }
+    
+    .modal-box h2 {
+        font-size: var(--font-size-md);
+    }
+}
