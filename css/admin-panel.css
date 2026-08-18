@@ -64,6 +64,18 @@
     color: var(--accent-gold);
 }
 
+/* Phase 11.6: ID-scoped so they survive .mod-area .btn / .panel-section h3
+   (which would otherwise override a plain utility class). */
+#demoteModBtn {
+    background: var(--accent-red);
+    width: auto;
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+#adminPanel h3 {
+    margin: 0;
+}
+
 .mod-area select {
     background: var(--bg-input);
     border: 1px solid var(--border-color);
@@ -167,7 +179,9 @@
     border-radius: var(--radius-full);
     border: 1px solid var(--border-color);
     text-align: center;
-    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-md);
+    color: var(--accent-gold);
 }
 
 /* ===== RESPONSIVE ===== */

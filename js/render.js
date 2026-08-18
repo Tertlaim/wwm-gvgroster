@@ -2,6 +2,13 @@
 //  RENDER - UI rendering using helpers
 // ============================================================
 
+// Phase 11.4: panel-level diffing. render() rebuilds each panel only when
+// its data actually changed since the last render - cuts DOM churn, keeps
+// focus inside open edit forms, and leaves unchanged panels (and their drag
+// listeners / scroll positions) alone. The Phase 8.3 dirty-check remains as
+// the outer safety net; this is a second layer for stray render() calls.
+let _renderSig = null;
+
 function render() {
     console.log('Rendering...');
     
@@ -19,25 +26,41 @@ function render() {
         const g = getGroups();
 		const r = getReserves();
         const canEdit = AuthModule.isMod();
+        const day = window.currentDay;
 		
         console.log('render() - r from getReserves():', r);
         console.log('render() - r length:', r ? r.length : 0);
         console.log('render() - App.state.reserves:', App.state.reserves);
-		
-        // Render groups
-        if (RenderHelpers.renderGroups) {
+        
+        // Per-panel signatures (only the currently viewed day is rendered).
+        const sig = {
+            groups: JSON.stringify(g || {}),
+            reserves: JSON.stringify(r || []),
+            guild: JSON.stringify((App.state.guildMembers && App.state.guildMembers[day]) || []),
+            canEdit: canEdit,
+            day: day
+        };
+        const prev = _renderSig;
+        const sameGroups = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.groups === sig.groups;
+        const sameReserves = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.reserves === sig.reserves;
+        const sameGuild = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.guild === sig.guild;
+        
+        // Render groups (skipped when unchanged)
+        if (!sameGroups && RenderHelpers.renderGroups) {
             RenderHelpers.renderGroups(g, canEdit);
         }
         
-        // Render reserves
-        if (RenderHelpers.renderReserves) {
+        // Render reserves (skipped when unchanged)
+        if (!sameReserves && RenderHelpers.renderReserves) {
             RenderHelpers.renderReserves(r, canEdit);
         }
         
-        // Render guild members as cards
-        if (RenderHelpers.renderGuildCards) {
+        // Render guild members as cards (skipped when unchanged)
+        if (!sameGuild && RenderHelpers.renderGuildCards) {
             RenderHelpers.renderGuildCards();
         }
+        
+        _renderSig = sig;
         
         renderAdminPanel();
         renderAnnouncement();
@@ -50,13 +73,15 @@ function render() {
     // Refresh history panel
     refreshHistoryPanel();
            
-        // Re-attach drag listeners
-        setTimeout(function() {
-            if (typeof attachDragListeners === 'function') {
-                attachDragListeners();
-                console.log('Drag listeners re-attached after render');
-            }
-        }, 50);
+        // Re-attach drag listeners only when a panel was actually rebuilt
+        if (!sameGroups || !sameReserves || !sameGuild) {
+            setTimeout(function() {
+                if (typeof attachDragListeners === 'function') {
+                    attachDragListeners();
+                    console.log('Drag listeners re-attached after render');
+                }
+            }, 50);
+        }
         
         // NOTE: render() no longer calls saveState(). Saving on every render
         // let public visitors overwrite server data with their (possibly stale)

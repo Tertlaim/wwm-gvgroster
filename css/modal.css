@@ -178,6 +178,11 @@
     max-width: 400px;
 }
 
+/* ===== GUILD CSV IMPORT MODAL ===== */
+#guildImportModal .modal-box h2 {
+    margin-bottom: var(--spacing-md);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
     .modal-box {
