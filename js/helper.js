@@ -24,16 +24,7 @@ function deleteCookie(name) {
     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
 }
 
-// ---- HTML escaping (prevents stored XSS via player names / notes / history) ----
-function esc(str) {
-    return String(str == null ? '' : str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
+// esc() moved to js/util.js (Phase 11.3) - shared across all modules.
 // ============================================================
 //  DISPLAY - last-update timestamp formatting
 // ============================================================
