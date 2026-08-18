@@ -282,17 +282,47 @@
 }
 
 /* Reserved space for the corner label (A/B/C/...) so it never overlaps
-   panel content (forms, buttons, lists). */
+   panel content (forms, buttons, lists). !important because the panel css
+   files load after side-panel.css and would otherwise override this. */
 .panel-section,
 .announcement-section,
 .reserve-area,
 .guild-member-area {
-    padding-bottom: 2.3rem;
+    padding-bottom: 2.3rem !important;
 }
 
 /* A collapsed panel only needs its header - drop the label reserve */
 .collapsible.collapsed {
     padding-bottom: var(--spacing-sm) !important;
+}
+
+/* Uniform vertical spacing between panels - matches the side panel's gap
+   rhythm (lg -> md -> sm) at each breakpoint. */
+.diagram > .panel-section,
+.diagram > .reserve-area,
+.diagram > .guild-member-area {
+    margin-bottom: var(--spacing-lg);
+}
+
+.diagram > .reserve-area,
+.diagram > .guild-member-area {
+    margin-top: 0;
+}
+
+@media (max-width: 800px) {
+    .diagram > .panel-section,
+    .diagram > .reserve-area,
+    .diagram > .guild-member-area {
+        margin-bottom: var(--spacing-md);
+    }
+}
+
+@media (max-width: 500px) {
+    .diagram > .panel-section,
+    .diagram > .reserve-area,
+    .diagram > .guild-member-area {
+        margin-bottom: var(--spacing-sm);
+    }
 }
 
 /* ===== HELP & SHORTCUTS PANEL ===== */
