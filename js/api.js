@@ -4,12 +4,7 @@
 
 const API_BASE = '/api';
 
-// ---- Auth token helper (Phase 4.4) ----
-function getAuthHeader() {
-    const token = AuthModule && AuthModule.getToken ? AuthModule.getToken() : null;
-    return token ? { 'Authorization': 'Bearer ' + token } : {};
-}
-
+// getAuthHeader() lives in js/util.js (Phase 11.3) - shared across all modules.
 // Load data from server
 async function loadDataFromServer() {
     try {
@@ -105,14 +100,7 @@ async function downloadBackup() {
             throw new Error(err.error || `Backup failed (HTTP ${response.status})`);
         }
         const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `guild-war-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        downloadBlob(blob, `guild-war-backup-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
         if (typeof showToast === 'function') {
             showToast('Backup downloaded', 'success', 1500);
         }

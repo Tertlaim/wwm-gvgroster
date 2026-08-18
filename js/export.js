@@ -10,37 +10,11 @@
 
 const ExportPanel = {};
 
-// ---- small helpers ----
+// downloadBlob / downloadDataUrl / csvEscape / parseCSVRows / esc live in
+// js/util.js (Phase 11.3) - shared across all modules.
 
 function _exportDate() {
     return new Date().toISOString().slice(0, 10);
-}
-
-function _downloadBlob(content, filename, mime) {
-    const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-}
-
-function _downloadDataUrl(dataUrl, filename) {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-}
-
-function _csvEscape(value) {
-    const s = String(value == null ? '' : value);
-    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
 }
 
 function _dayLabel(day) {
@@ -81,8 +55,8 @@ function exportGuildCsv() {
     _guildMasterList().forEach(function(p) {
         rows.push([p.name, p.class, p.role]);
     });
-    const csv = rows.map(function(r) { return r.map(_csvEscape).join(','); }).join('\r\n');
-    _downloadBlob('\ufeff' + csv, 'guild-members-' + _exportDate() + '.csv', 'text/csv;charset=utf-8');
+    const csv = rows.map(function(r) { return r.map(csvEscape).join(','); }).join('\r\n');
+    downloadBlob('\ufeff' + csv, 'guild-members-' + _exportDate() + '.csv', 'text/csv;charset=utf-8');
     if (typeof showToast === 'function') showToast('Guild member CSV downloaded', 'success', 1500);
 }
 
@@ -304,7 +278,7 @@ function exportRosterImage() {
             ctx.fillText(label, x + 10, y + GCELL_H / 2 + 5);
         }
         
-        _downloadDataUrl(canvas.toDataURL('image/png'), 'guild-war-roster-' + _exportDate() + '.png');
+        downloadDataUrl(canvas.toDataURL('image/png'), 'guild-war-roster-' + _exportDate() + '.png');
         if (typeof showToast === 'function') showToast('Roster image downloaded', 'success', 1500);
     } catch (error) {
         console.error('Image export error:', error);
@@ -323,9 +297,6 @@ function exportRosterPDF() {
         const el = document.getElementById('printRoster');
         if (!el) { window.print(); return; }
         
-        const esc = typeof window.esc === 'function' ? window.esc : function(s) {
-            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        };
         let html = '';
         html += '<h1>' + esc(window.guildName || 'Mask Sinners') + ' — Guild War Roster</h1>';
         html += '<p class="print-sub">Generated ' + esc(new Date().toLocaleString()) + '</p>';
@@ -381,44 +352,11 @@ function exportRosterPDF() {
 const VALID_CLASSES = ['Tank', 'DPS', 'Heal'];
 const VALID_ROLES = ['Member', 'Commander', 'Vice Commander', 'Healer'];
 
-function _parseCsvRows(text) {
-    const rows = [];
-    let row = [];
-    let cell = '';
-    let inQuotes = false;
-    const s = String(text || '');
-    for (let i = 0; i < s.length; i++) {
-        const c = s[i];
-        if (inQuotes) {
-            if (c === '"') {
-                if (s[i + 1] === '"') { cell += '"'; i++; }
-                else inQuotes = false;
-            } else {
-                cell += c;
-            }
-        } else if (c === '"') {
-            inQuotes = true;
-        } else if (c === ',') {
-            row.push(cell); cell = '';
-        } else if (c === '\n' || c === '\r') {
-            if (c === '\r' && s[i + 1] === '\n') i++;
-            row.push(cell); cell = '';
-            if (row.some(function(x) { return x.trim() !== ''; })) rows.push(row);
-            row = [];
-        } else {
-            cell += c;
-        }
-    }
-    row.push(cell);
-    if (row.some(function(x) { return x.trim() !== ''; })) rows.push(row);
-    return rows;
-}
-
 function _readImportRows() {
     const text = document.getElementById('guildImportText').value.trim();
     const fileInput = document.getElementById('guildImportFile');
     if (fileInput && fileInput.files && fileInput.files[0] && !text) return null;
-    const rows = _parseCsvRows(text);
+    const rows = parseCSVRows(text);
     if (rows.length && /^name\s*$/i.test(rows[0][0])) rows.shift();
     return rows;
 }
