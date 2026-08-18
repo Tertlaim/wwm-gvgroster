@@ -418,6 +418,11 @@
 #printRoster .print-reserve-row td.group-name {
     color: #444;
 }
+#printRoster .print-guild-heading {
+    border-top: 2px solid #333;
+    padding-top: 12px;
+    margin-top: 24px;
+}
 #printRoster .print-empty { color: #999; font-style: italic; }
 #printRoster .print-guild-item {
     display: inline-block;
