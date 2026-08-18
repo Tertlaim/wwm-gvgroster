@@ -25,24 +25,6 @@ const Shortcuts = {
                     }
                 }
             },
-            'ctrl+z': {
-                keys: ['ctrl', 'z'],
-                description: 'Undo',
-                action: () => {
-                    if (typeof UndoManager !== 'undefined') {
-                        UndoManager.undo();
-                    }
-                }
-            },
-            'ctrl+shift+z': {
-                keys: ['ctrl', 'shift', 'z'],
-                description: 'Redo',
-                action: () => {
-                    if (typeof UndoManager !== 'undefined') {
-                        UndoManager.redo();
-                    }
-                }
-            },
             'ctrl+enter': {
                 keys: ['ctrl', 'enter'],
                 description: 'Save edit',

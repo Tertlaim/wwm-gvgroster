@@ -424,26 +424,6 @@ if (addGroupBtn) {
                     console.log('📝 History logged: group add');
                 }
                 
-                // ---- ADD TO UNDO MANAGER ----
-                if (typeof UndoManager !== 'undefined' && UndoManager.push) {
-                    var undoData = {
-                        day: day,
-                        groupKey: groupKey,
-                        title: title,
-                        groupsSnapshot: JSON.stringify(window.groups)
-                    };
-                    UndoManager.push('group_add', undoData, function(data) {
-                        // Reverse: remove the group
-                        if (window.groups && window.groups[data.day]) {
-                            delete window.groups[data.day][data.groupKey];
-                            updateLastUpdate();
-                            render();
-                            showToast(`Undo: Added group "${data.title}" removed`, 'info', 1500);
-                        }
-                    });
-                    console.log('↩️ Undo recorded: group add');
-                }
-                
                 if (typeof render === 'function') render();
             } else {
                 showAlert(result.error || 'Failed to add group.', 'Error', '❌');
@@ -542,37 +522,6 @@ function setupRegistration() {
             previewModal.classList.remove('active');
             showToast('Already registered for the selected day(s).', 'warning', 3000);
             return;
-        }
-        
-        // ---- ADD TO UNDO MANAGER ----
-        if (typeof UndoManager !== 'undefined' && UndoManager.push && result.player) {
-            var undoData = {
-                player: result.player,
-                daySat: daySat,
-                daySun: daySun
-            };
-            UndoManager.push('add', undoData, function(data) {
-                // Reverse: remove the player from guildMembers and reserves
-                var days = [];
-                if (data.daySat) days.push('sat');
-                if (data.daySun) days.push('sun');
-                days.forEach(function(d) {
-                    if (window.guildMembers && window.guildMembers[d]) {
-                        window.guildMembers[d] = window.guildMembers[d].filter(function(p) {
-                            return p.id !== data.player.id;
-                        });
-                    }
-                    if (window.reserves && window.reserves[d]) {
-                        window.reserves[d] = window.reserves[d].filter(function(p) {
-                            return p.id !== data.player.id;
-                        });
-                    }
-                });
-                updateLastUpdate();
-                render();
-                showToast(`Undo: Registration of ${data.player.name} removed`, 'info', 1500);
-            });
-            console.log('↩️ Undo recorded: registration');
         }
         
         pendingRegistration = null;
@@ -1326,12 +1275,6 @@ async function init() {
 		if (typeof History !== 'undefined') {
 			History.init();
 			console.log('History initialized');
-		}
-
-		// Initialize UndoManager
-		if (typeof UndoManager !== 'undefined') {
-			UndoManager.init();
-			console.log('UndoManager initialized');
 		}
 
 		// Initialize Shortcuts
