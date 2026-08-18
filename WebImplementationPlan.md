@@ -172,7 +172,7 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
   - Verified E2E in browser: menu items correct per type/permission, all six flows (copy/move reserve/move group/delete group/delete reserve/delete guild) asserted in-memory with correct tracking + tombstone
 - [x] **7.2 Extended keyboard shortcuts**
   - Click any player to select (gold highlight), then `C` copy to reserve, `M` move-to-group (menu opens at the player with the submenu already open), `E` edit, `Delete`/`Backspace` delete; Escape or clicking empty space deselects
-  - Implemented in `js/context-menu.js` (selection + actions) + `js/shortcuts.js` (keys); legend auto-lists the new keys
+  - Implemented in `js/context-menu.js` (selection + actions) + `js/shortcut.js` (keys); legend auto-lists the new keys
   - Note: plan originally put selection in `dragdrop.js`; it lives in `context-menu.js` instead so selection and the actions it drives share one module
 
 ### Phase 7B: Roles & Admin Management + UI Usability ✅ COMPLETE
@@ -226,12 +226,16 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 
 ### Phase 11: Code Quality & Refactoring (structural - planned, not started)
 From the 2026-08-18 review; all items are behavior-preserving and verified by the existing manual regression suite.
-- [ ] **11.1 Split `server.js`** (~1400 lines) into `server/auth.js`, `server/data.js` (read/write/merge/tombstones/atomic), `server/history.js`, `server/rate-limit.js`, `server/routes/*.js`
+- [ ] **11.1 Split `server.js`** (~1400 lines) into `server/auth.js`, `server/data.js` (read/write/merge/tombstones/atomic), `server/history.js`, `server/rate-limit.js`, `server/route/*.js` (singular naming)
 - [ ] **11.2 Split `main.js`** (~1600 lines): extract sync engine, admin tools, help panel, collapsibles, init into modules (like the newer module files)
-- [ ] **11.3 Shared `js/utils.js`** - `esc`, `getAuthHeader`, `_downloadBlob`/download helpers, CSV parser (currently duplicated in api.js / export.js / main.js / render-helpers.js)
-- [ ] **11.4 Diffed/targeted rendering** - replace full `render()` rebuilds on save with panel-level DOM updates (fixes focus loss + DOM churn; keeps the Phase 8.3 dirty-check as a safety net)
+- [ ] **11.3 Shared `js/util.js`** - `esc`, `getAuthHeader`, `_downloadBlob`/download helpers, CSV parser (currently duplicated in api.js / export.js / main.js / render-helper.js)
+- [ ] **11.4 Diffed/targeted rendering** - replace full `render()` rebuilds on save with panel-level DOM updates (fixes focus loss + DOM churn; keeps the Phase 8.3 dirty-check as a safety net). Review item #10 (deferred updates) assessed: no usability impact - polling 30s + SSE push + focus-resync already deliver updates within seconds; diffed rendering only affects local redraw speed, not update arrival
 - [ ] **11.5 `App.state` consolidation** - single state object for `window.groups/reserves/guildMembers/moderators/lastUpdateTime` (makes sync/render/test simpler)
 - [ ] **11.6 Finish the CSS-class migration** for the remaining ~66 inline `style=` in index.html + JS-generated markup (utilities: btn-auto/btn-xl/btn-active/flex-row-sm/select-field/modal-sm already added)
+- [ ] **11.7 Sync optimization (review #9)** - `performSync` currently JSON-stringifies the whole state on every poll just to detect change; compare the server's data timestamp first and skip the stringify/merge unless an actual update arrived. Tied to the current JSON-file framework: a future Supabase migration replaces this with versioned rows + row-level subscriptions (see Recorded To-Dos), so this only pays off if we stay on JSON. SSE push stays ping-only (re-fetch on ping) - see note below
+- [ ] **11.8 Automated tests (review #11, optional but recommended)** - Node's built-in test runner, zero new dependencies. Cover the pure-logic pieces: merge engine (stale-snapshot merge, dedupe, one-player-per-group), tombstones (deletion survives restart), atomic writes (crash mid-write), rate limiter (exactly N then 429), CSV parser. Insurance for the 11.1/11.2 refactors
+- **Resolved (no work item):** review #12 (persistent SSE across server restarts) - declined by owner; the current in-memory SSE is fine since a restart just reconnects. Review #13 (FontAwesome CDN) - already fixed by vendoring to `vendor/font-awesome/` (see earlier commit)
+- **Naming standard (applied 2026-08-18):** no trailing `s` on custom file names even when plural is grammatically correct - `routes.js` -> `route.js`, `utils.js` -> `util.js`, etc. All custom js/css renamed: `helpers.js` -> `helper.js`, `event-handlers.js` -> `event-handler.js`, `render-helpers.js` -> `render-helper.js`, `bulk-actions.*` -> `bulk-action.*`, `shortcuts.*` -> `shortcut.*`, `day-tabs.css` -> `day-tab.css`, `guild-cards.css` -> `guild-card.css`, `variables.css` -> `variable.css`
 
 ### Phase 12: Mobile & Accessibility
 - [ ] **12.1 Mobile optimization** (was 9.1) - 44px touch targets, swipe day navigation, responsive grids, mobile menu
@@ -262,23 +266,23 @@ guild-war-management/            (git repo, branch main)
 ├── data/
 │   ├── database.json            done (git-ignored)
 │   └── history.json             done (git-ignored)
-├── css/                         done - 19 files (variables, main, header, day-tabs, toast,
-│                                  bulk-actions, guild-cards, shortcuts, diagram,
+├── css/                         done - 19 files (variable, main, header, day-tab, toast,
+│                                  bulk-action, guild-card, shortcut, diagram,
 │                                  admin-view, public-view, reserve, guild-member,
 │                                  side-panel, admin-panel, announcement, modal, responsive)
-└── js/
+└── js/                          (naming standard: no trailing 's' on custom files)
     ├── main.js                  done - sync engine (SSE + poll + merge payload)
     ├── api.js                   done - registerPlayer + auth header
     ├── auth-module.js           done - sessions, change-password
-    ├── helpers.js               done - esc() + pending removal/delete tracking
+    ├── helper.js                done - esc() + pending removal/delete tracking
     ├── render.js                done - main render
-    ├── render-helpers.js        done - guild cards from master list
-    ├── event-handlers.js        done - inline edit, checkbox handlers
+    ├── render-helper.js         done - guild cards from master list
+    ├── event-handler.js         done - inline edit, checkbox handlers
     ├── dragdrop.js              done - drag & drop
-    ├── bulk-actions.js          done - copy/delete/clear selected
+    ├── bulk-action.js           done - copy/delete/clear selected
     ├── history.js               done - history tracking
     ├── announcement.js          done - announcements
-    ├── shortcuts.js             done - ? / Ctrl+S / Ctrl+T / Escape + C/M/E/Delete
+    ├── shortcut.js              done - ? / Ctrl+S / Ctrl+T / Escape + C/M/E/Delete
     ├── context-menu.js          done - Phase 7: right-click menu + click-to-select
     ├── theme.js                 done - theme management
     ├── toast.js                 done - toast system
