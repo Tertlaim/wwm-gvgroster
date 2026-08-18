@@ -6,6 +6,10 @@ const { DELETED_PLAYERS, pruneTombstones } = require('./merge');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'database.json');
 
+// Phase 11.7: cached last-update timestamp so /api/data/updated can answer
+// without re-reading + parsing the whole database file on every poll.
+let _cachedLastUpdate = null;
+
 // Read database
 function readDatabase() {
     try {
@@ -21,11 +25,24 @@ function readDatabase() {
 function writeDatabase(data) {
     try {
         atomicWriteFileSync(DB_PATH, JSON.stringify(data, null, 2));
+        _cachedLastUpdate = (data && data.lastUpdateTime) ? data.lastUpdateTime : new Date().toISOString();
         return true;
     } catch (error) {
         console.error('Error writing database:', error);
         return false;
     }
+}
+
+// Phase 11.7: cheap last-update lookup (no file read once a write has
+// happened in this process; falls back to a one-time file read at boot).
+function getLastUpdateTime() {
+    if (_cachedLastUpdate) return _cachedLastUpdate;
+    const db = readDatabase();
+    if (db && db.lastUpdateTime) {
+        _cachedLastUpdate = db.lastUpdateTime;
+        return _cachedLastUpdate;
+    }
+    return null;
 }
 
 // Phase 8.2: Hydrate the in-memory tombstone map from disk so deletion
@@ -213,6 +230,7 @@ module.exports = {
     DB_PATH,
     readDatabase,
     writeDatabase,
+    getLastUpdateTime,
     initDatabase,
     loadTombstonesFromDisk,
     persistTombstones,

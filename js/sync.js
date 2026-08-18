@@ -42,15 +42,69 @@ function startDataSync() {
     setupRealtimeSync();
 }
 
-// One sync pass: fetch server data and apply it if it is newer than ours.
+// True if serverTime is newer than localTime (or local is unset). Both are
+// ISO strings (server always writes new Date().toISOString()); Date-object
+// form kept for backwards safety.
+function isNewerThan(serverTime, localTime) {
+    if (!localTime) return true;
+    if (typeof serverTime === 'string' && typeof localTime === 'string') {
+        return serverTime > localTime;
+    }
+    if (typeof serverTime === 'object' && typeof localTime === 'object') {
+        return new Date(serverTime) > new Date(localTime);
+    }
+    return false;
+}
+
+// Apply an already-fetched server snapshot if it is newer than ours.
+// The whole-state stringify compare runs ONLY here (i.e. after an update
+// actually arrived), never on an unchanged poll.
+function applyIfNewer(serverData) {
+    if (!serverData) return;
+    
+    const serverTime = serverData.lastUpdateTime;
+    const localTime = window._serverLastUpdatedTime;
+    
+    if (!serverTime || !isNewerThan(serverTime, localTime)) {
+        window._lastSyncedAt = Date.now();
+        return;
+    }
+    
+    console.log('🔄 Server has newer data, syncing...');
+    
+    // Snapshot current state to detect actual changes
+    const prevState = {
+        groups: App.state.groups,
+        reserves: App.state.reserves,
+        guildMembers: App.state.guildMembers,
+        announcement: App.state.announcementText,
+        guildName: App.state.guildName
+    };
+    
+    applyServerData(serverData);
+    
+    // Only re-render if data actually changed
+    const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(App.state.groups) ||
+                        JSON.stringify(prevState.reserves) !== JSON.stringify(App.state.reserves) ||
+                        JSON.stringify(prevState.guildMembers) !== JSON.stringify(App.state.guildMembers) ||
+                        prevState.announcement !== App.state.announcementText ||
+                        prevState.guildName !== App.state.guildName;
+    
+    if (dataChanged && typeof render === 'function') {
+        render();
+        showToast('🔄 Data synced from server', 'info', 1500);
+    }
+}
+
+// One sync pass (Phase 11.7): ask the server for its last-update timestamp
+// first via the lightweight endpoint and only download the full state when
+// it is actually newer. Falls back to the full fetch if the endpoint is
+// unavailable, so sync still works against older servers.
 async function performSync() {
     if (_isSyncing) return; // Prevent overlapping syncs
     _isSyncing = true;
     
     try {
-        const serverData = await loadDataFromServer();
-        if (!serverData) return;
-        
         // Phase 8.3: never apply server data over an in-progress edit.
         // Defer instead; endUserEdit() re-runs the sync when editing stops.
         if (isUserEditing()) {
@@ -58,41 +112,29 @@ async function performSync() {
             return;
         }
         
-        const serverTime = serverData.lastUpdateTime;
-        const localTime = window._serverLastUpdatedTime;
-        
-        // If server has NEWER data than what we last synced, reload
-        if (serverTime && (!localTime || 
-            (typeof serverTime === 'string' && typeof localTime === 'string' && serverTime > localTime) ||
-            (typeof serverTime === 'object' && typeof localTime === 'object' && new Date(serverTime) > new Date(localTime)))) {
-            
-            console.log('🔄 Server has newer data, syncing...');
-            
-            // Snapshot current state to detect actual changes
-            const prevState = {
-                groups: App.state.groups,
-                reserves: App.state.reserves,
-                guildMembers: App.state.guildMembers,
-                announcement: App.state.announcementText,
-                guildName: App.state.guildName
-            };
-            
-            applyServerData(serverData);
-            
-            // Only re-render if data actually changed
-            const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(App.state.groups) ||
-                                JSON.stringify(prevState.reserves) !== JSON.stringify(App.state.reserves) ||
-                                JSON.stringify(prevState.guildMembers) !== JSON.stringify(App.state.guildMembers) ||
-                                prevState.announcement !== App.state.announcementText ||
-                                prevState.guildName !== App.state.guildName;
-            
-            if (dataChanged && typeof render === 'function') {
-                render();
-                showToast('🔄 Data synced from server', 'info', 1500);
-            }
-        } else {
-            window._lastSyncedAt = Date.now();
+        let serverTime = null;
+        try {
+            serverTime = await getServerUpdateTime();
+        } catch (error) {
+            serverTime = null;
         }
+        
+        if (serverTime === null) {
+            // Lightweight endpoint unavailable - legacy full-fetch path.
+            const serverData = await loadDataFromServer();
+            applyIfNewer(serverData);
+            return;
+        }
+        
+        const localTime = window._serverLastUpdatedTime;
+        if (!isNewerThan(serverTime, localTime)) {
+            // Nothing changed since our last sync - skip the full download.
+            window._lastSyncedAt = Date.now();
+            return;
+        }
+        
+        const serverData = await loadDataFromServer();
+        applyIfNewer(serverData);
     } catch (error) {
         console.error('Sync error:', error);
     } finally {

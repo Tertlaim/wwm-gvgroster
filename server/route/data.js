@@ -19,6 +19,12 @@ module.exports = function registerDataRoutes(app, ctx) {
         }
     });
 
+    // GET /api/data/updated - Cheap last-update timestamp (Phase 11.7)
+    // Lets the client poller skip the full-state download unless data changed.
+    app.get('/api/data/updated', (req, res) => {
+        res.json({ lastUpdateTime: data.getLastUpdateTime() });
+    });
+
     // GET /api/events - Server-Sent Events stream; clients re-sync on 'update'
     app.get('/api/events', (req, res) => {
         res.writeHead(200, {

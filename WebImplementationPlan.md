@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 10 + 10B Complete + code-quality pass (const/let, CSS classes, vendored FA, a11y, theme colors). Next up: Phase 11 - Code Quality & Refactoring
+**Status:** Phase 11 Complete (code-quality refactor: server/main splits, util.js, App.state, diffed rendering, CSS-class migration, sync optimization, test suite). Next up: Phase 12 - Mobile & Accessibility
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -118,6 +118,7 @@ Dependencies: express, cors, bcrypt (now used - password hashing, Phase 9.1)
 
 ```
 GET  /api/data                        - Load data (public)
+GET  /api/data/updated                - Lightweight last-update timestamp (public, Phase 11.7)
 POST /api/data                        - Save data (AUTH, merge-aware: baseVersion/deletedIds/removed)
 POST /api/register                    - Public self-registration (validated, deduped, logs history)
 POST /api/login                       - Authenticate -> session token
@@ -241,10 +242,10 @@ From the 2026-08-18 review; all items are behavior-preserving and verified by th
   - Dependencies are one-way (data -> merge, auth/history/data -> util); routes receive a shared `ctx` object. `__dirname` paths adjusted with `..` so data/config resolve to the repo root. Verified: 17/17 API parity checks on a scratch copy (login, staff, save, register, history, groups, backup, 401 guard, owner password change) + live 3000 restart + UI clean
 - [x] **11.2 Split `main.js`** (1670 -> ~1030 lines): extracted verbatim into four new modules loaded before main.js - `js/sync.js` (sync engine: poll/SSE/focus re-sync + Phase 8.3 dirty-check, SYNC_INTERVAL), `js/admin-panel.js` (setupAdminTools/setupAdminControls/setupChangePassword), `js/panel.js` (setupScrollShadow/save+restoreCollapseState/setupCollapsiblePanels/setupModalFocusTraps), `js/help.js` (renderHelpPanel). main.js keeps the shared data layer (saveState/loadState/applyServerData/showConfirmation/updateLastUpdate - called from 8 other files), the editing setups (guild name, groups, registration, reserves, guild actions, day tabs) and init. Cross-file callers confirmed before the move (beginUserEdit/endUserEdit from announcement/dragdrop/event-handler; renderHelpPanel from auth-module). Verified in browser: login as admin, help panel switches to mod view, all admin buttons + change-password modal work, collapsibles persist, sync dirty-check (begin/endUserEdit), zero console errors
 - [x] **11.3 Shared `js/util.js`** - `esc`, `getAuthHeader`, `downloadBlob`, `downloadDataUrl`, `csvEscape`, `parseCSVRows`; local copies deleted from helper.js / api.js / export.js and call sites updated (backup download reuses shared downloadBlob). Verified: CSV export + parser round-trip in browser, no console errors
-- [ ] **11.4 Diffed/targeted rendering** - replace full `render()` rebuilds on save with panel-level DOM updates (fixes focus loss + DOM churn; keeps the Phase 8.3 dirty-check as a safety net). Review item #10 (deferred updates) assessed: no usability impact - polling 30s + SSE push + focus-resync already deliver updates within seconds; diffed rendering only affects local redraw speed, not update arrival
+- [x] **11.4 Diffed/targeted rendering** - `render()` now computes per-panel signatures (JSON of the current day's groups/reserves/guildMembers + canEdit + day) and skips rebuilding any panel whose data is unchanged since the last render; drag listeners re-attach only when a panel was actually rebuilt. Cuts DOM churn (27-card guild grid is no longer recreated on unrelated renders), preserves focus inside open edit forms and scroll positions, and leaves the Phase 8.3 dirty-check as the outer safety net. Review item #10 (deferred updates) assessed: no usability impact - polling 30s + SSE push + focus-resync already deliver updates within seconds; diffed rendering only affects local redraw speed, not update arrival. Verified in-browser: no-op render preserves DOM element identity, a group edit rebuilds only the groups panel (guild panel skipped), day switch rebuilds, bulk selection classes still toggle, full edit round-trip (rename -> save -> revert) works, zero console errors
 - [x] **11.5 `App.state` consolidation** - new `js/state.js` (loaded first) defines `App.state` as the single source of truth for `groups`, `reserves`, `guildMembers`, `moderators`, `lastUpdateTime` (plus the same-category synced fields `guildName`, `announcementText`); all 312 references across 13 files migrated from the `window.*` globals (mechanical, zero leftovers). UI-only state (`currentDay`, `currentUser`) and sync bookkeeping (`_eventSource`, `_serverLastUpdatedTime`) intentionally remain `window.*`. Verified in-browser: render from App.state, no-op save, full admin edit round-trip (Kaste -> KasteX -> Kaste) through the UI, sync/SSE, all 27 unit tests still green
-- [ ] **11.6 Finish the CSS-class migration** for the remaining ~66 inline `style=` in index.html + JS-generated markup (utilities: btn-auto/btn-xl/btn-active/flex-row-sm/select-field/modal-sm already added)
-- [ ] **11.7 Sync optimization (review #9)** - `performSync` currently JSON-stringifies the whole state on every poll just to detect change; compare the server's data timestamp first and skip the stringify/merge unless an actual update arrived. Tied to the current JSON-file framework: a future Supabase migration replaces this with versioned rows + row-level subscriptions (see Recorded To-Dos), so this only pays off if we stay on JSON. SSE push stays ping-only (re-fetch on ping) - see note below
+- [x] **11.6 Finish the CSS-class migration** - added ~35 semantic utility classes in `css/side-panel.css` (hint-xs/hint-sm-top, guide-block, subtitle-block, flex-btn-row(-center/-top), flex-btn, flex-col, flex-between, modal-message(-lg), scroll-list, modal-scroll, info-box, text-muted/text-center, grow-field, full-textarea, toggle-header, stat-hint, hint-center, preview-block, info-block, empty-state(-sm), guide-list, divider-top, alert-icon, role-display->#userRoleDisplay, no-margin->#adminPanel h3, btn-auto+btn-danger for demote) and converted 47 of 66 inline `style=` in index.html to classes (19 remain - all `display`-toggled elements kept inline on purpose: `data-role-show` visibility and JS toggles set `el.style.display`). Redundant gold-inline styles removed (`.btn` is already gold). Specificity regressions caught and fixed with ID-scoped rules: `#demoteModBtn` (survives `.mod-area .btn`), `#adminPanel h3` (survives `.panel-section h3`), `#userRoleDisplay` (gold/md/8px moved into the existing ID rule), `#guildImportModal .modal-box h2`. Verified pixel-clean in both themes + admin view, zero console errors
+- [x] **11.7 Sync optimization (review #9)** - new cheap `GET /api/data/updated` endpoint returns only `{ lastUpdateTime }` (served from a cached timestamp in `server/data.js` updated on every write - no file read/parse per poll). `performSync` now polls that endpoint first and only downloads + stringifies the full state when the timestamp is actually newer; falls back to the legacy full fetch if the endpoint is unavailable. The whole-state stringify compare now runs only after a real update arrives, never on an unchanged poll. Verified in-browser: idle poll does ZERO full fetches, a newer server timestamp triggers exactly one; SSE push + dirty-check unchanged. Tied to the current JSON-file framework: a future Supabase migration replaces this with versioned rows + row-level subscriptions (see Recorded To-Dos), so this only pays off if we stay on JSON. SSE push stays ping-only (re-fetch on ping) - see note below
 - [x] **11.8 Automated tests (review #11)** - `npm test` (Node built-in runner, zero new deps) - 27 tests across `test/`: merge engine (stale merge preserves other editors' players, one-player-per-group both directions, tombstone blocking, removeDeletedFromDb, applyRemovals, TTL/cap pruning), tombstone ledger disk round-trip simulating a restart, atomic writes (no .tmp leftover, overwrite, large payload), rate limiter (exactly N then block, independent keys, window expiry), CSV parser/escape + esc XSS. `js/util.js` got a dual-mode `module.exports` guard so its pure helpers are importable under node --test (no-op in the browser)
   - **Bug found + fixed by the tests (merge engine):** `mergeGroupsDay` claimed ids while iterating groups in key order, so when an incoming client moved a player into a group (leaving the source group empty) while the stored DB still had them in the source group, the stale copy was pulled back in before the move was claimed - the player ended up in TWO groups. The one-group-per-day invariant was iteration-order-dependent. Fixed with a two-pass approach: collect every incoming-placed id first, then build groups. Regression test covers it; live server restarted on the fix and verified with a stale-save smoke test (marker merged, then removed - data pristine)
 - **Resolved (no work item):** review #12 (persistent SSE across server restarts) - declined by owner; the current in-memory SSE is fine since a restart just reconnects. Review #13 (FontAwesome CDN) - already fixed by vendoring to `vendor/font-awesome/` (see earlier commit)
@@ -296,24 +297,28 @@ guild-war-management/            (git repo, branch main)
 │                                  admin-view, public-view, reserve, guild-member,
 │                                  side-panel, admin-panel, announcement, modal, responsive)
 ├── js/                          (naming standard: no trailing 's' on custom files)
-    ├── main.js                  done - sync engine (SSE + poll + merge payload)
-    ├── api.js                   done - registerPlayer + auth header
-    ├── auth-module.js           done - sessions, change-password
-    ├── helper.js                done - esc() + pending removal/delete tracking
-    ├── render.js                done - main render
-    ├── render-helper.js         done - guild cards from master list
+    ├── data.js                  done - sample/fallback data (loaded first)
+    ├── state.js                 done (11.5) - App.state single source of truth (loaded 2nd)
+    ├── util.js                  done (11.3) - esc/getAuthHeader/download/CSV helpers (shared)
+    ├── helper.js                done - pending removal/delete tracking
+    ├── api.js                   done - fetch layer + Phase 11.7 getServerUpdateTime()
+    ├── auth-module.js           done - sessions, change-password, role checks
+    ├── toast.js / theme.js      done - toast system / theme manager
     ├── event-handler.js         done - inline edit, checkbox handlers
+    ├── render-helper.js         done - guild cards from master list
+    ├── render.js                done - main render (Phase 11.4 panel-level diffing)
     ├── dragdrop.js              done - drag & drop
     ├── bulk-action.js           done - copy/delete/clear selected
-    ├── history.js               done - history tracking
-    ├── announcement.js          done - announcements
     ├── shortcut.js              done - ? / Ctrl+S / Ctrl+T / Escape + C/M/E/Delete
     ├── context-menu.js          done - Phase 7: right-click menu + click-to-select
-    ├── theme.js                 done - theme management
-    ├── toast.js                 done - toast system
-    ├── data.js                  done - sample/fallback data
-    └── util.js                  done (11.3) - esc/getAuthHeader/download/CSV helpers (shared)
-    (export.js - done Phase 10; cron.js - not planned, see Recorded To-Dos)
+    ├── history.js               done - history tracking
+    ├── announcement.js          done - announcements
+    ├── export.js                done - Phase 10: image + PDF/print + guild CSV (Phase 10B)
+    ├── sync.js                  done (11.2) - sync engine: poll/SSE/focus re-sync + dirty-check
+    ├── admin-panel.js           done (11.2) - admin tools, staff controls, change-password
+    ├── panel.js                 done (11.2) - scroll shadow, collapsibles, modal focus traps
+    ├── help.js                  done (11.2) - role-aware Help & Shortcuts panel
+    └── main.js                  done - shared data layer (saveState/loadState/applyServerData), editing setups, init
 ```
 
 ---
@@ -335,12 +340,12 @@ guild-war-management/            (git repo, branch main)
 | Phase 9: Security Hardening | ✅ complete | 100% |
 | Phase 10: Export Options | ✅ complete | 100% |
 | Phase 10B: Guild CSV Import/Export + Public Staff | ✅ complete | 100% |
-| Phase 11: Code Quality & Refactoring | pending | 0% |
+| Phase 11: Code Quality & Refactoring | ✅ complete | 100% |
 | Phase 12: Mobile & Accessibility | pending | 0% |
 | Phase 13: Data Model Simplification | deferred | 0% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~99.5%
+**Overall Progress:** ~99.9% (all planned phases done; Phase 12 Mobile/A11y and Phase 13 data-model remain as roadmap, plus recorded-only To-Dos)
 
 ---
 

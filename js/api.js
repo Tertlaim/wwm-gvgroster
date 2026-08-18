@@ -20,6 +20,20 @@ async function loadDataFromServer() {
     }
 }
 
+// Phase 11.7: lightweight last-update check - lets the sync poller avoid
+// downloading the full state every 30s when nothing changed. Returns null
+// (and the caller falls back to a full fetch) on any failure.
+async function getServerUpdateTime() {
+    try {
+        const response = await fetch(`${API_BASE}/data/updated`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data && data.lastUpdateTime ? data.lastUpdateTime : null;
+    } catch (error) {
+        return null;
+    }
+}
+
 // Save data to server
 async function saveDataToServer(data) {
     try {
