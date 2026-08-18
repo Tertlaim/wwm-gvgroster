@@ -82,7 +82,12 @@
                     </button>
                     <span class="panel-label">A</span>
                 </div>
-<!-- Group Stats - Aligned Right -->
+                <!-- B - GROUP GRID -->
+                <div class="group-grid-container">
+                    <div class="group-grid" id="groupGrid"></div>
+                </div>
+
+<!-- Group Stats - Below Group Grid -->
 <div class="group-stats-wrapper">
     <div class="group-stats" id="groupStats">
         <span class="stat-item">
@@ -99,11 +104,6 @@
         </span>
     </div>
 </div>
-
-                <!-- B - GROUP GRID -->
-                <div class="group-grid-container">
-                    <div class="group-grid" id="groupGrid"></div>
-                </div>
 
                 <!-- C - RESERVES PANEL -->
                 <div class="reserve-area" id="reserveArea">
@@ -245,16 +245,15 @@
                                 <label>ADD NEW GROUP :</label>
                                 <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap;">
                                     <input type="text" id="newGroupTitle" placeholder="Group name" style="flex:1; min-width:100px;" />
-                                    <select id="newGroupDay" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
-                                        <option value="sat">Saturday</option>
-                                        <option value="sun">Sunday</option>
-                                    </select>
                                     <button class="btn btn-sm" id="addGroupBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
                                         <i class="fas fa-plus"></i> Add
                                     </button>
                                 </div>
+                                <div style="font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--spacing-xs);">
+                                    <i class="fas fa-info-circle"></i> Adds to the currently viewed day
+                                </div>
                             </div>
-                            <div id="groupStats" style="font-size:var(--font-size-sm); color:var(--text-muted); margin-top:var(--spacing-xs);">
+                            <div id="groupCountStats" style="font-size:var(--font-size-sm); color:var(--text-muted); margin-top:var(--spacing-xs);">
                                 <span id="groupCount">Groups: 4/6</span>
                             </div>
                         </div>
@@ -278,7 +277,7 @@
                 <!-- H - HISTORY PANEL -->
                 <div class="panel-section" id="historyPanel" data-role-show="admin,mod">
                     <h3><i class="fas fa-history"></i> Recent Changes</h3>
-                    <div id="historyList" style="max-height:200px; overflow-y:auto; font-size:var(--font-size-sm);">
+                    <div id="historyList" style="max-height:60vh; overflow-y:auto; font-size:var(--font-size-sm);">
                         <div style="color:var(--text-muted); text-align:center; padding:var(--spacing-sm);">Loading history...</div>
                     </div>
                     <div style="display:flex; gap:var(--spacing-sm); margin-top:var(--spacing-sm); flex-wrap:wrap;">

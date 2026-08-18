@@ -617,9 +617,54 @@ EventHandlers.setupTitleListeners = function() {
                 saveBtn.style.display = 'none';
                 cancelBtn.style.display = 'none';
                 break;
+                
+            case 'remove':
+                // Phase 6.2 - Remove group (mods+, empty groups only per server rule)
+                if (!isMod) {
+                    showToast('Only moderators can remove groups.', 'error', 2000);
+                    return;
+                }
+                var day = window.currentDay || 'sat';
+                var groupTitle = display ? display.textContent : groupKey;
+                if (typeof showConfirmation === 'function') {
+                    showConfirmation('Remove group "' + groupTitle + '"?', function() {
+                        removeGroup(day, groupKey);
+                    });
+                } else {
+                    removeGroup(day, groupKey);
+                }
+                break;
         }
     });
 };
+
+// Remove a group via /api/groups/remove, then re-sync from the server.
+function removeGroup(day, groupKey) {
+    fetch('/api/groups/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(typeof getAuthHeader === 'function' ? getAuthHeader() : {}) },
+        body: JSON.stringify({ day: day, groupKey: groupKey })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        if (result.success) {
+            showToast('Group removed', 'success', 2000);
+            if (typeof History !== 'undefined' && History.add) {
+                History.add('group_remove', {
+                    details: groupKey,
+                    day: day,
+                    to: day === 'sat' ? 'Saturday' : 'Sunday'
+                });
+            }
+            if (typeof loadState === 'function') loadState();
+        } else {
+            showToast(result.error || 'Failed to remove group', 'error', 3000);
+        }
+    })
+    .catch(function() {
+        showToast('Error removing group', 'error', 3000);
+    });
+}
 
 EventHandlers.setupCheckboxListeners = function() {
     document.addEventListener('change', function(e) {

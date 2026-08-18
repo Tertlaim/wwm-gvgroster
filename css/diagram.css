@@ -247,7 +247,7 @@
     background: rgba(13, 31, 50, 0.4);
 }
 
-/* ===== GROUP STATS ===== */
+/* ===== GROUP STATS (below the group grid, Phase 6.6) ===== */
 .group-stats {
     display: flex;
     justify-content: flex-end;
@@ -255,7 +255,6 @@
     padding: var(--spacing-xs) var(--spacing-md);
     background: var(--bg-card);
     border-radius: var(--radius-full);
-    margin-bottom: var(--spacing-md);
     border: 1px solid var(--border-color);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
@@ -308,5 +307,5 @@
 .group-stats-wrapper {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: var(--spacing-md);
+    margin-top: var(--spacing-md);
 }
