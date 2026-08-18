@@ -1420,23 +1420,38 @@ function setupCollapsiblePanels() {
     restoreCollapseState();
 }
 
-// ---- Help & Shortcuts panel (below guild panel) ----
+// ---- Help & Shortcuts panel (below guild panel, role-aware) ----
+// Public viewers only see what applies to them: registration, collapsing
+// panels, and a hint to log in for the editing tools.
 function renderHelpPanel() {
     var container = document.getElementById('helpShortcuts');
     if (!container) return;
-    if (typeof Shortcuts === 'undefined' || !Shortcuts.shortcuts) return;
     
-    var entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
-        return { combo: combo, description: Shortcuts.shortcuts[combo].description };
+    var isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+    
+    if (!isMod) {
+        container.innerHTML =
+            '<div style="font-size:var(--font-size-sm); color:var(--text-secondary); line-height:1.7;">' +
+                '<i class="fas fa-info-circle"></i> Editing tools (drag &amp; drop, right-click menu, keyboard shortcuts, bulk actions) are for moderators and admins. ' +
+                'Log in with a moderator account to use them.' +
+            '</div>';
+    } else if (typeof Shortcuts !== 'undefined' && Shortcuts.shortcuts) {
+        var entries = Object.keys(Shortcuts.shortcuts).map(function(combo) {
+            return { combo: combo, description: Shortcuts.shortcuts[combo].description };
+        });
+        container.innerHTML =
+            '<h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs); display:flex; align-items:center; gap:var(--spacing-sm);"><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h4>' +
+            '<div class="help-shortcuts-grid">' +
+            entries.map(function(entry) {
+                return '<div class="help-shortcut-item"><kbd>' + entry.combo.replace(/\+/g, ' + ').toUpperCase() + '</kbd><span>' + entry.description + '</span></div>';
+            }).join('') +
+            '</div>';
+    }
+    
+    // Toggle the mod-only guide bullets
+    document.querySelectorAll('#helpPanel [data-help-role="mod"]').forEach(function(el) {
+        el.style.display = isMod ? '' : 'none';
     });
-    
-    container.innerHTML =
-        '<h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs); display:flex; align-items:center; gap:var(--spacing-sm);"><i class="fas fa-keyboard"></i> Keyboard Shortcuts</h4>' +
-        '<div class="help-shortcuts-grid">' +
-        entries.map(function(entry) {
-            return '<div class="help-shortcut-item"><kbd>' + entry.combo.replace(/\+/g, ' + ').toUpperCase() + '</kbd><span>' + entry.description + '</span></div>';
-        }).join('') +
-        '</div>';
 }
 
 // ---- Init ----

@@ -172,6 +172,11 @@ const AuthModule = {
         // Update visibility using data attributes
         this.updateVisibility();
         
+        // Re-render the Help & Shortcuts panel to match the current role
+        if (typeof renderHelpPanel === 'function') {
+            renderHelpPanel();
+        }
+        
         // Update player role dropdown
         var playerRoleSelect = document.getElementById('playerRole');
         if (playerRoleSelect) {
