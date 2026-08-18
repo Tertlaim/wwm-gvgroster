@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 11 Complete (code-quality refactor: server/main splits, util.js, App.state, diffed rendering, CSS-class migration, sync optimization, test suite). Next up: Phase 12 - Mobile & Accessibility
+**Status:** Phase 11 Complete + post-phase bugfix round (master-list integrity, false-duplicate warning, guild-card form close, wuxia header font). Next up: Phase 12 - Mobile & Accessibility
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -193,6 +193,13 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 - **Roles storage note:** accounts/roles stay in `config/auth.json` (the git-ignored auth database) rather than `data/database.json` - credentials must not flow through the merge engine or SSE broadcast, which would leak hashed/plaintext passwords to every viewer. Data-driven, versioned out of the repo = not hardcoded.
 - [x] **Public-view polish (user-reported bugs):** labels get a reserved bottom strip (2.3rem padding, now `!important` so the later-loaded panel CSS can't override it) so A/B/C/... never overlap content; collapse chevron pinned to the top-right corner of every panel uniformly (was drifting when reserve/guild header buttons wrapped); admin panel's collapse no longer hides its own header (header row is now excluded from the hide rule, so the uncollapse chevron stays visible); panel labels re-lettered to match layout order (Help=E, Register=F, Admin=G, Admin Tools=H, History=I); uniform vertical spacing between panels in the diagram column that mirrors the side panel's gap rhythm at every breakpoint; Help & Shortcuts panel is role-aware - public viewers see only registration/collapse tips + a login hint, mods+ see the full shortcuts grid and guide.
 
+## BUGFIX ROUND (2026-08-18, post-Phase-11) ✅ COMPLETE
+User-reported issues fixed after Phase 11:
+- [x] **Master list incomplete** - the day-split `guildMembers` could drift: players dragged into a day's groups/reserves never reached that day's master list (live data was missing 9 entries - 1 on Sat, 8 on Sun, incl. players in custom Sunday groups). Fixed server-side: `ensureMasterList()` backfills `guildMembers[day]` from that day's groups+reserves on EVERY save (after merge+removals), plus `runMasterListBackfill()` at boot. Also fixed a latent bug in `migrateGuildMembers()`: it only scanned the 4 hardcoded default group keys (offence1/2, defence1, jungle), missing players in admin-created custom groups - now scans `Object.keys(groups[day])`. Live data repaired on restart (Sat 27, Sun 29, zero missing)
+- [x] **False duplicate warning on every drag** - the group-drop duplicate check counted the dragged player's own source-group entry, so every group->group move claimed "already exists... duplicates will be highlighted". Now skips the dragged id (and the source slot for id-less players). Verified live: group->group drags produce zero false warnings, real duplicates still warn
+- [x] **Guild-card edit/note forms wouldn't close (Cancel or Save)** - the Phase 11.4 diffed render skipped rebuilding the guild panel when the underlying data was unchanged, so closing an edit/note form (a display-only DOM change) did nothing. Added `render(true)` force parameter - the four form handlers (edit save/cancel, note save/cancel) now force the panel rebuild. Verified live: open -> cancel closes, open -> save closes, empty-note save closes
+- [x] **Header redesign** - removed the helmet icon next to the title; subtitle now left-aligns exactly with the title text; vendored **Ma Shan Zheng** (brush-calligraphy, Where Winds Meet wuxia theme) as a 13KB latin-subset woff2 in `vendor/fonts/` with KaiTi/STKaiti/FangSong fallbacks - app stays fully offline. Title letter-spacing reduced 4px->2px for the brush font
+
 ## PENDING PHASES (roadmap, re-prioritized 2026-08-18)
 
 **Priority rule:** whole-function items first (data integrity, sync correctness, working backups, auth security), then features, then structural refactors. Supabase migration + cron keep-alive are recorded as To-Dos but are **not planned work**.
@@ -342,7 +349,7 @@ guild-war-management/            (git repo, branch main)
 | Phase 10B: Guild CSV Import/Export + Public Staff | ✅ complete | 100% |
 | Phase 11: Code Quality & Refactoring | ✅ complete | 100% |
 | Phase 12: Mobile & Accessibility | pending | 0% |
-| Phase 13: Data Model Simplification | deferred | 0% |
+| Phase 13: Data Model Simplification | deferred | 0% (master-list backfill now keeps the day-split lists complete in the meantime) |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
 **Overall Progress:** ~99.9% (all planned phases done; Phase 12 Mobile/A11y and Phase 13 data-model remain as roadmap, plus recorded-only To-Dos)
@@ -366,6 +373,9 @@ guild-war-management/            (git repo, branch main)
 | 11 | Poll can wipe an in-progress edit (no dirty-check) | ✅ Fixed in Phase 8.3 (deferred sync) |
 | 12 | New Mod button broken (401 - no auth header, and never enabled on selection) | ✅ Fixed in Phase 7B |
 | 13 | No way to add admins (no SuperAdmin role, roles hardcoded) | ✅ Fixed in Phase 7B (SuperAdmin, data-driven roles) |
+| 14 | Master list (guildMembers) missing players from custom groups / drags | ✅ Fixed 2026-08-18 (ensureMasterList on save + boot backfill + all-group-keys scan) |
+| 15 | Drag always warns "already exists / duplicates highlighted" | ✅ Fixed 2026-08-18 (dragged player excluded from duplicate count) |
+| 16 | Guild-card edit/note forms don't close (diffed render skips rebuild) | ✅ Fixed 2026-08-18 (render(true) force parameter) |
 
 ---
 

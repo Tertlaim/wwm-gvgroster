@@ -7,9 +7,12 @@
 // focus inside open edit forms, and leaves unchanged panels (and their drag
 // listeners / scroll positions) alone. The Phase 8.3 dirty-check remains as
 // the outer safety net; this is a second layer for stray render() calls.
+// Pass render(true) from code that mutated a panel's DISPLAY state (not its
+// data) and needs the DOM rebuilt anyway - e.g. closing a guild-card edit or
+// note form whose underlying data did not change.
 let _renderSig = null;
 
-function render() {
+function render(force) {
     console.log('Rendering...');
     
     try {
@@ -41,9 +44,9 @@ function render() {
             day: day
         };
         const prev = _renderSig;
-        const sameGroups = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.groups === sig.groups;
-        const sameReserves = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.reserves === sig.reserves;
-        const sameGuild = prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.guild === sig.guild;
+        const sameGroups = !force && prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.groups === sig.groups;
+        const sameReserves = !force && prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.reserves === sig.reserves;
+        const sameGuild = !force && prev && prev.canEdit === sig.canEdit && prev.day === sig.day && prev.guild === sig.guild;
         
         // Render groups (skipped when unchanged)
         if (!sameGroups && RenderHelpers.renderGroups) {

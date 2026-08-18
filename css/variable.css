@@ -2,6 +2,16 @@
    CSS VARIABLES - Theme System
    ============================================================ */
 
+/* Vendored display font (Where Winds Meet wuxia theme) - latin subset only,
+   self-hosted so the app stays fully offline. Brush-calligraphy style. */
+@font-face {
+    font-family: 'Ma Shan Zheng';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../vendor/fonts/ma-shan-zheng.woff2') format('woff2');
+}
+
 :root {
     /* ===== DARK THEME (Default - Night Battle) ===== */
     
