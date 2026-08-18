@@ -378,6 +378,21 @@ function handleDrop(e) {
         }
     }
     
+    // ---- TRACK SOURCE REMOVAL (Phase 4.5) ----
+    // Tell the server which collection(s) the player was removed from so the
+    // merge can apply this move even when the snapshot is stale.
+    if (movedPlayer && movedPlayer.id && typeof trackPlayerRemovals === 'function') {
+        if (isFromGuild) {
+            ['sat', 'sun'].forEach(function(dk) {
+                trackPlayerRemovals('guild', dk, movedPlayer.id);
+            });
+        } else if (isFromReserve) {
+            trackPlayerRemovals('reserve', day, movedPlayer.id);
+        } else if (isFromGroup && group) {
+            trackPlayerRemovals('group', day, movedPlayer.id, group);
+        }
+    }
+    
     if (shouldAddToTarget) {
         if (targetIsReserve) {
             if (r) {

@@ -393,6 +393,9 @@ EventHandlers.handleReturnToReserve = function(event) {
         if (movedPlayer && foundIndex !== -1) {
             // Remove from group
             g[group].players.splice(foundIndex, 1);
+            if (movedPlayer.id && typeof trackPlayerRemovals === 'function') {
+                trackPlayerRemovals('group', day, movedPlayer.id, group);
+            }
             
             // Add to reserves (ensure ID is preserved)
             if (r) {
@@ -456,6 +459,11 @@ EventHandlers.handleDeleteItem = function(event) {
             var days = ['sat', 'sun'];
             var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
             var removedPlayer = null;
+            
+            // Full delete - tombstone so stale copies can't resurrect the player
+            if (playerId && typeof trackDeletedPlayerIds === 'function') {
+                trackDeletedPlayerIds(playerId);
+            }
             
             for (var d = 0; d < days.length; d++) {
                 var day = days[d];

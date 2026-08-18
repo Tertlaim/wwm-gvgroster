@@ -285,6 +285,11 @@ const BulkActions = {
                 const days = ['sat', 'sun'];
                 const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 
+                // Full delete - tombstone these ids so stale copies can't resurrect them
+                if (typeof trackDeletedPlayerIds === 'function') {
+                    trackDeletedPlayerIds(selected.map(p => p.id).filter(Boolean));
+                }
+                
                 selected.forEach(player => {
                     let removed = false;
                     

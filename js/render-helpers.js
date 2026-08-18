@@ -672,6 +672,11 @@ RenderHelpers.deleteGuildCard = function(player) {
     var days = ['sat', 'sun'];
     var groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
+    // Full delete - tombstone so stale copies can't resurrect the player
+    if (player && player.id && typeof trackDeletedPlayerIds === 'function') {
+        trackDeletedPlayerIds(player.id);
+    }
+    
     days.forEach(function(day) {
         if (window.guildMembers && window.guildMembers[day]) {
             window.guildMembers[day] = window.guildMembers[day].filter(function(p) { return p.id !== player.id; });
