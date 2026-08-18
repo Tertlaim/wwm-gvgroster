@@ -10,6 +10,9 @@ EventHandlers.toggleEditMode = function(element, enable) {
     var displayMode = element.querySelectorAll('.display-mode');
     var editMode = element.querySelectorAll('.edit-mode');
     var actionButtons = element.querySelectorAll('.action-buttons');
+    // The return-to-reserves arrow is a two-step action; pause it while editing
+    // so it does not crowd the save/cancel buttons.
+    var returnButtons = element.querySelectorAll('[data-action="return"]');
     
     for (var i = 0; i < displayMode.length; i++) {
         displayMode[i].style.display = enable ? 'none' : '';
@@ -19,6 +22,9 @@ EventHandlers.toggleEditMode = function(element, enable) {
     }
     for (var i = 0; i < actionButtons.length; i++) {
         actionButtons[i].style.display = enable ? '' : 'none';
+    }
+    for (var i = 0; i < returnButtons.length; i++) {
+        returnButtons[i].style.display = enable ? 'none' : '';
     }
     
     if (enable) {
@@ -532,15 +538,17 @@ EventHandlers.setupTitleListeners = function() {
         if (!target) return;
         
         var action = target.dataset.titleAction;
+        // The remove button sits at the card's bottom-right, OUTSIDE .group-title;
+        // only edit/save/cancel require the title container.
         var container = target.closest('.group-title');
-        if (!container) return;
+        if (action !== 'remove' && !container) return;
         
-        var display = container.querySelector('.title-display');
-        var editInput = container.querySelector('.title-edit');
-        var editBtn = container.querySelector('.title-edit-btn');
-        var saveBtn = container.querySelector('.title-save-btn');
-        var cancelBtn = container.querySelector('.title-cancel-btn');
-        var groupKey = target.dataset.group || container.dataset.group;
+        var display = container ? container.querySelector('.title-display') : null;
+        var editInput = container ? container.querySelector('.title-edit') : null;
+        var editBtn = container ? container.querySelector('.title-edit-btn') : null;
+        var saveBtn = container ? container.querySelector('.title-save-btn') : null;
+        var cancelBtn = container ? container.querySelector('.title-cancel-btn') : null;
+        var groupKey = target.dataset.group || (container ? container.dataset.group : null);
         
         if (!groupKey) {
             console.warn('No group key found for title action');
@@ -625,7 +633,11 @@ EventHandlers.setupTitleListeners = function() {
                     return;
                 }
                 var day = window.currentDay || 'sat';
-                var groupTitle = display ? display.textContent : groupKey;
+                // Prefer the human-readable title from the card (the button lives at
+                // the card's bottom-right, outside the title row).
+                var groupCard = target.closest('.group-card');
+                var titleEl = groupCard ? groupCard.querySelector('.title-display') : null;
+                var groupTitle = (titleEl && titleEl.textContent) ? titleEl.textContent : (display ? display.textContent : groupKey);
                 if (typeof showConfirmation === 'function') {
                     showConfirmation('Remove group "' + groupTitle + '"?', function() {
                         removeGroup(day, groupKey);
