@@ -241,3 +241,62 @@
         padding: var(--spacing-xs) var(--spacing-md);
     }
 }
+/* ===== COLLAPSIBLE PANELS (click header to expand/collapse) ===== */
+.collapsible h3 {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible .collapse-chevron {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.55;
+    transition: transform 0.2s ease;
+}
+
+.collapsible.collapsed .collapse-chevron {
+    transform: rotate(-90deg);
+}
+
+/* Collapsed panels hide everything except the header row */
+.collapsible.collapsed > :not(h3):not(.reserve-header):not(.guild-header) {
+    display: none !important;
+}
+
+/* ===== HELP & SHORTCUTS PANEL ===== */
+.help-shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.help-shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.help-shortcut-item kbd,
+.help-guide kbd {
+    background: var(--bg-active);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.help-guide ul li {
+    margin: 0;
+}
+
+@media print {
+    #helpPanel,
+    .collapse-chevron {
+        display: none !important;
+    }
+}
