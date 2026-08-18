@@ -72,22 +72,20 @@ function exportRosterImage() {
         const COLW = (W - PAD * 2 - GUTTER) / 2; // 640
         let ctx = document.createElement('canvas').getContext('2d');
         
-        // Colors come from the theme CSS variables so the image follows the
-        // current theme; only ALT_BG (zebra row) has no theme equivalent and
-        // stays fixed for readability.
-        const cs = getComputedStyle(document.documentElement);
-        const read = function(name, fallback) {
-            const v = cs.getPropertyValue(name);
-            return v && v.trim() ? v.trim() : fallback;
-        };
-        const BG = read('--bg-app', '#0f172a');
-        const BORDER = read('--border-light', '#334155');
-        const HEADER_BG = read('--bg-panel', '#1e293b');
-        const ALT_BG = '#111c2f';
-        const TEXT = read('--text-secondary', '#cbd5e1');
-        const TITLE_COL = read('--text-primary', '#f8fafc');
-        const ACCENT = read('--accent-gold', '#f5c542');
-        const MUTED = read('--text-muted', '#94a3b8');
+        // Fixed light, high-contrast palette - deliberately NOT theme-driven.
+        // The roster is a shareable/printable artifact: dark text on white is
+        // readable on paper and on screen no matter what theme the app UI is
+        // currently in (theme-driven colors made words invisible in light mode
+        // because the zebra rows were hardcoded dark, and in dark-mode prints
+        // because the page background could stay dark).
+        const BG = '#ffffff';
+        const BORDER = '#cbd5e1';
+        const HEADER_BG = '#f1f5f9';
+        const ALT_BG = '#f8fafc';
+        const TEXT = '#334155';
+        const TITLE_COL = '#0f172a';
+        const ACCENT = '#b45309'; // amber-700: gold that reads on white
+        const MUTED = '#64748b';
         
         // Wrap text into lines that fit a pixel width.
         const wrap = function(text, font, maxWidth) {
