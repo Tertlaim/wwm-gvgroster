@@ -469,6 +469,19 @@ app.get('/api/moderators/list', requireAuth, requireAdmin, (req, res) => {
     });
 });
 
+// GET /api/staff - Public staff list (names + roles only, no credentials).
+// Lets everyone see who the admins/moderators are; never exposes passwords.
+app.get('/api/staff', (req, res) => {
+    const auth = readAuthConfig();
+    if (!auth) {
+        return res.status(500).json({ error: 'Auth config error' });
+    }
+    
+    res.json({
+        users: getAllAuthUsers(auth).map(u => ({ username: u.username, role: getUserRole(u) }))
+    });
+});
+
 // POST /api/moderators/add - Add staff (mod by default; admin requires SuperAdmin)
 app.post('/api/moderators/add', requireAuth, requireAdmin, (req, res) => {
     const { username, password, role } = req.body;
