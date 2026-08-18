@@ -153,8 +153,10 @@ Small UX fixes for admins/mods. **Includes known-bug fixes #1 (Add Group) and #4
 
 - [x] **6.1 Fix "Add Group" button** - root cause was TWO bugs: `setupGroupManagement()` was never called in init (no handler attached) AND the `/api/groups/add` fetch sent no auth header (401 after Phase 4.4). Fixed both; group now goes to the currently viewed day (dropdown removed, `window.currentDay` used)
 - [x] **6.2 Remove Group button** - trash button on each group card (mods+); confirmation dialog; wired to `/api/groups/remove` with auth header; server blocks non-empty groups ("Move players first.") and the error surfaces as a toast; reloads + logs history after removal
+  - Polish: trash repositioned to the card's bottom-right, sitting LEFT of the panel label (flex corner container, no overlap at any width); confirm dialog shows the group's real title
 - [x] **6.3 Inline guild name editing** - the old editor referenced input/button elements that don't exist in the HTML (dead code, and the fetch lacked auth). Rebuilt: click the header title (mods+) -> inline input; Enter commits via `/api/guild/name` (auth header); Escape/blur cancels; title updates everywhere
 - [x] **6.4 Single-line edit + Enter to commit** - guild card name input now commits on Enter, cancels on Escape (group/reserve badges already had this)
+  - Polish: the return-to-reserves arrow is paused (hidden) while a badge is in edit mode so it no longer crowds the save/cancel buttons
 - [x] **6.5 Recent changes panel taller** - history list `max-height: 200px` -> `60vh` (scrollable, more entries visible)
 - [x] **6.6 Group counter below group grid** - stats row moved below the grid; spacing swapped to `margin-top`; duplicate `id="groupStats"` renamed to `groupCountStats`
 

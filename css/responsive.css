@@ -237,7 +237,8 @@
     }
     
     .guild-checkbox,
-    .reserve-checkbox {
+    .reserve-checkbox,
+    .group-card .group-remove-btn {
         display: none !important;
     }
     

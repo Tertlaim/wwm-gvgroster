@@ -105,14 +105,15 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
     
     var titleHtml = '';
     if (canEdit) {
+        // Edit/save/cancel sit at the FAR LEFT of the title row (visual change);
+        // the remove (trash) button lives at the card's bottom-right instead.
         titleHtml = 
-            '<span class="title-display" data-group="' + groupKey + '">' + esc(title) + '</span>' +
             '<span class="title-actions">' +
                 '<button class="title-edit-btn" data-title-action="edit" data-group="' + groupKey + '" title="Edit group title"><i class="fas fa-edit"></i></button>' +
                 '<button class="title-save-btn" data-title-action="save" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-check"></i></button>' +
                 '<button class="title-cancel-btn" data-title-action="cancel" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-times"></i></button>' +
-                '<button class="title-remove-btn" data-title-action="remove" data-group="' + groupKey + '" title="Remove group"><i class="fas fa-trash"></i></button>' +
             '</span>' +
+            '<span class="title-display" data-group="' + groupKey + '">' + esc(title) + '</span>' +
             '<input class="title-edit" data-group="' + groupKey + '" value="' + esc(title) + '" maxlength="30" placeholder="Group name" style="display:none;">';
     } else {
         titleHtml = '<span>' + esc(title) + '</span>';
@@ -133,7 +134,12 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
                 '<div style="color:#6f8aa8; font-size:0.8rem; padding:0.3rem 0.5rem; text-align:center;">No players in this group</div>'
             ) +
         '</div>' +
-        '<span class="panel-label">' + labelText + '</span>';
+        (canEdit ? 
+            '<div class="card-corner">' +
+                '<button class="group-remove-btn" data-title-action="remove" data-group="' + groupKey + '" title="Remove group"><i class="fas fa-trash"></i></button>' +
+                '<span class="panel-label">' + labelText + '</span>' +
+            '</div>' : 
+            '<span class="panel-label">' + labelText + '</span>');
     
     return card;
 };
@@ -184,7 +190,6 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
     
     if (canEdit) {
         badge.innerHTML = 
-            '<input type="checkbox" class="reserve-checkbox" data-reserve="' + index + '">' +
             '<div class="reserve-actions-left">' +
                 '<button data-action="edit"><i class="fas fa-edit"></i></button>' +
             '</div>' +
@@ -208,7 +213,8 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
             '<div class="reserve-actions-right action-buttons" style="display:none;">' +
                 '<button data-action="save"><i class="fas fa-check"></i></button>' +
                 '<button data-action="cancel"><i class="fas fa-times"></i></button>' +
-            '</div>';
+            '</div>' +
+            '<input type="checkbox" class="reserve-checkbox" data-reserve="' + index + '">';
     } else {
         badge.innerHTML = 
             '<span class="player-info public-layout">' +
@@ -238,7 +244,6 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
     
     if (isAdmin) {
         badge.innerHTML = 
-            '<input type="checkbox" class="guild-checkbox" data-guild="' + index + '">' +
             '<div class="guild-actions-left">' +
                 '<button data-action="edit"><i class="fas fa-edit"></i></button>' +
             '</div>' +
@@ -258,7 +263,8 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
             '</div>' +
             '<div class="guild-actions-right">' +
                 '<button data-action="delete" title="Remove from guild"><i class="fas fa-trash" style="color:#f87171;"></i></button>' +
-            '</div>';
+            '</div>' +
+            '<input type="checkbox" class="guild-checkbox" data-guild="' + index + '">';
     } else {
         badge.innerHTML = 
             '<div class="guild-content">' +
@@ -376,6 +382,10 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
     
     card.innerHTML = 
         '<div class="card-header">' +
+            (isAdmin ? 
+                '<button class="edit-card-btn" data-action="edit-guild-card" title="Edit player">' +
+                    '<i class="fas fa-edit"></i>' +
+                '</button>' : '') +
             '<div class="card-name">' +
                 '<span class="class-icon">' + classIcon + '</span>' +
                 '<span class="name">' + esc(player.name) + '</span>' +
@@ -407,9 +417,6 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
         '</div>' +
         (isAdmin ? 
             '<div class="card-footer">' +
-                '<button class="edit-card-btn" data-action="edit-guild-card" title="Edit player">' +
-                    '<i class="fas fa-edit"></i>' +
-                '</button>' +
                 '<button class="add-note-btn" data-action="add-note" title="' + (player.note ? 'Edit note' : 'Add note') + '">' +
                     '<i class="fas fa-' + (player.note ? 'sticky-note' : 'plus-circle') + '"></i>' +
                 '</button>' +

@@ -96,6 +96,24 @@
     cursor: pointer;
 }
 
+/* Edit button sits at the FAR LEFT of the card header (visual change) */
+.guild-card .card-header .edit-card-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.guild-card .card-header .edit-card-btn:hover {
+    background: var(--bg-hover);
+    color: var(--accent-gold);
+}
+
 /* ===== CARD BODY ===== */
 .guild-card .card-body {
     flex: 1;
