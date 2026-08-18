@@ -158,10 +158,10 @@ const AuthModule = {
                     userRoleDisplay.textContent = '👑 You are a SuperAdmin';
                     userRoleDisplay.style.color = '#f5c542';
                 } else if (isAdmin) {
-                    userRoleDisplay.textContent = '👑 You are an Admin';
+                    userRoleDisplay.textContent = '🛡️ You are an Admin';
                     userRoleDisplay.style.color = '#f5c542';
                 } else if (isMod) {
-                    userRoleDisplay.textContent = '🛡️ You are a Moderator';
+                    userRoleDisplay.textContent = '⚔️ You are a Moderator';
                     userRoleDisplay.style.color = '#60a5fa';
                 }
             } else {

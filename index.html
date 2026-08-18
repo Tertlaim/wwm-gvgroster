@@ -157,7 +157,32 @@
                             <li data-help-role="mod"><strong>Edit:</strong> the <i class="fas fa-edit"></i> icon (far left) opens inline editing; <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</li>
                             <li data-help-role="mod"><strong>Groups:</strong> use <em>Group Management</em> in Admin Tools to add/remove groups; the trash icon on a group card removes it.</li>
                             <li><strong>Collapse panels:</strong> click any panel header to expand/collapse it and save screen space.</li>
+                            <li><strong>Live sync:</strong> moderator changes reach everyone automatically. While you are typing or dragging, incoming updates wait until you finish, so your work is never wiped.</li>
+                            <li><strong>Roles:</strong> SuperAdmin (<i class="fas fa-crown"></i>) manages admins &amp; mods &middot; Admin (<i class="fas fa-shield-halved"></i>) manages mods &middot; Moderator (<i class="fas fa-user-shield"></i>) edits the roster.</li>
+                            <li><strong>Export:</strong> anyone can download the roster as an <em>Image</em> or <em>PDF</em>; moderators+ can also get the <em>CSV</em> player list and the <em>JSON</em> backup (see below).</li>
                         </ul>
+                    </div>
+
+                    <!-- Export Roster (Phase 10) -->
+                    <div style="margin-top:var(--spacing-md); font-size:var(--font-size-sm); color:var(--text-secondary); line-height:1.7;">
+                        <h4 style="font-weight:600; color:var(--text-primary); margin-bottom:var(--spacing-xs);"><i class="fas fa-file-export"></i> Export Roster</h4>
+                        <div style="display:flex; gap:var(--spacing-sm); flex-wrap:wrap;">
+                            <button class="btn btn-sm" id="exportPdfBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                                <i class="fas fa-print"></i> PDF / Print
+                            </button>
+                            <button class="btn btn-sm" id="exportImageBtn" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                                <i class="fas fa-image"></i> Image (PNG)
+                            </button>
+                            <button class="btn btn-sm" id="exportCsvBtn" data-role-show="mod" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                                <i class="fas fa-file-csv"></i> CSV Players
+                            </button>
+                            <button class="btn btn-sm" id="exportJsonBtn" data-role-show="mod" style="width:auto; padding:var(--spacing-xs) var(--spacing-md);">
+                                <i class="fas fa-download"></i> JSON Backup
+                            </button>
+                        </div>
+                        <div style="font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--spacing-xs);">
+                            <i class="fas fa-info-circle"></i> Image &amp; PDF: everyone &middot; CSV &amp; JSON backup: moderators+ (JSON also in Admin Tools)
+                        </div>
                     </div>
                     <span class="panel-label">E</span>
                 </div>
@@ -408,6 +433,7 @@
     <script src="js/context-menu.js"></script>
     <script src="js/history.js"></script>
     <script src="js/announcement.js"></script>
+    <script src="js/export.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
