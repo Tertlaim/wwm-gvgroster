@@ -281,14 +281,15 @@
     display: none !important;
 }
 
-/* Reserved space for the corner label (A/B/C/...) so it never overlaps
-   panel content (forms, buttons, lists). !important because the panel css
-   files load after side-panel.css and would otherwise override this. */
+/* Reserved space for the corner label (A/B/C/...) so panel content never
+   touches it: the label is ~28px tall + 8px bottom offset = 36px, so 3.2rem
+   leaves a visible air gap. !important because the panel css files load
+   after side-panel.css and would otherwise override this. */
 .panel-section,
 .announcement-section,
 .reserve-area,
 .guild-member-area {
-    padding-bottom: 2.3rem !important;
+    padding-bottom: 3.2rem !important;
 }
 
 /* A collapsed panel only needs its header - drop the label reserve */
