@@ -66,6 +66,71 @@ const Shortcuts = {
                     }
                 }
             },
+            'c': {
+                keys: ['c'],
+                description: 'Copy selected player to Reserves',
+                action: () => {
+                    if (typeof ContextMenu !== 'undefined') {
+                        if (!ContextMenu.selectedEl) {
+                            this.hintSelect();
+                            return;
+                        }
+                        ContextMenu.copyToReserve(ContextMenu.selectedEl);
+                    }
+                }
+            },
+            'm': {
+                keys: ['m'],
+                description: 'Move selected player to a group',
+                action: () => {
+                    if (typeof ContextMenu !== 'undefined') {
+                        if (!ContextMenu.selectedEl) {
+                            this.hintSelect();
+                            return;
+                        }
+                        ContextMenu.openMoveMenu(ContextMenu.selectedEl);
+                    }
+                }
+            },
+            'e': {
+                keys: ['e'],
+                description: 'Edit selected player',
+                action: () => {
+                    if (typeof ContextMenu !== 'undefined') {
+                        if (!ContextMenu.selectedEl) {
+                            this.hintSelect();
+                            return;
+                        }
+                        ContextMenu.editPlayer(ContextMenu.selectedEl);
+                    }
+                }
+            },
+            'delete': {
+                keys: ['delete'],
+                description: 'Delete selected player',
+                action: () => {
+                    if (typeof ContextMenu !== 'undefined') {
+                        if (!ContextMenu.selectedEl) {
+                            this.hintSelect();
+                            return;
+                        }
+                        ContextMenu.deletePlayer(ContextMenu.selectedEl);
+                    }
+                }
+            },
+            'backspace': {
+                keys: ['backspace'],
+                description: 'Delete selected player',
+                action: () => {
+                    if (typeof ContextMenu !== 'undefined') {
+                        if (!ContextMenu.selectedEl) {
+                            this.hintSelect();
+                            return;
+                        }
+                        ContextMenu.deletePlayer(ContextMenu.selectedEl);
+                    }
+                }
+            },
             '?': {
                 keys: ['?'],
                 description: 'Show shortcuts',
@@ -81,6 +146,15 @@ const Shortcuts = {
                 }
             }
         };
+    },
+    
+    // Gentle nudge when a player-action key is pressed with nothing selected
+    hintSelect: function() {
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        if (!isMod) return;
+        if (typeof showToast === 'function') {
+            showToast('Select a player first (click one, then press a key)', 'info', 2500);
+        }
     },
     
     setupKeyListener: function() {

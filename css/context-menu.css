@@ -1,0 +1,119 @@
+/* ============================================================
+   CONTEXT MENU - Phase 7 (right-click player actions + selection)
+   ============================================================ */
+
+.context-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 190px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 4px;
+    display: none;
+    font-size: 0.85rem;
+    user-select: none;
+}
+
+.context-menu.visible {
+    display: block;
+}
+
+.context-menu-header {
+    padding: 6px 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-primary);
+    position: relative;
+    white-space: nowrap;
+}
+
+.context-menu-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.context-menu-item:hover {
+    background: var(--bg-active);
+}
+
+.context-menu-item.danger {
+    color: var(--accent-red);
+}
+
+.context-menu-item.danger:hover {
+    background: rgba(220, 38, 38, 0.15);
+}
+
+.context-menu-item .submenu-arrow {
+    margin-left: auto;
+    width: auto;
+    font-size: 0.7rem;
+    opacity: 0.6;
+}
+
+/* Move-to-Group flyout */
+.context-menu-submenu {
+    display: none;
+    position: absolute;
+    left: calc(100% + 4px);
+    top: -4px;
+    min-width: 160px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 4px;
+}
+
+.context-menu-item:hover > .context-menu-submenu,
+.context-menu.submenu-open .context-menu-submenu {
+    display: block;
+}
+
+/* ---- Keyboard selection highlight (Phase 7.2) ---- */
+.context-selected {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* Mobile: submenus stack full-width under the item instead of flying out */
+@media (max-width: 500px) {
+    .context-menu-submenu {
+        position: static;
+        left: auto;
+        top: auto;
+        margin-top: 4px;
+        box-shadow: none;
+    }
+    .context-menu-item .submenu-arrow {
+        display: none;
+    }
+}
+
+/* Print: never show the menu or selection */
+@media print {
+    .context-menu,
+    .context-selected {
+        display: none !important;
+    }
+}
