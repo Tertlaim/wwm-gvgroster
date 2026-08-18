@@ -70,21 +70,21 @@ async function performSync() {
             
             // Snapshot current state to detect actual changes
             const prevState = {
-                groups: window.groups,
-                reserves: window.reserves,
-                guildMembers: window.guildMembers,
-                announcement: window.announcementText,
-                guildName: window.guildName
+                groups: App.state.groups,
+                reserves: App.state.reserves,
+                guildMembers: App.state.guildMembers,
+                announcement: App.state.announcementText,
+                guildName: App.state.guildName
             };
             
             applyServerData(serverData);
             
             // Only re-render if data actually changed
-            const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(window.groups) ||
-                                JSON.stringify(prevState.reserves) !== JSON.stringify(window.reserves) ||
-                                JSON.stringify(prevState.guildMembers) !== JSON.stringify(window.guildMembers) ||
-                                prevState.announcement !== window.announcementText ||
-                                prevState.guildName !== window.guildName;
+            const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(App.state.groups) ||
+                                JSON.stringify(prevState.reserves) !== JSON.stringify(App.state.reserves) ||
+                                JSON.stringify(prevState.guildMembers) !== JSON.stringify(App.state.guildMembers) ||
+                                prevState.announcement !== App.state.announcementText ||
+                                prevState.guildName !== App.state.guildName;
             
             if (dataChanged && typeof render === 'function') {
                 render();

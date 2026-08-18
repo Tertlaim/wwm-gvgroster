@@ -26,32 +26,32 @@ function setupAdminTools() {
             }
             
             showConfirmation('Move all members from groups and reserves to Guild Members for both Saturday and Sunday?', function() {
-                const gmSat = window.guildMembers.sat;
-                const gmSun = window.guildMembers.sun;
+                const gmSat = App.state.guildMembers.sat;
+                const gmSun = App.state.guildMembers.sun;
                 const days = ['sat', 'sun'];
                 const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 
                 days.forEach(function(day) {
                     const allPlayers = [];
                     groupKeys.forEach(function(key) {
-                        if (window.groups[day] && window.groups[day][key]) {
-                            const clearedIds = window.groups[day][key].players.map(function(p) { return p && p.id; }).filter(Boolean);
-                            window.groups[day][key].players.forEach(function(p) {
+                        if (App.state.groups[day] && App.state.groups[day][key]) {
+                            const clearedIds = App.state.groups[day][key].players.map(function(p) { return p && p.id; }).filter(Boolean);
+                            App.state.groups[day][key].players.forEach(function(p) {
                                 allPlayers.push(p);
                             });
-                            window.groups[day][key].players = [];
+                            App.state.groups[day][key].players = [];
                             if (clearedIds.length > 0 && typeof trackPlayerRemovals === 'function') {
                                 trackPlayerRemovals('group', day, clearedIds, key);
                             }
                         }
                     });
                     
-                    if (window.reserves[day]) {
-                        const clearedReserveIds = window.reserves[day].map(function(p) { return p && p.id; }).filter(Boolean);
-                        window.reserves[day].forEach(function(p) {
+                    if (App.state.reserves[day]) {
+                        const clearedReserveIds = App.state.reserves[day].map(function(p) { return p && p.id; }).filter(Boolean);
+                        App.state.reserves[day].forEach(function(p) {
                             allPlayers.push(p);
                         });
-                        window.reserves[day] = [];
+                        App.state.reserves[day] = [];
                         if (clearedReserveIds.length > 0 && typeof trackPlayerRemovals === 'function') {
                             trackPlayerRemovals('reserve', day, clearedReserveIds);
                         }
@@ -113,8 +113,8 @@ if (clearToReserveBtn) {
             });
             
             // ---- SAVE BACK TO GLOBAL STATE ----
-            window.groups[day] = g;
-            window.reserves[day] = r;
+            App.state.groups[day] = g;
+            App.state.reserves[day] = r;
             
             // ---- LOG TO HISTORY ----
             if (typeof History !== 'undefined' && History.add) {
@@ -276,7 +276,7 @@ function setupAdminControls() {
                 showAlert('Select a staff member to demote.', 'Error', '❌');
                 return; 
             }
-            const targetRole = window.moderators && window.moderators[name];
+            const targetRole = App.state.moderators && App.state.moderators[name];
             // Demoting an admin is SuperAdmin-only; the server enforces this too.
             if (targetRole === 'admin' && !AuthModule.isSuperAdmin()) {
                 showAlert('Only SuperAdmin can demote admins.', 'Error', '❌');

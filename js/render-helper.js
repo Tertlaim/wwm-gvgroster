@@ -15,13 +15,13 @@ RenderHelpers.createGroupPlayerBadge = function(player, index, groupKey, canEdit
     let duplicateCount = 0;
     const day = window.currentDay;
     
-    if (day && window.groups && window.groups[day]) {
-        const groupKeys = Object.keys(window.groups[day]);
+    if (day && App.state.groups && App.state.groups[day]) {
+        const groupKeys = Object.keys(App.state.groups[day]);
         for (let i = 0; i < groupKeys.length; i++) {
             const key = groupKeys[i];
-            if (window.groups[day][key] && window.groups[day][key].players) {
-                for (let j = 0; j < window.groups[day][key].players.length; j++) {
-                    const p = window.groups[day][key].players[j];
+            if (App.state.groups[day][key] && App.state.groups[day][key].players) {
+                for (let j = 0; j < App.state.groups[day][key].players.length; j++) {
+                    const p = App.state.groups[day][key].players[j];
                     if (p.name === player.name && p.class === player.class) {
                         duplicateCount++;
                         if (duplicateCount > 1) {
@@ -613,8 +613,8 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     days.forEach(function(day) {
-        if (window.guildMembers && window.guildMembers[day]) {
-            const player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
+        if (App.state.guildMembers && App.state.guildMembers[day]) {
+            const player = App.state.guildMembers[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.name = name;
                 player.class = cls;
@@ -625,8 +625,8 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
-            if (window.groups && window.groups[day] && window.groups[day][key]) {
-                const player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
+            if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                const player = App.state.groups[day][key].players.find(function(p) { return p.id === playerId; });
                 if (player) {
                     player.name = name;
                     player.class = cls;
@@ -637,8 +637,8 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     });
     
     days.forEach(function(day) {
-        if (window.reserves && window.reserves[day]) {
-            const player = window.reserves[day].find(function(p) { return p.id === playerId; });
+        if (App.state.reserves && App.state.reserves[day]) {
+            const player = App.state.reserves[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.name = name;
                 player.class = cls;
@@ -656,8 +656,8 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     days.forEach(function(day) {
-        if (window.guildMembers && window.guildMembers[day]) {
-            const player = window.guildMembers[day].find(function(p) { return p.id === playerId; });
+        if (App.state.guildMembers && App.state.guildMembers[day]) {
+            const player = App.state.guildMembers[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.note = note;
             }
@@ -666,8 +666,8 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
-            if (window.groups && window.groups[day] && window.groups[day][key]) {
-                const player = window.groups[day][key].players.find(function(p) { return p.id === playerId; });
+            if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                const player = App.state.groups[day][key].players.find(function(p) { return p.id === playerId; });
                 if (player) {
                     player.note = note;
                 }
@@ -676,8 +676,8 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     });
     
     days.forEach(function(day) {
-        if (window.reserves && window.reserves[day]) {
-            const player = window.reserves[day].find(function(p) { return p.id === playerId; });
+        if (App.state.reserves && App.state.reserves[day]) {
+            const player = App.state.reserves[day].find(function(p) { return p.id === playerId; });
             if (player) {
                 player.note = note;
             }
@@ -698,22 +698,22 @@ RenderHelpers.deleteGuildCard = function(player) {
     }
     
     days.forEach(function(day) {
-        if (window.guildMembers && window.guildMembers[day]) {
-            window.guildMembers[day] = window.guildMembers[day].filter(function(p) { return p.id !== player.id; });
+        if (App.state.guildMembers && App.state.guildMembers[day]) {
+            App.state.guildMembers[day] = App.state.guildMembers[day].filter(function(p) { return p.id !== player.id; });
         }
     });
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
-            if (window.groups && window.groups[day] && window.groups[day][key]) {
-                window.groups[day][key].players = window.groups[day][key].players.filter(function(p) { return p.id !== player.id; });
+            if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                App.state.groups[day][key].players = App.state.groups[day][key].players.filter(function(p) { return p.id !== player.id; });
             }
         });
     });
     
     days.forEach(function(day) {
-        if (window.reserves && window.reserves[day]) {
-            window.reserves[day] = window.reserves[day].filter(function(p) { return p.id !== player.id; });
+        if (App.state.reserves && App.state.reserves[day]) {
+            App.state.reserves[day] = App.state.reserves[day].filter(function(p) { return p.id !== player.id; });
         }
     });
     

@@ -372,8 +372,8 @@ function handleDrop(e) {
             movedPlayer = playerToMove;
             for (let d = 0; d < ['sat', 'sun'].length; d++) {
                 const dayKey = ['sat', 'sun'][d];
-                if (window.guildMembers && window.guildMembers[dayKey]) {
-                    window.guildMembers[dayKey] = window.guildMembers[dayKey].filter(function(p) {
+                if (App.state.guildMembers && App.state.guildMembers[dayKey]) {
+                    App.state.guildMembers[dayKey] = App.state.guildMembers[dayKey].filter(function(p) {
                         return p.id !== playerToMove.id;
                     });
                 }
@@ -437,9 +437,9 @@ function handleDrop(e) {
     }
     
     // ---- SAVE BACK TO GLOBAL STATE ----
-    window.groups[day] = g;
-    window.reserves[day] = r;
-    window.guildMembers[day] = gm;
+    App.state.groups[day] = g;
+    App.state.reserves[day] = r;
+    App.state.guildMembers[day] = gm;
     
     // ---- LOG TO HISTORY ----
     if (movedPlayer && (shouldRemoveFromSource || shouldAddToTarget)) {

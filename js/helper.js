@@ -168,10 +168,10 @@ function getAllRegisteredPlayers() {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
     days.forEach(day => {
-        if (window.groups && window.groups[day]) {
+        if (App.state.groups && App.state.groups[day]) {
             groupKeys.forEach(key => {
-                if (window.groups[day][key] && window.groups[day][key].players) {
-                    window.groups[day][key].players.forEach(p => {
+                if (App.state.groups[day][key] && App.state.groups[day][key].players) {
+                    App.state.groups[day][key].players.forEach(p => {
                         const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
                         if (!seen.has(key)) {
                             seen.add(key);
@@ -184,8 +184,8 @@ function getAllRegisteredPlayers() {
     });
     
     days.forEach(day => {
-        if (window.reserves && window.reserves[day]) {
-            window.reserves[day].forEach(p => {
+        if (App.state.reserves && App.state.reserves[day]) {
+            App.state.reserves[day].forEach(p => {
                 const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -196,8 +196,8 @@ function getAllRegisteredPlayers() {
     });
     
     days.forEach(day => {
-        if (window.guildMembers && window.guildMembers[day]) {
-            window.guildMembers[day].forEach(p => {
+        if (App.state.guildMembers && App.state.guildMembers[day]) {
+            App.state.guildMembers[day].forEach(p => {
                 const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
                 if (!seen.has(key)) {
                     seen.add(key);
@@ -212,12 +212,12 @@ function getAllRegisteredPlayers() {
 
 // ---- Duplicate Check Functions (Day-specific) ----
 function isPlayerInReserves(day, name, cls) {
-    const reserves = window.reserves && window.reserves[day] ? window.reserves[day] : [];
+    const reserves = App.state.reserves && App.state.reserves[day] ? App.state.reserves[day] : [];
     return reserves.some(p => p.name === name && p.class === cls);
 }
 
 function isPlayerInGroup(day, groupKey, name, cls) {
-    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
     if (groups[groupKey] && groups[groupKey].players) {
         return groups[groupKey].players.some(p => p.name === name && p.class === cls);
     }
@@ -226,7 +226,7 @@ function isPlayerInGroup(day, groupKey, name, cls) {
 
 function isPlayerInAnyGroup(day, name, cls) {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
     for (const key of groupKeys) {
         if (groups[key] && groups[key].players) {
             if (groups[key].players.some(p => p.name === name && p.class === cls)) {
@@ -238,14 +238,14 @@ function isPlayerInAnyGroup(day, name, cls) {
 }
 
 function isPlayerInGuildMembers(day, name, cls) {
-    const guildMembers = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
+    const guildMembers = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
     return guildMembers.some(p => p.name === name && p.class === cls);
 }
 
 function getAllPlayersInGroups(day) {
     const allPlayers = [];
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
     groupKeys.forEach(key => {
         if (groups[key] && groups[key].players) {
             groups[key].players.forEach(p => {
@@ -273,12 +273,12 @@ function isPlayerInReserveList(day, name, cls) {
 const GUILD_MEMBER_MAX = 100;
 
 function canAddToGuildMembers(day) {
-    const gm = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
+    const gm = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
     return gm.length < GUILD_MEMBER_MAX;
 }
 
 function getGuildMemberCount(day) {
-    const gm = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
+    const gm = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
     return gm.length;
 }
 
@@ -303,43 +303,43 @@ function getGroups() {
     const day = window.currentDay || 'sat';
     
     // Initialize if not exists
-    if (!window.groups) {
-        window.groups = {};
+    if (!App.state.groups) {
+        App.state.groups = {};
     }
-    if (!window.groups[day]) {
-        window.groups[day] = {};
+    if (!App.state.groups[day]) {
+        App.state.groups[day] = {};
     }
     
-    return window.groups[day]; 
+    return App.state.groups[day]; 
 }
 
 function getReserves() {
     const day = window.currentDay || 'sat';
     
     // Initialize if not exists
-    if (!window.reserves) {
-        window.reserves = {};
+    if (!App.state.reserves) {
+        App.state.reserves = {};
     }
-    if (!window.reserves[day]) {
-        window.reserves[day] = [];
+    if (!App.state.reserves[day]) {
+        App.state.reserves[day] = [];
     }
     
-    console.log('getReserves() called - day:', day, 'length:', window.reserves[day].length);
-    return window.reserves[day];
+    console.log('getReserves() called - day:', day, 'length:', App.state.reserves[day].length);
+    return App.state.reserves[day];
 }
 
 function getGuildMembers() {
     const day = window.currentDay || 'sat';
     
     // Initialize if not exists
-    if (!window.guildMembers) {
-        window.guildMembers = {};
+    if (!App.state.guildMembers) {
+        App.state.guildMembers = {};
     }
-    if (!window.guildMembers[day]) {
-        window.guildMembers[day] = [];
+    if (!App.state.guildMembers[day]) {
+        App.state.guildMembers[day] = [];
     }
     
-    return window.guildMembers[day];
+    return App.state.guildMembers[day];
 }
 
 function getAllRegisteredPlayers() {
@@ -370,7 +370,7 @@ function getAllGuildMembers() {
 function getTotalGroupPlayers(day) {
     let total = 0;
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
     for (let i = 0; i < groupKeys.length; i++) {
         const key = groupKeys[i];
         if (groups[key] && groups[key].players) {
@@ -383,7 +383,7 @@ function getTotalGroupPlayers(day) {
 // Check if a player exists in any group for a specific day
 function isPlayerInAnyGroup(day, name, cls) {
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-    const groups = window.groups && window.groups[day] ? window.groups[day] : {};
+    const groups = App.state.groups && App.state.groups[day] ? App.state.groups[day] : {};
     for (let i = 0; i < groupKeys.length; i++) {
         const key = groupKeys[i];
         if (groups[key] && groups[key].players) {
@@ -399,7 +399,7 @@ function isPlayerInAnyGroup(day, name, cls) {
 
 // Check if a player exists in guild members for a specific day
 function isPlayerInGuildMembers(day, name, cls) {
-    const guildMembers = window.guildMembers && window.guildMembers[day] ? window.guildMembers[day] : [];
+    const guildMembers = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
     for (let i = 0; i < guildMembers.length; i++) {
         if (guildMembers[i].name === name && guildMembers[i].class === cls) {
             return true;

@@ -9,12 +9,12 @@ const DEFAULT_MOD_PW = 'Sin1234';
 // ---- Global state ----
 window.currentUser = null;
 window.currentDay = 'sat';
-window.groups = {};
-window.reserves = {};
-window.guildMembers = {};
-window.moderators = {};
-window.lastUpdateTime = null;
-window.announcementText = '';
+App.state.groups = {};
+App.state.reserves = {};
+App.state.guildMembers = {};
+App.state.moderators = {};
+App.state.lastUpdateTime = null;
+App.state.announcementText = '';
 
 // ---- Alert Modal (Now using Toast) ----
 function showAlert(message, title = 'Alert', icon = '⚠️') {
@@ -83,10 +83,10 @@ function updateLastUpdate() {
         hour12: true
     };
     const formatted = now.toLocaleDateString('en-US', options);
-    window.lastUpdateTime = formatted;
+    App.state.lastUpdateTime = formatted;
     const lastUpdateEl = document.getElementById('lastUpdate');
     if (lastUpdateEl) {
-        lastUpdateEl.textContent = `Last update: ${formatUpdateTime(window.lastUpdateTime)}`;
+        lastUpdateEl.textContent = `Last update: ${formatUpdateTime(App.state.lastUpdateTime)}`;
     }
     saveState();
 }
@@ -103,12 +103,12 @@ async function saveState() {
     }
     
     const data = { 
-        groups: window.groups, 
-        reserves: window.reserves, 
-        guildMembers: window.guildMembers, 
-        lastUpdateTime: window.lastUpdateTime,
-        announcement: window.announcementText || '',
-        guildName: window.guildName || 'Mask Sinners',
+        groups: App.state.groups, 
+        reserves: App.state.reserves, 
+        guildMembers: App.state.guildMembers, 
+        lastUpdateTime: App.state.lastUpdateTime,
+        announcement: App.state.announcementText || '',
+        guildName: App.state.guildName || 'Mask Sinners',
         // Concurrency metadata (Phase 4.5): the base version this snapshot
         // is derived from, ids fully deleted, and ids removed from specific
         // lists since our last save. The server merges stale snapshots and
@@ -120,7 +120,7 @@ async function saveState() {
     
     const result = await saveDataToServer(data);
     if (result && result.lastUpdate) {
-        window.lastUpdateTime = result.lastUpdate;
+        App.state.lastUpdateTime = result.lastUpdate;
         // Update sync timestamp so the poller doesn't re-apply our own changes
         window._serverLastUpdatedTime = result.lastUpdate;
         // Removals/deletes were applied server-side - clear the pending records
@@ -151,10 +151,10 @@ async function loadModerators() {
         const response = await fetch('/api/staff', headers && Object.keys(headers).length ? { headers: headers } : undefined);
         if (!response.ok) return;
         const result = await response.json();
-        window.moderators = {};
+        App.state.moderators = {};
         if (result && Array.isArray(result.users)) {
             result.users.forEach(user => {
-                if (user && user.username) window.moderators[user.username] = user.role || 'mod';
+                if (user && user.username) App.state.moderators[user.username] = user.role || 'mod';
             });
         }
     } catch (error) {
@@ -177,7 +177,7 @@ async function loadState() {
     
     // Fallback: initialize empty data if server is unreachable
     initializeEmptyData();
-    window.lastUpdateTime = new Date().toLocaleString('en-US', { 
+    App.state.lastUpdateTime = new Date().toLocaleString('en-US', { 
         day: 'numeric', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: true 
     });
@@ -192,22 +192,22 @@ function applyServerData(serverData) {
     const serverTime = serverData.lastUpdateTime;
     const currentTime = window._serverLastUpdateTime;
     
-    window.groups = serverData.groups || {};
-    window.reserves = serverData.reserves || {};
-    window.guildMembers = serverData.guildMembers || {};
-    window.guildName = serverData.guildName || 'Mask Sinners';
+    App.state.groups = serverData.groups || {};
+    App.state.reserves = serverData.reserves || {};
+    App.state.guildMembers = serverData.guildMembers || {};
+    App.state.guildName = serverData.guildName || 'Mask Sinners';
     
     if (serverData.lastUpdateTime) {
-        window.lastUpdateTime = serverData.lastUpdateTime;
+        App.state.lastUpdateTime = serverData.lastUpdateTime;
         const lastUpdateEl = document.getElementById('lastUpdate');
         if (lastUpdateEl) {
-            lastUpdateEl.textContent = `Last update: ${formatUpdateTime(window.lastUpdateTime)}`;
+            lastUpdateEl.textContent = `Last update: ${formatUpdateTime(App.state.lastUpdateTime)}`;
         }
     }
     
     // Update announcement
     if (typeof serverData.announcement === 'string') {
-        window.announcementText = serverData.announcement;
+        App.state.announcementText = serverData.announcement;
         if (typeof renderAnnouncement === 'function') {
             renderAnnouncement();
         }
@@ -215,8 +215,8 @@ function applyServerData(serverData) {
     
     // Update guild name display
     const guildNameDisplay = document.getElementById('guildNameDisplay');
-    if (guildNameDisplay && window.guildName) {
-        guildNameDisplay.textContent = window.guildName;
+    if (guildNameDisplay && App.state.guildName) {
+        guildNameDisplay.textContent = App.state.guildName;
     }
     
     // Track server time for change detection
@@ -226,7 +226,7 @@ function applyServerData(serverData) {
 
 // ---- SYNC ENGINE: Poll server every 30 seconds (Phase 4.1) ----
 function initializeEmptyData() {
-    window.groups = {
+    App.state.groups = {
         sat: {
             offence1: { title: 'Offense 1', players: [] },
             offence2: { title: 'Offense 2', players: [] },
@@ -240,9 +240,9 @@ function initializeEmptyData() {
             jungle: { title: 'Jungle', players: [] }
         }
     };
-    window.reserves = { sat: [], sun: [] };
-    window.guildMembers = { sat: [], sun: [] };
-    window.guildName = 'Mask Sinners';
+    App.state.reserves = { sat: [], sun: [] };
+    App.state.guildMembers = { sat: [], sun: [] };
+    App.state.guildName = 'Mask Sinners';
 }
 
 // ============================================================
@@ -265,7 +265,7 @@ function setupGuildNameEditor() {
             return;
         }
         
-        const original = window.guildName || guildNameDisplay.textContent || '';
+        const original = App.state.guildName || guildNameDisplay.textContent || '';
         editing = true;
         guildNameDisplay.style.display = 'none';
         
@@ -325,7 +325,7 @@ async function saveGuildName(name) {
         });
         const result = await response.json();
         if (result.success) {
-            window.guildName = name;
+            App.state.guildName = name;
             const guildNameDisplay = document.getElementById('guildNameDisplay');
             if (guildNameDisplay) guildNameDisplay.textContent = name;
             
@@ -740,7 +740,7 @@ function setupGuildActions() {
                 });
                 
                 // Save back to global state
-                window.reserves[day] = r;
+                App.state.reserves[day] = r;
                 
                 updateLastUpdate();
                 render();
@@ -796,10 +796,10 @@ function setupGuildActions() {
                         
                         // 1. Remove from guildMembers (master list) - both days
                         days.forEach(function(day) {
-                            if (window.guildMembers && window.guildMembers[day]) {
-                                const idx = window.guildMembers[day].findIndex(function(p) { return p.id === playerId; });
+                            if (App.state.guildMembers && App.state.guildMembers[day]) {
+                                const idx = App.state.guildMembers[day].findIndex(function(p) { return p.id === playerId; });
                                 if (idx !== -1) {
-                                    window.guildMembers[day].splice(idx, 1);
+                                    App.state.guildMembers[day].splice(idx, 1);
                                     removed = true;
                                 }
                             }
@@ -808,10 +808,10 @@ function setupGuildActions() {
                         // 2. Remove from groups - both days
                         days.forEach(function(day) {
                             groupKeys.forEach(function(key) {
-                                if (window.groups && window.groups[day] && window.groups[day][key]) {
-                                    const idx = window.groups[day][key].players.findIndex(function(p) { return p.id === playerId; });
+                                if (App.state.groups && App.state.groups[day] && App.state.groups[day][key]) {
+                                    const idx = App.state.groups[day][key].players.findIndex(function(p) { return p.id === playerId; });
                                     if (idx !== -1) {
-                                        window.groups[day][key].players.splice(idx, 1);
+                                        App.state.groups[day][key].players.splice(idx, 1);
                                         removed = true;
                                     }
                                 }
@@ -820,10 +820,10 @@ function setupGuildActions() {
                         
                         // 3. Remove from reserves - both days
                         days.forEach(function(day) {
-                            if (window.reserves && window.reserves[day]) {
-                                const idx = window.reserves[day].findIndex(function(p) { return p.id === playerId; });
+                            if (App.state.reserves && App.state.reserves[day]) {
+                                const idx = App.state.reserves[day].findIndex(function(p) { return p.id === playerId; });
                                 if (idx !== -1) {
-                                    window.reserves[day].splice(idx, 1);
+                                    App.state.reserves[day].splice(idx, 1);
                                     removed = true;
                                 }
                             }
@@ -904,14 +904,14 @@ async function init() {
         
         if (!loaded) {
             initializeEmptyData();
-            window.lastUpdateTime = new Date().toLocaleString();
+            App.state.lastUpdateTime = new Date().toLocaleString();
             const lastUpdateEl = document.getElementById('lastUpdate');
             if (lastUpdateEl) {
-                lastUpdateEl.textContent = 'Last update: ' + formatUpdateTime(window.lastUpdateTime);
+                lastUpdateEl.textContent = 'Last update: ' + formatUpdateTime(App.state.lastUpdateTime);
             }
         }
 
-        if (!window.lastUpdateTime) {
+        if (!App.state.lastUpdateTime) {
             updateLastUpdate();
         }
 		
