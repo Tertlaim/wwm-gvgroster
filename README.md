@@ -28,10 +28,10 @@ A real-time web application for managing guild war rosters. Built for LAN guild 
 npm install
 
 # Start the server (default port 3000)
-node server.js
+npm start
 
 # Or with a custom port
-PORT=3000 node server.js
+PORT=3000 npm start
 ```
 
 Open http://localhost:3000 in your browser.
@@ -46,24 +46,28 @@ Change the password after first login via Admin Tools.
 ## Project Structure
 
 ```
-├── index.html          # Single-page app
-├── server.js           # Express server entry point
-├── server/             # Server modules
-│   ├── auth.js         # Sessions, bcrypt, auth config
-│   ├── data.js         # Database read/write/migration
-│   ├── merge.js        # Concurrency merge engine
-│   ├── history.js      # Change history
-│   ├── sse.js          # Server-sent events
-│   └── route/          # API route handlers
-├── js/                 # Client modules
-│   ├── main.js         # App init, state management
-│   ├── state.js        # Centralized app state
-│   ├── render.js       # UI rendering with panel diffing
-│   ├── sync.js         # Poll/SSE sync engine
-│   └── ...             # Feature modules
-├── css/                # Stylesheets
-├── vendor/             # Vendored Font Awesome + fonts
-└── test/               # Server-side tests (node:test)
+wwm-gvgroster/
+├── app/                    # Application source
+│   ├── index.html          # Single-page app
+│   ├── server.js           # Express server entry point
+│   ├── js/                 # Client modules
+│   ├── css/                # Stylesheets
+│   ├── server/             # Server modules
+│   │   ├── auth.js         # Sessions, bcrypt, auth config
+│   │   ├── data.js         # Database read/write/migration
+│   │   ├── merge.js        # Concurrency merge engine
+│   │   ├── history.js      # Change history
+│   │   ├── sse.js          # Server-sent events
+│   │   └── route/          # API route handlers
+│   ├── config/             # Auth config (git-ignored, created at boot)
+│   ├── data/               # Database files (git-ignored, created at boot)
+│   ├── test/               # Server-side tests
+│   └── vendor/             # Vendored Font Awesome + fonts
+├── package.json
+├── .env                    # Local environment config (git-ignored)
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
 ## License
