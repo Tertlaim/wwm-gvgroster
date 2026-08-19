@@ -1,6 +1,6 @@
 # Sensitive / live data (recreated automatically on server start)
-config/auth.json
-data/
+app/config/auth.json
+app/data/
 
 # Dependencies
 node_modules/
@@ -8,3 +8,4 @@ package-lock.json
 
 # Logs
 *.log
+.kilo/
