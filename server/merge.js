@@ -207,12 +207,20 @@ function applyRemovals(db, removed) {
             db.reserves[day] = db.reserves[day].filter(p => !(p && p.id && rmRes.has(p.id)));
         }
     });
-    // Phase 13: guildMembers removals are a flat array of ids
-    const rmGm = new Set(
-        Array.isArray(removed.guildMembers) ? removed.guildMembers :
-        (removed.guildMembers && removed.guildMembers[day]) || []
-    );
-    if (rmGm.size && Array.isArray(db.guildMembers)) {
+    // Phase 13: guildMembers removals are a flat array of ids.
+    // Handle both new format (array) and legacy format ({ sat: [...], sun: [...] }).
+    let gmIds = [];
+    if (Array.isArray(removed.guildMembers)) {
+        gmIds = removed.guildMembers;
+    } else if (removed.guildMembers && typeof removed.guildMembers === 'object') {
+        // Legacy: collect ids from both day keys
+        days.forEach(function(d) {
+            const arr = removed.guildMembers[d];
+            if (Array.isArray(arr)) gmIds = gmIds.concat(arr);
+        });
+    }
+    if (gmIds.length && Array.isArray(db.guildMembers)) {
+        const rmGm = new Set(gmIds);
         db.guildMembers = db.guildMembers.filter(p => !(p && p.id && rmGm.has(p.id)));
     }
     return db;

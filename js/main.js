@@ -15,6 +15,8 @@ App.state.guildMembers = [];
 App.state.moderators = {};
 App.state.lastUpdateTime = null;
 App.state.announcementText = '';
+window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: [] };
+window._pendingDeletedIds = new Set();
 
 // ---- Alert Modal (Now using Toast) ----
 function showAlert(message, title = 'Alert', icon = '⚠️') {
@@ -115,7 +117,7 @@ async function saveState() {
         // applies these removals on top.
         baseVersion: window._serverLastUpdatedTime || null,
         deletedIds: Array.from(window._pendingDeletedIds || []),
-        removed: (window._pendingRemovals || { groups: {}, reserves: {}, guildMembers: {} })
+        removed: (window._pendingRemovals || { groups: {}, reserves: {}, guildMembers: [] })
     };
     
     const result = await saveDataToServer(data);

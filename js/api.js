@@ -43,8 +43,12 @@ async function saveDataToServer(data) {
             headers: headers,
             body: JSON.stringify(data)
         });
-        if (!response.ok) throw new Error('Failed to save data');
-        return await response.json();
+        const body = await response.json();
+        if (!response.ok) {
+            // Surface the server's actual error message instead of losing it
+            return { success: false, error: body.error || body.message || ('Server error ' + response.status) };
+        }
+        return body;
     } catch (error) {
         console.error('Error saving data to server:', error);
         return null;
