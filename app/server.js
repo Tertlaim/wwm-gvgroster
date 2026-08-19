@@ -6,8 +6,9 @@ const cors = require('cors');
 const path = require('path');
 
 const auth = require('./server/auth');
-const data = require('./server/data');
-const history = require('./server/history');
+const storage = require('./server/storage');
+const data = storage.data;
+const history = storage.history;
 const merge = require('./server/merge');
 const rate = require('./server/rate-limit');
 const sse = require('./server/sse');
@@ -63,11 +64,15 @@ data.runMasterListBackfill();
 
 app.listen(PORT, () => {
     const authConfig = auth.readAuthConfig();
+    const storageType = process.env.STORAGE || 'json';
     console.log(`=== Guild War Management System ===`);
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Database location: ${data.DB_PATH}`);
-    console.log(`Auth config: ${auth.AUTH_PATH}`);
-    console.log(`History file: ${history.HISTORY_PATH}`);
+    console.log(`Storage: ${storageType === 'supabase' ? 'Supabase' : 'JSON files'}`);
+    if (storageType !== 'supabase') {
+        console.log(`Database: ${data.DB_PATH}`);
+        console.log(`History: ${history.HISTORY_PATH}`);
+    }
+    console.log(`Auth: ${auth.AUTH_PATH}`);
     console.log(`Max groups: ${authConfig.settings.maxGroups}`);
     console.log(`===================================`);
 });

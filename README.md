@@ -18,7 +18,7 @@ A real-time web application for managing guild war rosters. Built for LAN guild 
 
 - **Frontend:** Vanilla HTML/CSS/JS (no frameworks)
 - **Backend:** Node.js + Express
-- **Storage:** JSON file (atomic writes)
+- **Storage:** JSON file (default) or Supabase (configurable via env)
 - **Auth:** bcrypt password hashing, session tokens
 
 ## Setup
@@ -27,14 +27,14 @@ A real-time web application for managing guild war rosters. Built for LAN guild 
 # Install dependencies
 npm install
 
-# Start the server (default port 3000)
+# Start with JSON file storage (default)
 npm start
 
-# Or with a custom port
-PORT=3000 npm start
+# Or start with Supabase storage
+STORAGE=supabase SUPABASE_URL=https://xxx.supabase.co SUPABASE_KEY=your-key npm start
 ```
 
-Open http://localhost:3000 in your browser.
+Copy `.env.example` to `.env` and fill in your values. Open http://localhost:3000 in your browser.
 
 ## Default Login
 
@@ -54,17 +54,19 @@ wwm-gvgroster/
 │   ├── css/                # Stylesheets
 │   ├── server/             # Server modules
 │   │   ├── auth.js         # Sessions, bcrypt, auth config
-│   │   ├── data.js         # Database read/write/migration
 │   │   ├── merge.js        # Concurrency merge engine
-│   │   ├── history.js      # Change history
 │   │   ├── sse.js          # Server-sent events
+│   │   ├── storage/        # Pluggable storage backend
+│   │   │   ├── index.js    # Selects backend via STORAGE env var
+│   │   │   ├── json/       # JSON file storage (default)
+│   │   │   └── supabase/   # Supabase/Postgres storage
 │   │   └── route/          # API route handlers
 │   ├── config/             # Auth config (git-ignored, created at boot)
 │   ├── data/               # Database files (git-ignored, created at boot)
 │   ├── test/               # Server-side tests
 │   └── vendor/             # Vendored Font Awesome + fonts
 ├── package.json
-├── .env                    # Local environment config (git-ignored)
+├── .env.example            # Environment variable template
 ├── .gitignore
 ├── LICENSE
 └── README.md
