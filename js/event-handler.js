@@ -473,6 +473,11 @@ EventHandlers.handleDeleteItem = function(event) {
                 trackDeletedPlayerIds(playerId);
             }
 
+            // Phase 13 fix: track guildMembers removal so the server applies it
+            if (playerId && typeof trackPlayerRemovals === 'function') {
+                trackPlayerRemovals('guild', window.currentDay || 'sat', playerId);
+            }
+
             // Phase 13: Remove from guildMembers (flat array, once)
             if (Array.isArray(App.state.guildMembers)) {
                 for (let i = 0; i < App.state.guildMembers.length; i++) {

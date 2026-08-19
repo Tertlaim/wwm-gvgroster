@@ -694,6 +694,11 @@ RenderHelpers.deleteGuildCard = function(player) {
     if (player && player.id && typeof trackDeletedPlayerIds === 'function') {
         trackDeletedPlayerIds(player.id);
     }
+
+    // Phase 13 fix: track guildMembers removal so the server applies it
+    if (player && player.id && typeof trackPlayerRemovals === 'function') {
+        trackPlayerRemovals('guild', window.currentDay || 'sat', player.id);
+    }
     
     // Phase 13: guildMembers is a flat array
     if (Array.isArray(App.state.guildMembers)) {
