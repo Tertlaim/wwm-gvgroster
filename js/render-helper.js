@@ -281,7 +281,6 @@ RenderHelpers.renderReserves = function(reserves, canEdit) {
     const reserveCount = document.getElementById('reserveCount');
     const reserveActions = document.getElementById('reserveActions');
     const dragHint = document.getElementById('dragHint');
-    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
     
     if (!reservePool) {
         return;
@@ -290,11 +289,6 @@ RenderHelpers.renderReserves = function(reserves, canEdit) {
     reservePool.innerHTML = '';
     
     const reserveList = Array.isArray(reserves) ? reserves : [];
-    const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-    
-    if (moveToGuildBtn) {
-        moveToGuildBtn.style.display = isAdmin ? 'inline-flex' : 'none';
-    }
     
     if (reserveList.length === 0) {
         reservePool.innerHTML = '<div style="color:#6f8aa8; font-size:0.8rem; padding:0.3rem 0.5rem; text-align:center;">No reserves</div>';
@@ -550,8 +544,6 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
             }
         });
         input.focus();
-        const length = input.value.length;
-        input.setSelectionRange(length, length);
     }
 };
 

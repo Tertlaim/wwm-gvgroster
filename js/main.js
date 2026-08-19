@@ -543,7 +543,6 @@ function setupRegistration() {
 
 // ---- Reserve Actions ----
 function setupReserveActions() {
-    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
     const deleteSelectedBtn = document.getElementById('deleteSelectedReservesBtn');
     const selectAllBtn = document.getElementById('selectAllReservesBtn');
     
@@ -561,90 +560,6 @@ function setupReserveActions() {
             });
             
             updateReserveButtons();
-        });
-    }
-    
-    if (moveToGuildBtn) {
-        moveToGuildBtn.addEventListener('click', function() {
-            const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
-            const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
-            
-            if (!isAdmin && !isMod) {
-                showAlert('Only moderators and admins can move to guild.', 'Error', '❌');
-                return;
-            }
-            
-            const checkboxes = document.querySelectorAll('.reserve-checkbox:checked');
-            if (checkboxes.length === 0) {
-                showAlert('No reserves selected to move.', 'Info', 'ℹ️');
-                return;
-            }
-            
-            const day = window.currentDay;
-            const dayName = day === 'sat' ? 'Saturday' : 'Sunday';
-            
-            showConfirmation('Move ' + checkboxes.length + ' selected reserve(s) to Guild Members for ' + dayName + '? (Duplicates will be removed)', function() {
-                const r = getReserves();
-                const gm = getGuildMembers();
-                const indices = Array.from(checkboxes).map(function(cb) {
-                    return parseInt(cb.dataset.reserve);
-                }).sort(function(a, b) { return b - a; });
-                
-                const playersToMove = [];
-                const playersToDelete = [];
-                
-                indices.forEach(function(idx) {
-                    if (r && idx >= 0 && idx < r.length) {
-                        const player = r[idx];
-                        
-                        const exists = gm.some(function(g) {
-                            return g.name === player.name && g.class === player.class;
-                        });
-                        
-                        if (exists) {
-                            playersToDelete.push(idx);
-                        } else {
-                            playersToMove.push({ idx: idx, player: player });
-                        }
-                    }
-                });
-                
-                playersToDelete.sort(function(a, b) { return b - a; });
-                playersToDelete.forEach(function(idx) {
-                    if (r && idx >= 0 && idx < r.length) {
-                        const removedId = r[idx] && r[idx].id;
-                        r.splice(idx, 1);
-                        if (removedId && typeof trackPlayerRemovals === 'function') {
-                            trackPlayerRemovals('reserve', day, removedId);
-                        }
-                    }
-                });
-                
-                const moveIndices = playersToMove.map(function(item) { return item.idx; }).sort(function(a, b) { return b - a; });
-                moveIndices.forEach(function(idx) {
-                    if (r && idx >= 0 && idx < r.length) {
-                        const player = r[idx];
-                        const movedId = player && player.id;
-                        r.splice(idx, 1);
-                        gm.push(player);
-                        if (movedId && typeof trackPlayerRemovals === 'function') {
-                            trackPlayerRemovals('reserve', day, movedId);
-                        }
-                    }
-                });
-                
-                const movedCount = playersToMove.length;
-                const deletedCount = playersToDelete.length;
-                
-                let message = 'Moved ' + movedCount + ' player(s) to Guild Members.';
-                if (deletedCount > 0) {
-                    message += ' Removed ' + deletedCount + ' duplicate(s) from Reserves.';
-                }
-                
-                updateLastUpdate();
-                render();
-                showAlert(message, 'Success', '✅');
-            });
         });
     }
     
@@ -965,15 +880,7 @@ async function init() {
 		// Modal focus trap (accessibility)
 		setupModalFocusTraps();
 
-		// Setup history clear button
-		const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-		if (clearHistoryBtn) {
-			clearHistoryBtn.addEventListener('click', () => {
-				if (typeof History !== 'undefined') {
-				History.clear();
-				}
-			});
-		}
+		// History clear button is set up by History.init()
 		
         console.log('Setting up event listeners...');
         AuthModule.setupLoginListeners();

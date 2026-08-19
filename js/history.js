@@ -85,8 +85,13 @@ const History = {
         if (!confirm('Clear all history entries?')) return;
         
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (typeof getAuthHeader === 'function') {
+                Object.assign(headers, getAuthHeader());
+            }
             const response = await fetch('/api/history', {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: headers
             });
             const result = await response.json();
             if (result.success) {
@@ -95,9 +100,16 @@ const History = {
                 if (typeof showToast === 'function') {
                     showToast('History cleared', 'success', 2000);
                 }
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast(result.error || 'Failed to clear history', 'error', 3000);
+                }
             }
         } catch (error) {
             console.error('Error clearing history:', error);
+            if (typeof showToast === 'function') {
+                showToast('Error clearing history', 'error', 3000);
+            }
         }
     },
     
