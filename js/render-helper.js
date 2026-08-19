@@ -549,6 +549,12 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
 };
 
 RenderHelpers.enterGuildCardNoteMode = function(card, player) {
+    // Disable drag while editing note so textarea clicks work normally
+    card.draggable = false;
+    // Hide delete button to prevent accidental clicks during note edit
+    const deleteBtn = card.querySelector('[data-action="delete-guild-card"]');
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    
     let notesEl = card.querySelector('.card-notes');
     if (!notesEl) {
         const body = card.querySelector('.card-body');
