@@ -302,6 +302,15 @@ EventHandlers.handleEditClick = function(event) {
 EventHandlers.handleEditKeydown = function(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
+        // Group title edit: title-edit input is inside .group-title, not [data-editable]
+        if (event.target.classList.contains('title-edit')) {
+            const container = event.target.closest('.group-title');
+            if (container) {
+                const saveBtn = container.querySelector('[data-title-action="save"]');
+                if (saveBtn) saveBtn.click();
+            }
+            return;
+        }
         const element = event.target.closest('[data-editable]');
         if (element) {
             const saveBtn = element.querySelector('[data-action="save"]');
@@ -311,6 +320,15 @@ EventHandlers.handleEditKeydown = function(event) {
         }
     } else if (event.key === 'Escape') {
         event.preventDefault();
+        // Group title edit
+        if (event.target.classList.contains('title-edit')) {
+            const container = event.target.closest('.group-title');
+            if (container) {
+                const cancelBtn = container.querySelector('[data-title-action="cancel"]');
+                if (cancelBtn) cancelBtn.click();
+            }
+            return;
+        }
         const element = event.target.closest('[data-editable]');
         if (element) {
             const cancelBtn = element.querySelector('[data-action="cancel"]');
@@ -582,8 +600,6 @@ EventHandlers.setupTitleListeners = function() {
                 editInput.value = display.textContent;
                 setTimeout(function() { 
                     editInput.focus(); 
-                    const length = editInput.value.length;
-                    editInput.setSelectionRange(length, length);
                 }, 10);
                 break;
                 
