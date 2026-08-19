@@ -41,40 +41,50 @@ app.get('/', (req, res) => {
 // INITIALIZATION
 // ============================================
 
-auth.initAuthConfig();
-data.initDatabase();
-history.initHistory();
+async function init() {
+    // Phase 15: Wire storage backend into auth module
+    auth.setAuthStorage(storage.auth);
 
-// Phase 9.1: hash any legacy plaintext passwords before serving requests.
-auth.migratePlaintextPasswords();
+    // Init auth config (async for Supabase, sync for JSON)
+    await auth.initAuthConfig();
 
-// Phase 8.2: hydrate the tombstone ledger from disk before serving requests,
-// so deletion protection is in place from the first request after a restart.
-data.loadTombstonesFromDisk();
+    // Phase 9.1: hash any legacy plaintext passwords before serving requests.
+    auth.migratePlaintextPasswords();
 
-// Run guildMembers migration
-data.runGuildMembersMigration();
+    data.initDatabase();
+    history.initHistory();
 
-// Master-list integrity: repair any day-split master gaps on boot
-data.runMasterListBackfill();
+    // Phase 8.2: hydrate the tombstone ledger from disk before serving requests,
+    // so deletion protection is in place from the first request after a restart.
+    data.loadTombstonesFromDisk();
 
-// ============================================
-// START SERVER
-// ============================================
+    // Run guildMembers migration
+    data.runGuildMembersMigration();
 
-app.listen(PORT, () => {
-    const authConfig = auth.readAuthConfig();
-    const storageType = process.env.STORAGE || 'json';
-    console.log(`=== Guild War Management System ===`);
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Storage: ${storageType === 'supabase' ? 'Supabase' : 'JSON files'}`);
-    if (storageType !== 'supabase') {
-        console.log(`Database: ${data.DB_PATH}`);
-        console.log(`History: ${history.HISTORY_PATH}`);
-    }
-    console.log(`Auth: ${auth.AUTH_PATH}`);
-    console.log(`Max groups: ${authConfig.settings.maxGroups}`);
-    console.log(`===================================`);
+    // Master-list integrity: repair any day-split master gaps on boot
+    data.runMasterListBackfill();
+
+    // Phase 15: Migrate legacy string announcement to object format
+    data.runAnnouncementMigration();
+}
+
+init().then(() => {
+    app.listen(PORT, () => {
+        const authConfig = auth.readAuthConfig();
+        const storageType = process.env.STORAGE || 'json';
+        console.log(`=== Guild War Management System ===`);
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Storage: ${storageType === 'supabase' ? 'Supabase' : 'JSON files'}`);
+        if (storageType !== 'supabase') {
+            console.log(`Database: ${data.DB_PATH}`);
+            console.log(`History: ${history.HISTORY_PATH}`);
+        }
+        console.log(`Max groups: ${authConfig && authConfig.settings ? authConfig.settings.maxGroups : '?'}`);
+        console.log(`===================================`);
+    });
+}).catch(err => {
+    console.error('Failed to initialize server:', err);
+    process.exit(1);
 });
 
 module.exports = app;
