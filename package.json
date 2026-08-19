@@ -9,6 +9,7 @@
     "test": "node --test app/test/"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "express": "^4.18.2"

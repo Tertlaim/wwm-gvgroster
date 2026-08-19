@@ -2,6 +2,9 @@
 app/config/auth.json
 app/data/
 
+# Environment config
+.env
+
 # Dependencies
 node_modules/
 package-lock.json
