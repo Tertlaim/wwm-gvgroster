@@ -3,8 +3,8 @@
 // ============================================================
 
 // ---- CONFIG ----
-const ADMIN_USER = 'Tertlaim';
-const DEFAULT_MOD_PW = 'Sin1234';
+const ADMIN_USER = 'SuperAdmin';
+const DEFAULT_MOD_PW = 'Admin123';
 
 // ---- Global state ----
 window.currentUser = null;

@@ -167,8 +167,8 @@ function initAuthConfig() {
         const defaultAuth = {
             admin: {
                 id: "admin_001",
-                username: "Tertlaim",
-                password: hashPassword('Sin1234'),
+                username: "SuperAdmin",
+                password: hashPassword('Admin123'),
                 role: "superadmin",
                 createdAt: new Date().toISOString()
             },
@@ -176,7 +176,7 @@ function initAuthConfig() {
             settings: {
                 allowModeratorRegistration: true,
                 maxGroups: 6,
-                defaultModPassword: "Sin1234",
+                defaultModPassword: "Admin123",
                 discordWebhook: "",
                 historyLimit: 100
             }

@@ -38,8 +38,8 @@ Open http://localhost:3000 in your browser.
 
 ## Default Login
 
-- **Username:** Tertlaim
-- **Password:** Sin1234
+- **Username:** SuperAdmin
+- **Password:** Admin123
 
 Change the password after first login via Admin Tools.
 
