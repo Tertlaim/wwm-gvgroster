@@ -474,6 +474,7 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
 RenderHelpers.enterGuildCardEditMode = function(card, player) {
     if (card.classList.contains('editing')) return;
     card.classList.add('editing');
+    card.draggable = false;
     
     const nameEl = card.querySelector('.card-name .name');
     const classEl = card.querySelector('.card-class .class-tag');

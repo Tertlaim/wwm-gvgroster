@@ -262,10 +262,7 @@ function setupGuildNameEditor() {
     guildNameDisplay.addEventListener('click', function() {
         if (editing) return;
         const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
-        if (!isMod) {
-            showToast('Only moderators can edit the guild name.', 'error', 2000);
-            return;
-        }
+        if (!isMod) return;
         
         const original = App.state.guildName || guildNameDisplay.textContent || '';
         editing = true;
