@@ -68,4 +68,4 @@ Change the password after first login via Admin Tools.
 
 ## License
 
-Private — for guild use only.
+[MIT](LICENSE)
