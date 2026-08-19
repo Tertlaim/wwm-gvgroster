@@ -266,6 +266,12 @@ From the 2026-08-18 review; all items are behavior-preserving and verified by th
 - [x] `guildMembers` from `{ sat: [], sun: [] }` to a single array
   - ✅ Complete: migrated all 155 references across 20+ files. Database auto-migrates old format at boot. Tests pass.
 
+### Phase 14: GitHub Upload
+- [ ] Create public GitHub repo and push the project
+  - Already covered: `.gitignore` excludes `node_modules/`, `data/`, `config/auth.json`, `.kilo/`, `.freebuff/`, `backups/`, `package-lock.json`
+  - 63 tracked files (HTML, CSS, JS, server, tests, vendored fonts) — all relevant, no CLI/AI tooling
+  - Need: `README.md` with setup instructions, repo creation, `git push -u origin main`
+
 ### RECORDED ONLY - NOT PLANNED (To-Do list)
 Kept on record for context; **not work to be done**.
 - **Supabase migration** (was To-Do #2): move JSON storage to Postgres/Supabase. Would rewrite the whole data layer; the current JSON store + merge engine works for this LAN guild tool.

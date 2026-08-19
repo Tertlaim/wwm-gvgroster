@@ -790,6 +790,12 @@ function setupGuildActions() {
                     if (selectedIds.length > 0 && typeof trackDeletedPlayerIds === 'function') {
                         trackDeletedPlayerIds(selectedIds);
                     }
+                    // Phase 13 fix: track guildMembers removals so the server applies them
+                    if (selectedIds.length > 0 && typeof trackPlayerRemovals === 'function') {
+                        selectedIds.forEach(function(id) {
+                            trackPlayerRemovals('guild', day, id);
+                        });
+                    }
                     
                     selectedIds.forEach(function(playerId) {
                         let removed = false;

@@ -289,6 +289,12 @@ const BulkActions = {
                 if (typeof trackDeletedPlayerIds === 'function') {
                     trackDeletedPlayerIds(selected.map(p => p.id).filter(Boolean));
                 }
+                // Phase 13 fix: track guildMembers removals so the server applies them
+                if (typeof trackPlayerRemovals === 'function') {
+                    selected.forEach(p => {
+                        if (p.id) trackPlayerRemovals('guild', window.currentDay || 'sat', p.id);
+                    });
+                }
                 
                 selected.forEach(player => {
                     let removed = false;
