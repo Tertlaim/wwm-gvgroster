@@ -40,9 +40,6 @@ EventHandlers.toggleEditMode = function(element, enable) {
         if (input) {
             setTimeout(function() {
                 input.focus();
-                // Set cursor to end, but allow clicking anywhere
-                const length = input.value.length;
-                input.setSelectionRange(length, length);
             }, 10);
         }
     }
@@ -702,7 +699,6 @@ EventHandlers.updateActionButtons = function() {
     const reserveCheckboxes = document.querySelectorAll('.reserve-checkbox:checked');
     const guildCheckboxes = document.querySelectorAll('.guild-checkbox:checked');
     
-    const moveToGuildBtn = document.getElementById('moveToGuildBtn');
     const deleteSelectedGuildBtn = document.getElementById('deleteSelectedGuildBtn');
     const moveToReserveBtn = document.getElementById('moveToReserveBtn');
     const deleteSelectedReservesBtn = document.getElementById('deleteSelectedReservesBtn');
@@ -711,9 +707,6 @@ EventHandlers.updateActionButtons = function() {
     const isAdmin = typeof AuthModule !== 'undefined' ? AuthModule.isAdmin() : false;
     const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
     
-    if (moveToGuildBtn) {
-        moveToGuildBtn.style.display = (reserveCheckboxes.length > 0 && (isAdmin || isMod)) ? 'inline-flex' : 'none';
-    }
     if (deleteSelectedReservesBtn) {
         deleteSelectedReservesBtn.style.display = (reserveCheckboxes.length > 0 && (isAdmin || isMod)) ? 'inline-flex' : 'none';
     }

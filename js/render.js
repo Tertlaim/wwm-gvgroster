@@ -223,22 +223,18 @@ function updateReserveButtons() {
         const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
         
         const selectAllBtn = document.getElementById('selectAllReservesBtn');
-        const moveToGuildBtn = document.getElementById('moveToGuildBtn');
         const deleteSelectedBtn = document.getElementById('deleteSelectedReservesBtn');
         
         if (totalCheckboxes.length > 0 && (isAdmin || isMod)) {
             if (selectAllBtn) selectAllBtn.style.display = 'inline-flex';
             
             if (reserveCheckboxes.length > 0) {
-                if (moveToGuildBtn) moveToGuildBtn.style.display = 'inline-flex';
                 if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'inline-flex';
             } else {
-                if (moveToGuildBtn) moveToGuildBtn.style.display = 'none';
                 if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'none';
             }
         } else {
             if (selectAllBtn) selectAllBtn.style.display = 'none';
-            if (moveToGuildBtn) moveToGuildBtn.style.display = 'none';
             if (deleteSelectedBtn) deleteSelectedBtn.style.display = 'none';
         }
     } catch (error) {
