@@ -41,6 +41,11 @@ function saveCollapseState() {
 
 function restoreCollapseState() {
     try {
+        // First clear all collapsed states so HTML defaults don't override
+        // user preferences stored in localStorage.
+        document.querySelectorAll('.collapsible.collapsed').forEach(function(p) {
+            p.classList.remove('collapsed');
+        });
         const raw = localStorage.getItem('gw_collapsed_panels');
         if (!raw) return;
         const collapsed = JSON.parse(raw);
