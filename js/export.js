@@ -17,10 +17,6 @@ function _exportDate() {
     return new Date().toISOString().slice(0, 10);
 }
 
-function _dayLabel(day) {
-    return day === 'sun' ? 'Sunday' : 'Saturday';
-}
-
 function _playerName(p) {
     return p && p.name ? p.name : '';
 }
@@ -373,25 +369,21 @@ function _showImportPreview() {
     const bad = parsed.filter(function(r) { return r.error; });
     let existing = 0;
     const seen = {};
-    const days = [];
-    if (document.getElementById('guildImportSat').checked) days.push('sat');
-    if (document.getElementById('guildImportSun').checked) days.push('sun');
     
     ok = ok.filter(function(p) {
         const k = p.name + '|' + p.class;
         if (seen[k]) return false;
         seen[k] = true;
         // Phase 13: check flat array for existing player
-        const dayHas = Array.isArray(App.state.guildMembers) &&
+        const exists = Array.isArray(App.state.guildMembers) &&
             App.state.guildMembers.some(function(g) {
                 return g && g.name === p.name && (g.class || '') === p.class;
             });
-        if (dayHas) { existing++; return false; }
+        if (exists) { existing++; return false; }
         return true;
     });
     
     preview.textContent = 'Preview: ' + ok.length + ' new players will be added'
-        + (days.length === 2 ? ' to BOTH days' : days.length === 1 ? ' to ' + _dayLabel(days[0]) : '')
         + (existing ? '. ' + existing + ' already exist (skipped).' : '')
         + (bad.length ? '\nSkipped ' + bad.length + ' bad row(s):\n' + bad.slice(0, 5).map(function(b) { return '• ' + b.error; }).join('\n') : '');
 }
@@ -410,14 +402,6 @@ function _applyGuildImport() {
             _applyGuildImport();
         };
         reader.readAsText(fileInput.files[0]);
-        return;
-    }
-    
-    const days = [];
-    if (document.getElementById('guildImportSat').checked) days.push('sat');
-    if (document.getElementById('guildImportSun').checked) days.push('sun');
-    if (days.length === 0) {
-        if (typeof showToast === 'function') showToast('Select at least one day.', 'error', 2500);
         return;
     }
     
@@ -477,8 +461,6 @@ function _openGuildImport() {
     document.getElementById('guildImportFile').value = '';
     document.getElementById('guildImportText').value = '';
     document.getElementById('guildImportPreview').textContent = '';
-    document.getElementById('guildImportSat').checked = true;
-    document.getElementById('guildImportSun').checked = true;
     modal.classList.add('active');
 }
 
@@ -507,9 +489,7 @@ ExportPanel.init = function() {
     
     const fileInput = document.getElementById('guildImportFile');
     const textArea = document.getElementById('guildImportText');
-    const satChk = document.getElementById('guildImportSat');
-    const sunChk = document.getElementById('guildImportSun');
-    [fileInput, textArea, satChk, sunChk].forEach(function(el) {
+    [fileInput, textArea].forEach(function(el) {
         if (el) el.addEventListener('input', _showImportPreview);
     });
 };
