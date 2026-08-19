@@ -6,19 +6,5 @@ data/
 node_modules/
 package-lock.json
 
-# Local tooling state
-.freebuff/
-
 # Logs
 *.log
-
-# Implementation plan
-WebImplementationPlan.md
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
