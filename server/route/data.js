@@ -87,7 +87,7 @@ module.exports = function registerDataRoutes(app, ctx) {
             merged = {
                 groups: incoming.groups || current.groups || {},
                 reserves: incoming.reserves || current.reserves || {},
-                guildMembers: incoming.guildMembers || current.guildMembers || {}
+                guildMembers: Array.isArray(incoming.guildMembers) ? incoming.guildMembers : (Array.isArray(current.guildMembers) ? current.guildMembers : [])
             };
         } else {
             merged = merge.mergeDatabase(current, incoming, deletedIds, baseTimeMs);
@@ -165,7 +165,7 @@ module.exports = function registerDataRoutes(app, ctx) {
             return res.status(500).json({ success: false, error: 'Database error' });
         }
         
-        if (!db.guildMembers) db.guildMembers = {};
+        if (!Array.isArray(db.guildMembers)) db.guildMembers = [];
         if (!db.reserves) db.reserves = {};
         
         const playerId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
@@ -173,16 +173,19 @@ module.exports = function registerDataRoutes(app, ctx) {
         let added = 0;
         const skipped = [];
         
+        // Phase 13: guildMembers is a flat array - add player once (if not already present)
+        const gmExists = db.guildMembers.some(p => p && p.name === name && p.class === cls);
+        if (!gmExists) {
+            db.guildMembers.push({ ...player });
+        }
+        
         requested.forEach(day => {
-            if (!Array.isArray(db.guildMembers[day])) db.guildMembers[day] = [];
             if (!Array.isArray(db.reserves[day])) db.reserves[day] = [];
             
-            const exists = db.guildMembers[day].some(p => p && p.name === name && p.class === cls);
-            if (exists) {
+            if (gmExists) {
                 skipped.push(day);
                 return;
             }
-            db.guildMembers[day].push({ ...player });
             db.reserves[day].push({ ...player });
             added++;
         });
@@ -362,8 +365,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         }
         
         const needsMigration = data.needsGuildMembersMigration(db);
-        const guildCount = db.guildMembers ? 
-            Object.values(db.guildMembers).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0) : 0;
+        const guildCount = Array.isArray(db.guildMembers) ? db.guildMembers.length : 0;
         
         // Count players in groups and reserves
         let groupCount = 0;

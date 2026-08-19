@@ -612,16 +612,15 @@ RenderHelpers.updateGuildPlayer = function(playerId, name, cls, role) {
     const days = ['sat', 'sun'];
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
-    days.forEach(function(day) {
-        if (App.state.guildMembers && App.state.guildMembers[day]) {
-            const player = App.state.guildMembers[day].find(function(p) { return p.id === playerId; });
-            if (player) {
-                player.name = name;
-                player.class = cls;
-                player.role = role;
-            }
+    // Phase 13: guildMembers is a flat array
+    if (Array.isArray(App.state.guildMembers)) {
+        const player = App.state.guildMembers.find(function(p) { return p.id === playerId; });
+        if (player) {
+            player.name = name;
+            player.class = cls;
+            player.role = role;
         }
-    });
+    }
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
@@ -655,14 +654,13 @@ RenderHelpers.updateGuildPlayerNote = function(playerId, note) {
     const days = ['sat', 'sun'];
     const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
     
-    days.forEach(function(day) {
-        if (App.state.guildMembers && App.state.guildMembers[day]) {
-            const player = App.state.guildMembers[day].find(function(p) { return p.id === playerId; });
-            if (player) {
-                player.note = note;
-            }
+    // Phase 13: guildMembers is a flat array
+    if (Array.isArray(App.state.guildMembers)) {
+        const player = App.state.guildMembers.find(function(p) { return p.id === playerId; });
+        if (player) {
+            player.note = note;
         }
-    });
+    }
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {
@@ -697,11 +695,10 @@ RenderHelpers.deleteGuildCard = function(player) {
         trackDeletedPlayerIds(player.id);
     }
     
-    days.forEach(function(day) {
-        if (App.state.guildMembers && App.state.guildMembers[day]) {
-            App.state.guildMembers[day] = App.state.guildMembers[day].filter(function(p) { return p.id !== player.id; });
-        }
-    });
+    // Phase 13: guildMembers is a flat array
+    if (Array.isArray(App.state.guildMembers)) {
+        App.state.guildMembers = App.state.guildMembers.filter(function(p) { return p.id !== player.id; });
+    }
     
     days.forEach(function(day) {
         groupKeys.forEach(function(key) {

@@ -136,21 +136,13 @@ function mergeGroupsDay(curGroups, incGroups, deletedIds, baseTimeMs) {
 // Merge the whole incoming snapshot with the stored database.
 function mergeDatabase(current, incoming, deletedIds, baseTimeMs) {
     const days = ['sat', 'sun'];
-    const out = { groups: {}, reserves: {}, guildMembers: {} };
+    const out = { groups: {}, reserves: {}, guildMembers: [] };
     
     days.forEach(day => {
         // Groups first, so we know which ids are claimed by a group.
         out.groups[day] = mergeGroupsDay(
             (current.groups && current.groups[day]) || {},
             (incoming.groups && incoming.groups[day]) || {},
-            deletedIds, baseTimeMs
-        );
-        
-        // Master list: plain per-id merge. Players legitimately coexist with
-        // groups/reserves (master list of ALL players), so no cross-dedup here.
-        out.guildMembers[day] = mergePlayersById(
-            (current.guildMembers && current.guildMembers[day]) || [],
-            (incoming.guildMembers && incoming.guildMembers[day]) || [],
             deletedIds, baseTimeMs
         );
         
@@ -161,6 +153,14 @@ function mergeDatabase(current, incoming, deletedIds, baseTimeMs) {
             deletedIds, baseTimeMs
         );
     });
+
+    // Phase 13: guildMembers is now a single flat array (no day keys).
+    // Merge the two flat arrays by player id.
+    out.guildMembers = mergePlayersById(
+        Array.isArray(current.guildMembers) ? current.guildMembers : [],
+        Array.isArray(incoming.guildMembers) ? incoming.guildMembers : [],
+        deletedIds, baseTimeMs
+    );
     
     return out;
 }
@@ -180,15 +180,16 @@ function removeDeletedFromDb(db, deletedIds) {
         if (db.reserves && db.reserves[day]) {
             db.reserves[day] = (db.reserves[day] || []).filter(p => !(p && p.id && deletedIds.has(p.id)));
         }
-        if (db.guildMembers && db.guildMembers[day]) {
-            db.guildMembers[day] = (db.guildMembers[day] || []).filter(p => !(p && p.id && deletedIds.has(p.id)));
-        }
     });
+    // Phase 13: guildMembers is now a flat array
+    if (Array.isArray(db.guildMembers)) {
+        db.guildMembers = db.guildMembers.filter(p => !(p && p.id && deletedIds.has(p.id)));
+    }
     return db;
 }
 
 // Apply explicit removals (moves / list removals) from the saving client.
-// Shape: { groups: { sat: { groupKey: [ids] } }, reserves: { sat: [ids] }, guildMembers: { sat: [ids] } }
+// Shape: { groups: { sat: { groupKey: [ids] } }, reserves: { sat: [ids] }, guildMembers: [ids] }
 function applyRemovals(db, removed) {
     if (!removed || typeof removed !== 'object') return db;
     const days = ['sat', 'sun'];
@@ -205,11 +206,15 @@ function applyRemovals(db, removed) {
         if (rmRes.size && db.reserves && db.reserves[day]) {
             db.reserves[day] = db.reserves[day].filter(p => !(p && p.id && rmRes.has(p.id)));
         }
-        const rmGm = new Set((removed.guildMembers && removed.guildMembers[day]) || []);
-        if (rmGm.size && db.guildMembers && db.guildMembers[day]) {
-            db.guildMembers[day] = db.guildMembers[day].filter(p => !(p && p.id && rmGm.has(p.id)));
-        }
     });
+    // Phase 13: guildMembers removals are a flat array of ids
+    const rmGm = new Set(
+        Array.isArray(removed.guildMembers) ? removed.guildMembers :
+        (removed.guildMembers && removed.guildMembers[day]) || []
+    );
+    if (rmGm.size && Array.isArray(db.guildMembers)) {
+        db.guildMembers = db.guildMembers.filter(p => !(p && p.id && rmGm.has(p.id)));
+    }
     return db;
 }
 

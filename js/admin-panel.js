@@ -26,8 +26,9 @@ function setupAdminTools() {
             }
             
             showConfirmation('Move all members from groups and reserves to Guild Members for both Saturday and Sunday?', function() {
-                const gmSat = App.state.guildMembers.sat;
-                const gmSun = App.state.guildMembers.sun;
+                // Phase 13: guildMembers is a flat array
+                if (!Array.isArray(App.state.guildMembers)) App.state.guildMembers = [];
+                const gm = App.state.guildMembers;
                 const days = ['sat', 'sun'];
                 const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
                 
@@ -57,11 +58,10 @@ function setupAdminTools() {
                         }
                     }
                     
-                    const targetGm = day === 'sat' ? gmSat : gmSun;
                     allPlayers.forEach(function(p) {
-                        const exists = targetGm.some(function(g) { return g.name === p.name; });
+                        const exists = gm.some(function(g) { return g.name === p.name; });
                         if (!exists) {
-                            targetGm.push(p);
+                            gm.push(p);
                         }
                     });
                 });

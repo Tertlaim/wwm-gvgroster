@@ -20,7 +20,7 @@ function dayState() {
             sun: { offence1: { title: 'Offence 1', players: [] } }
         },
         reserves: { sat: [], sun: [] },
-        guildMembers: { sat: [], sun: [] }
+        guildMembers: []
     };
 }
 
@@ -30,11 +30,11 @@ test('mergeDatabase always merges (fresh-vs-stale is decided by the route handle
     // editor's players here.
     const current = dayState();
     current.groups.sat.offence1.players = [player('p1', 'Alice'), player('p2', 'Bob')];
-    current.guildMembers.sat = [player('p1', 'Alice'), player('p2', 'Bob')];
+    current.guildMembers = [player('p1', 'Alice'), player('p2', 'Bob')];
 
     const incoming = dayState();
     incoming.groups.sat.offence1.players = [player('p1', 'Alice')];
-    incoming.guildMembers.sat = [player('p1', 'Alice')];
+    incoming.guildMembers = [player('p1', 'Alice')];
 
     const merged = merge.mergeDatabase(current, incoming, new Set(), Date.now() + 10000);
     assert.deepStrictEqual(
@@ -48,12 +48,12 @@ test('stale merge preserves players only the other editor created', () => {
     const current = dayState();
     current.groups.sat.offence1.players = [player('p1', 'Alice'), player('p2', 'Bob')];
     current.reserves.sat = [player('p3', 'Carol')];
-    current.guildMembers.sat = [player('p1', 'Alice'), player('p2', 'Bob'), player('p3', 'Carol')];
+    current.guildMembers = [player('p1', 'Alice'), player('p2', 'Bob'), player('p3', 'Carol')];
 
     // Stale incoming predates Bob and Carol (they were added by another editor).
     const incoming = dayState();
     incoming.groups.sat.offence1.players = [player('p1', 'Alice')];
-    incoming.guildMembers.sat = [player('p1', 'Alice')];
+    incoming.guildMembers = [player('p1', 'Alice')];
 
     const oldBase = Date.now() - 60000;
     const merged = merge.mergeDatabase(current, incoming, new Set(), oldBase);
@@ -68,7 +68,7 @@ test('stale merge preserves players only the other editor created', () => {
         'stale merge must keep reserve Carol'
     );
     assert.deepStrictEqual(
-        merged.guildMembers.sat.map(p => p.id).sort(),
+        merged.guildMembers.map(p => p.id).sort(),
         ['p1', 'p2', 'p3'],
         'master list keeps everyone'
     );
@@ -118,12 +118,12 @@ test('tombstoned player cannot be resurrected by a stale snapshot', () => {
     const incoming = dayState();
     // Stale snapshot still contains the deleted player and predates the deletion.
     incoming.groups.sat.offence1.players = [player('p_del', 'Ghost')];
-    incoming.guildMembers.sat = [player('p_del', 'Ghost')];
+    incoming.guildMembers = [player('p_del', 'Ghost')];
 
     const oldBase = deletedAt - 60000;
     const merged = merge.mergeDatabase(current, incoming, new Set(), oldBase);
     assert.strictEqual(merged.groups.sat.offence1.players.length, 0, 'tombstoned id must not resurrect in groups');
-    assert.strictEqual(merged.guildMembers.sat.length, 0, 'tombstoned id must not resurrect in guild');
+    assert.strictEqual(merged.guildMembers.length, 0, 'tombstoned id must not resurrect in guild');
 });
 
 test('isTombstoned only blocks snapshots older than the deletion', () => {
@@ -139,29 +139,29 @@ test('removeDeletedFromDb strips tombstoned ids from every collection', () => {
     const db = dayState();
     db.groups.sat.offence1.players = [player('p1'), player('p2')];
     db.reserves.sat = [player('p2'), player('p3')];
-    db.guildMembers.sat = [player('p1'), player('p2'), player('p3')];
+    db.guildMembers = [player('p1'), player('p2'), player('p3')];
 
     const out = merge.removeDeletedFromDb(db, new Set(['p2']));
     assert.deepStrictEqual(out.groups.sat.offence1.players.map(p => p.id), ['p1']);
     assert.deepStrictEqual(out.reserves.sat.map(p => p.id), ['p3']);
-    assert.deepStrictEqual(out.guildMembers.sat.map(p => p.id), ['p1', 'p3']);
+    assert.deepStrictEqual(out.guildMembers.map(p => p.id), ['p1', 'p3']);
 });
 
 test('applyRemovals removes explicit move/list removals', () => {
     const db = dayState();
     db.groups.sat.offence1.players = [player('p1'), player('p2')];
     db.reserves.sat = [player('p3')];
-    db.guildMembers.sat = [player('p1'), player('p2'), player('p3')];
+    db.guildMembers = [player('p1'), player('p2'), player('p3')];
 
     merge.applyRemovals(db, {
         groups: { sat: { offence1: ['p1'] } },
         reserves: { sat: ['p3'] },
-        guildMembers: { sat: ['p1', 'p3'] }
+        guildMembers: ['p1', 'p3']
     });
 
     assert.deepStrictEqual(db.groups.sat.offence1.players.map(p => p.id), ['p2']);
     assert.deepStrictEqual(db.reserves.sat, []);
-    assert.deepStrictEqual(db.guildMembers.sat.map(p => p.id), ['p2']);
+    assert.deepStrictEqual(db.guildMembers.map(p => p.id), ['p2']);
 });
 
 test('pruneTombstones drops entries older than the 7-day TTL', () => {

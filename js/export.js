@@ -27,19 +27,10 @@ function _playerName(p) {
 
 // Deduped master list across both days (they are the same list).
 function _guildMasterList() {
-    const seen = {};
-    const out = [];
-    ['sat', 'sun'].forEach(function(day) {
-        const gm = (App.state.guildMembers && App.state.guildMembers[day]) || [];
-        gm.forEach(function(p) {
-            if (!p || !p.name) return;
-            const k = p.name + '|' + (p.class || '');
-            if (seen[k]) return;
-            seen[k] = true;
-            out.push({ name: p.name, class: p.class || '', role: p.role || 'Member' });
-        });
-    });
-    return out;
+    // Phase 13: guildMembers is a flat array, no dedup needed across days
+    const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
+    return gm.filter(function(p) { return p && p.name; })
+             .map(function(p) { return { name: p.name, class: p.class || '', role: p.role || 'Member' }; });
 }
 
 // ============================================================
@@ -390,11 +381,11 @@ function _showImportPreview() {
         const k = p.name + '|' + p.class;
         if (seen[k]) return false;
         seen[k] = true;
-        const dayHas = days.some(function(day) {
-            return ((App.state.guildMembers && App.state.guildMembers[day]) || []).some(function(g) {
+        // Phase 13: check flat array for existing player
+        const dayHas = Array.isArray(App.state.guildMembers) &&
+            App.state.guildMembers.some(function(g) {
                 return g && g.name === p.name && (g.class || '') === p.class;
             });
-        });
         if (dayHas) { existing++; return false; }
         return true;
     });
@@ -446,22 +437,20 @@ function _applyGuildImport() {
     
     let added = 0;
     let skippedExisting = 0;
-    days.forEach(function(day) {
-        if (!App.state.guildMembers) App.state.guildMembers = {};
-        if (!Array.isArray(App.state.guildMembers[day])) App.state.guildMembers[day] = [];
-        const list = App.state.guildMembers[day];
-        parsed.forEach(function(p) {
-            const exists = list.some(function(g) { return g && g.name === p.name && (g.class || '') === p.class; });
-            if (exists) { skippedExisting++; return; }
-            if (list.length >= 30) return;
-            list.push({
-                id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                name: p.name,
-                class: p.class,
-                role: p.role
-            });
-            added++;
+    // Phase 13: guildMembers is a flat array - add once, no per-day duplication
+    if (!Array.isArray(App.state.guildMembers)) App.state.guildMembers = [];
+    const gmList = App.state.guildMembers;
+    parsed.forEach(function(p) {
+        const exists = gmList.some(function(g) { return g && g.name === p.name && (g.class || '') === p.class; });
+        if (exists) { skippedExisting++; return; }
+        if (gmList.length >= 100) return;
+        gmList.push({
+            id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            name: p.name,
+            class: p.class,
+            role: p.role
         });
+        added++;
     });
     
     if (added === 0 && skippedExisting === 0) {

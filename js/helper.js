@@ -58,7 +58,7 @@ function formatUpdateTime(value) {
 
 function ensurePendingRemovals() {
     if (!window._pendingRemovals) {
-        window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: {} };
+        window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: [] };
     }
     return window._pendingRemovals;
 }
@@ -75,8 +75,9 @@ function trackPlayerRemovals(type, day, ids, groupKey) {
         if (!store.reserves[day]) store.reserves[day] = [];
         list.forEach(id => { if (!store.reserves[day].includes(id)) store.reserves[day].push(id); });
     } else if (type === 'guild') {
-        if (!store.guildMembers[day]) store.guildMembers[day] = [];
-        list.forEach(id => { if (!store.guildMembers[day].includes(id)) store.guildMembers[day].push(id); });
+        // Phase 13: guildMembers is a flat array, so removals are just a flat list of ids
+        if (!Array.isArray(store.guildMembers)) store.guildMembers = [];
+        list.forEach(id => { if (!store.guildMembers.includes(id)) store.guildMembers.push(id); });
     }
 }
 
@@ -89,7 +90,7 @@ function trackDeletedPlayerIds(ids) {
 
 function clearPendingSyncState() {
     if (window._pendingDeletedIds) window._pendingDeletedIds.clear();
-    window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: {} };
+    window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: [] };
 }
 
 // ---- ID Generation ----
@@ -172,9 +173,9 @@ function getAllRegisteredPlayers() {
             groupKeys.forEach(key => {
                 if (App.state.groups[day][key] && App.state.groups[day][key].players) {
                     App.state.groups[day][key].players.forEach(p => {
-                        const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
-                        if (!seen.has(key)) {
-                            seen.add(key);
+                        const k = p.name + '_' + p.class + '_' + (p.role || 'Member');
+                        if (!seen.has(k)) {
+                            seen.add(k);
                             allPlayers.push({ ...p });
                         }
                     });
@@ -186,26 +187,25 @@ function getAllRegisteredPlayers() {
     days.forEach(day => {
         if (App.state.reserves && App.state.reserves[day]) {
             App.state.reserves[day].forEach(p => {
-                const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
-                if (!seen.has(key)) {
-                    seen.add(key);
+                const k = p.name + '_' + p.class + '_' + (p.role || 'Member');
+                if (!seen.has(k)) {
+                    seen.add(k);
                     allPlayers.push({ ...p });
                 }
             });
         }
     });
     
-    days.forEach(day => {
-        if (App.state.guildMembers && App.state.guildMembers[day]) {
-            App.state.guildMembers[day].forEach(p => {
-                const key = p.name + '_' + p.class + '_' + (p.role || 'Member');
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    allPlayers.push({ ...p });
-                }
-            });
-        }
-    });
+    // Phase 13: guildMembers is now a flat array
+    if (Array.isArray(App.state.guildMembers)) {
+        App.state.guildMembers.forEach(p => {
+            const k = p.name + '_' + p.class + '_' + (p.role || 'Member');
+            if (!seen.has(k)) {
+                seen.add(k);
+                allPlayers.push({ ...p });
+            }
+        });
+    }
     
     return sortPlayers(allPlayers);
 }
@@ -238,8 +238,9 @@ function isPlayerInAnyGroup(day, name, cls) {
 }
 
 function isPlayerInGuildMembers(day, name, cls) {
-    const guildMembers = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
-    return guildMembers.some(p => p.name === name && p.class === cls);
+    // Phase 13: guildMembers is a flat array (no day parameter needed)
+    const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
+    return gm.some(p => p.name === name && p.class === cls);
 }
 
 function getAllPlayersInGroups(day) {
@@ -273,12 +274,14 @@ function isPlayerInReserveList(day, name, cls) {
 const GUILD_MEMBER_MAX = 100;
 
 function canAddToGuildMembers(day) {
-    const gm = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
+    // Phase 13: guildMembers is a flat array (no day parameter needed)
+    const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
     return gm.length < GUILD_MEMBER_MAX;
 }
 
 function getGuildMemberCount(day) {
-    const gm = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
+    // Phase 13: guildMembers is a flat array (no day parameter needed)
+    const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
     return gm.length;
 }
 
@@ -329,17 +332,11 @@ function getReserves() {
 }
 
 function getGuildMembers() {
-    const day = window.currentDay || 'sat';
-    
-    // Initialize if not exists
-    if (!App.state.guildMembers) {
-        App.state.guildMembers = {};
+    // Phase 13: guildMembers is a single flat array
+    if (!Array.isArray(App.state.guildMembers)) {
+        App.state.guildMembers = [];
     }
-    if (!App.state.guildMembers[day]) {
-        App.state.guildMembers[day] = [];
-    }
-    
-    return App.state.guildMembers[day];
+    return App.state.guildMembers;
 }
 
 function getAllRegisteredPlayers() {
@@ -397,11 +394,11 @@ function isPlayerInAnyGroup(day, name, cls) {
     return false;
 }
 
-// Check if a player exists in guild members for a specific day
+// Check if a player exists in guild members (Phase 13: flat array)
 function isPlayerInGuildMembers(day, name, cls) {
-    const guildMembers = App.state.guildMembers && App.state.guildMembers[day] ? App.state.guildMembers[day] : [];
-    for (let i = 0; i < guildMembers.length; i++) {
-        if (guildMembers[i].name === name && guildMembers[i].class === cls) {
+    const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
+    for (let i = 0; i < gm.length; i++) {
+        if (gm[i].name === name && gm[i].class === cls) {
             return true;
         }
     }

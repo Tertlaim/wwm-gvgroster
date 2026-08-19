@@ -2,7 +2,7 @@
 
 ## Project: Mask Sinners Guild War Management
 **Current Date:** 2026-08-18
-**Status:** Phase 11 Complete + post-phase bugfix round (master-list integrity, false-duplicate warning, guild-card form close, wuxia header font). Next up: Phase 12 - Mobile & Accessibility
+**Status:** Phase 13 Complete (guildMembers simplified from day-split {sat:[], sun:[]} to single flat array). Next up: Phase 12 - Mobile & Accessibility
 **Repo:** git (branch `main`) - `data/` and `config/auth.json` are git-ignored
 
 ---
@@ -263,8 +263,8 @@ From the 2026-08-18 review; all items are behavior-preserving and verified by th
 - [ ] **12.2 Accessibility** (was 9.2) - ARIA labels (partial done), keyboard navigation, color contrast, modal focus trap (done), icon-button labels
 
 ### Phase 13: Data Model Simplification (known bug #5 - DEFERRED, high blast radius)
-- [ ] `guildMembers` from `{ sat: [], sun: [] }` to a single array
-  - Touches every client file + server readers; only worth the risk if the day-split actually causes bugs in practice. Phase 10 exports may make the need concrete.
+- [x] `guildMembers` from `{ sat: [], sun: [] }` to a single array
+  - ✅ Complete: migrated all 155 references across 20+ files. Database auto-migrates old format at boot. Tests pass.
 
 ### RECORDED ONLY - NOT PLANNED (To-Do list)
 Kept on record for context; **not work to be done**.
@@ -349,10 +349,10 @@ guild-war-management/            (git repo, branch main)
 | Phase 10B: Guild CSV Import/Export + Public Staff | ✅ complete | 100% |
 | Phase 11: Code Quality & Refactoring | ✅ complete | 100% |
 | Phase 12: Mobile & Accessibility | pending | 0% |
-| Phase 13: Data Model Simplification | deferred | 0% (master-list backfill now keeps the day-split lists complete in the meantime) |
+| Phase 13: Data Model Simplification | ✅ complete | 100% |
 | Recorded (not planned): Supabase + Cron | recorded only | - |
 
-**Overall Progress:** ~99.9% (all planned phases done; Phase 12 Mobile/A11y and Phase 13 data-model remain as roadmap, plus recorded-only To-Dos)
+**Overall Progress:** ~99.9% (all planned phases done; Phase 12 Mobile/A11y remains as roadmap, plus recorded-only To-Dos)
 
 ---
 
@@ -364,7 +364,7 @@ guild-war-management/            (git repo, branch main)
 | 2 | No right-click context menu | ✅ Fixed in Phase 7.1 (context-menu.js) |
 | 3 | No extended keyboard shortcuts (C/M/E/Delete) | ✅ Fixed in Phase 7.2 (click-to-select + keys) |
 | 4 | Group deletion not implemented | ✅ Fixed in Phase 6.2 (remove button + confirmation + non-empty guard) |
-| 5 | guildMembers day-specific (should be single array) | Phase 13 (deferred - high blast radius) |
+| 5 | guildMembers day-specific (should be single array) | ✅ Fixed in Phase 13 (single flat array + auto-migration) |
 | 6 | Backup download 401s (window.open without auth header) | ✅ Fixed in Phase 8.4 (fetch + auth header + button in Admin Tools) |
 | 7 | `config/auth.json` plaintext passwords (bcrypt unused) | ✅ Fixed in Phase 9.1 (bcrypt hashes + boot migration) |
 | 8 | No rate limiting on login/register | ✅ Fixed in Phase 9.2 (20 login / 15 register per 15 min, 429 + retryAfter) |
@@ -396,7 +396,7 @@ guild-war-management/            (git repo, branch main)
 ### Future considerations
 - Discord integration (standalone module, after the current roadmap)
 - Multi-line notes, custom group colors, per-day announcements
-- Migrate to single-array guildMembers (Phase 13) unlocks cleaner exports
+- ✅ Migrated to single-array guildMembers (Phase 13) - cleaner exports are now default
 - ~~**CSV import of guild members (Admin+)**~~ -> IMPLEMENTED as Phase 10B (export + file upload + paste import near the Guild panel)
 - **JSON restore (Admin+)** - the backup currently has NO upload path: restoring means stopping the server, replacing `data/database.json`, restarting (manual, documented). A Restore-from-backup upload (validate JSON, overwrite via the atomic writer, full history entry) is the natural companion to the CSV import feature and would make backups genuinely usable end-to-end.
 

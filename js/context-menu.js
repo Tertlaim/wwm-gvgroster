@@ -360,13 +360,12 @@ const ContextMenu = {
         
         // Remove from source (tracked so stale merges keep the move)
         if (type === 'guild') {
-            ['sat', 'sun'].forEach(function(dk) {
-                if (App.state.guildMembers && App.state.guildMembers[dk]) {
-                    App.state.guildMembers[dk] = App.state.guildMembers[dk].filter(function(p) { return p.id !== player.id; });
-                }
-            });
+            // Phase 13: guildMembers is a flat array
+            if (Array.isArray(App.state.guildMembers)) {
+                App.state.guildMembers = App.state.guildMembers.filter(function(p) { return p.id !== player.id; });
+            }
             if (typeof trackPlayerRemovals === 'function') {
-                ['sat', 'sun'].forEach(function(dk) { trackPlayerRemovals('guild', dk, player.id); });
+                trackPlayerRemovals('guild', day, player.id);
             }
             movedFrom = 'guild';
         } else if (type === 'group' && sourceGroup && g[sourceGroup]) {

@@ -39,7 +39,7 @@ function render(force) {
         const sig = {
             groups: JSON.stringify(g || {}),
             reserves: JSON.stringify(r || []),
-            guild: JSON.stringify((App.state.guildMembers && App.state.guildMembers[day]) || []),
+            guild: JSON.stringify(App.state.guildMembers || []),
             canEdit: canEdit,
             day: day
         };

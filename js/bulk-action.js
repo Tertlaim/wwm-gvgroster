@@ -293,16 +293,14 @@ const BulkActions = {
                 selected.forEach(player => {
                     let removed = false;
                     
-                    // 1. Remove from guildMembers (master list) - both days
-                    days.forEach(day => {
-                        if (App.state.guildMembers && App.state.guildMembers[day]) {
-                            const idx = App.state.guildMembers[day].findIndex(p => p.id === player.id);
-                            if (idx !== -1) {
-                                App.state.guildMembers[day].splice(idx, 1);
-                                removed = true;
-                            }
+                    // 1. Remove from guildMembers (flat array)
+                    if (Array.isArray(App.state.guildMembers)) {
+                        const idx = App.state.guildMembers.findIndex(p => p.id === player.id);
+                        if (idx !== -1) {
+                            App.state.guildMembers.splice(idx, 1);
+                            removed = true;
                         }
-                    });
+                    }
                     
                     // 2. Remove from groups - both days
                     days.forEach(day => {
