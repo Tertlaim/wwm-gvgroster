@@ -77,7 +77,7 @@ function applyIfNewer(serverData) {
         groups: App.state.groups,
         reserves: App.state.reserves,
         guildMembers: App.state.guildMembers,
-        announcement: App.state.announcementText,
+        announcement: App.state.announcement,
         guildName: App.state.guildName
     };
     
@@ -87,7 +87,7 @@ function applyIfNewer(serverData) {
     const dataChanged = JSON.stringify(prevState.groups) !== JSON.stringify(App.state.groups) ||
                         JSON.stringify(prevState.reserves) !== JSON.stringify(App.state.reserves) ||
                         JSON.stringify(prevState.guildMembers) !== JSON.stringify(App.state.guildMembers) ||
-                        prevState.announcement !== App.state.announcementText ||
+                        JSON.stringify(prevState.announcement) !== JSON.stringify(App.state.announcement) ||
                         prevState.guildName !== App.state.guildName;
     
     if (dataChanged && typeof render === 'function') {

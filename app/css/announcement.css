@@ -81,6 +81,20 @@
     color: var(--text-muted);
 }
 
+.announcement-meta {
+    margin-top: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.8;
+}
+
+@media (max-width: 500px) {
+    .announcement-meta {
+        font-size: var(--font-size-xs);
+    }
+}
+
 @media (max-width: 500px) {
     .announcement-section {
         padding: var(--spacing-sm);

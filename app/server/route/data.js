@@ -94,7 +94,18 @@ module.exports = function registerDataRoutes(app, ctx) {
         }
         
         merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Mask Sinners');
-        merged.announcement = typeof incoming.announcement === 'string' ? incoming.announcement : (current.announcement || '');
+        // Announcement: accept object {text, author, timestamp} or legacy string
+        if (incoming.announcement && typeof incoming.announcement === 'object') {
+            merged.announcement = incoming.announcement;
+        } else if (typeof incoming.announcement === 'string') {
+            // Legacy string format from old clients — migrate on save
+            merged.announcement = { text: incoming.announcement, author: '', timestamp: '' };
+        } else {
+            // Fallback: keep current announcement or default
+            merged.announcement = (current.announcement && typeof current.announcement === 'object')
+                ? current.announcement
+                : { text: (typeof current.announcement === 'string' ? current.announcement : ''), author: '', timestamp: '' };
+        }
         
         // Apply tombstoned deletes (matters for fresh replaces) and explicit
         // removals (moves / list removals) on top of the merge.

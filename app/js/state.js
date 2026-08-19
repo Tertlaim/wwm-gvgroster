@@ -15,6 +15,6 @@ const App = {
         moderators: {},       // username -> role (staff list for everyone)
         lastUpdateTime: null, // ISO timestamp of the latest server save
         guildName: '',        // e.g. 'Mask Sinners'
-        announcementText: ''  // current announcement body
+        announcement: { text: '', author: '', timestamp: '' }  // current announcement with metadata
     }
 };
