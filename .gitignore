@@ -25,4 +25,5 @@ Thumbs.db
 
 # Logs
 logs/
-*.logWebImplementationPlan.md
+*.log
+WebImplementationPlan.md
