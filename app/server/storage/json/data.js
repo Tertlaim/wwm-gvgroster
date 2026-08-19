@@ -236,14 +236,18 @@ function runGuildMembersMigration() {
         console.log(`✅ guildMembers already populated (${data.guildMembers.length} players). No migration needed.`);
     }
 
-    // Phase 15: Migrate legacy string announcement to {text, author, timestamp}
+    if (dirty) writeDatabase(data);
+}
+
+// Phase 15: Migrate legacy string announcement to {text, author, timestamp}
+function runAnnouncementMigration() {
+    const data = readDatabase();
+    if (!data) return;
     if (typeof data.announcement === 'string') {
         data.announcement = { text: data.announcement, author: '', timestamp: '' };
-        dirty = true;
+        writeDatabase(data);
         console.log('✅ Migrated legacy announcement string to object format');
     }
-
-    if (dirty) writeDatabase(data);
 }
 
 module.exports = {
@@ -258,5 +262,6 @@ module.exports = {
     persistTombstones,
     migrateGuildMembers,
     needsGuildMembersMigration,
-    runGuildMembersMigration
+    runGuildMembersMigration,
+    runAnnouncementMigration
 };
