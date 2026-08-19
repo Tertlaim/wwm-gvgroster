@@ -36,12 +36,19 @@ EventHandlers.toggleEditMode = function(element, enable) {
     }
     
     if (enable) {
+        // Disable drag while editing so clicks inside the input reposition the
+        // cursor normally instead of being intercepted by drag initiation.
+        element.draggable = false;
         const input = element.querySelector('.edit-input');
         if (input) {
             setTimeout(function() {
                 input.focus();
             }, 10);
         }
+    } else {
+        // Restore draggable when editing ends
+        const isMod = typeof AuthModule !== 'undefined' ? AuthModule.isMod() : false;
+        if (isMod) element.draggable = true;
     }
 };
 
