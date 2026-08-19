@@ -100,7 +100,7 @@ async function initDatabase() {
             reserves: { sat: [], sun: [] },
             guildMembers: [],
             lastUpdateTime: new Date().toISOString(),
-            announcement: 'Welcome to Mask Sinners Guild War!'
+            announcement: { text: 'Welcome to Mask Sinners Guild War!', author: '', timestamp: '' }
         };
 
         await client.from('app_state').insert({ id: 'main', value: defaultData });

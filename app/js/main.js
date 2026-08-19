@@ -14,7 +14,7 @@ App.state.reserves = {};
 App.state.guildMembers = [];
 App.state.moderators = {};
 App.state.lastUpdateTime = null;
-App.state.announcementText = '';
+App.state.announcement = { text: '', author: '', timestamp: '' };
 window._pendingRemovals = { groups: {}, reserves: {}, guildMembers: [] };
 window._pendingDeletedIds = new Set();
 
@@ -109,7 +109,7 @@ async function saveState() {
         reserves: App.state.reserves, 
         guildMembers: App.state.guildMembers, 
         lastUpdateTime: App.state.lastUpdateTime,
-        announcement: App.state.announcementText || '',
+        announcement: App.state.announcement,
         guildName: App.state.guildName || 'Mask Sinners',
         // Concurrency metadata (Phase 4.5): the base version this snapshot
         // is derived from, ids fully deleted, and ids removed from specific
@@ -207,9 +207,13 @@ function applyServerData(serverData) {
         }
     }
     
-    // Update announcement
-    if (typeof serverData.announcement === 'string') {
-        App.state.announcementText = serverData.announcement;
+    // Update announcement (backward compat: accept string or object)
+    if (serverData.announcement) {
+        if (typeof serverData.announcement === 'string') {
+            App.state.announcement = { text: serverData.announcement, author: '', timestamp: '' };
+        } else if (typeof serverData.announcement === 'object') {
+            App.state.announcement = serverData.announcement;
+        }
         if (typeof renderAnnouncement === 'function') {
             renderAnnouncement();
         }

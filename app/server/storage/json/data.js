@@ -106,7 +106,7 @@ function initDatabase() {
             },
             guildMembers: [],
             lastUpdateTime: new Date().toISOString(),
-            announcement: 'Welcome to Mask Sinners Guild War!'
+            announcement: { text: 'Welcome to Mask Sinners Guild War!', author: '', timestamp: '' }
         };
         atomicWriteFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
         console.log('Created new database file');
@@ -223,18 +223,27 @@ function runGuildMembersMigration() {
         return;
     }
 
+    let dirty = false;
+
     if (needsGuildMembersMigration(data)) {
         console.log('guildMembers migration needed. Running...');
         const result = migrateGuildMembers(data);
-
-        if (writeDatabase(data)) {
+        dirty = true;
+        if (result.migrated > 0) {
             console.log(`✅ Migration complete: ${result.migrated} players added to guildMembers (total players: ${result.totalPlayers})`);
-        } else {
-            console.log('❌ Failed to save migrated data.');
         }
     } else {
         console.log(`✅ guildMembers already populated (${data.guildMembers.length} players). No migration needed.`);
     }
+
+    // Phase 15: Migrate legacy string announcement to {text, author, timestamp}
+    if (typeof data.announcement === 'string') {
+        data.announcement = { text: data.announcement, author: '', timestamp: '' };
+        dirty = true;
+        console.log('✅ Migrated legacy announcement string to object format');
+    }
+
+    if (dirty) writeDatabase(data);
 }
 
 module.exports = {
