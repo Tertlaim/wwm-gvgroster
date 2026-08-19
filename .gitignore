@@ -2,16 +2,18 @@
 config/auth.json
 data/
 
-# Local tooling state
-.kilo/
-.freebuff/
-backups/
-
-# Node
+# Dependencies
 node_modules/
-npm-debug.log*
-.env
 package-lock.json
+
+# Local tooling state
+.freebuff/
+
+# Logs
+*.log
+
+# Implementation plan
+WebImplementationPlan.md
 
 # OS
 .DS_Store
@@ -20,10 +22,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# Logs
-logs/
-*.log
-WebImplementationPlan.md
