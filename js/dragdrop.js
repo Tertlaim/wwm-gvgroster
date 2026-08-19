@@ -377,13 +377,11 @@ function handleDrop(e) {
             r.splice(reserveIndex, 1);
         } else if (isFromGuild && playerToMove) {
             movedPlayer = playerToMove;
-            for (let d = 0; d < ['sat', 'sun'].length; d++) {
-                const dayKey = ['sat', 'sun'][d];
-                if (App.state.guildMembers && App.state.guildMembers[dayKey]) {
-                    App.state.guildMembers[dayKey] = App.state.guildMembers[dayKey].filter(function(p) {
-                        return p.id !== playerToMove.id;
-                    });
-                }
+            // Phase 13: guildMembers is a flat array
+            if (Array.isArray(App.state.guildMembers)) {
+                App.state.guildMembers = App.state.guildMembers.filter(function(p) {
+                    return p.id !== playerToMove.id;
+                });
             }
         } else if (guildIndex !== null && gm && guildIndex >= 0 && guildIndex < gm.length) {
             movedPlayer = gm[guildIndex];
@@ -396,9 +394,8 @@ function handleDrop(e) {
     // merge can apply this move even when the snapshot is stale.
     if (movedPlayer && movedPlayer.id && typeof trackPlayerRemovals === 'function') {
         if (isFromGuild) {
-            ['sat', 'sun'].forEach(function(dk) {
-                trackPlayerRemovals('guild', dk, movedPlayer.id);
-            });
+            // Phase 13: single removal call for flat guildMembers
+            trackPlayerRemovals('guild', day, movedPlayer.id);
         } else if (isFromReserve) {
             trackPlayerRemovals('reserve', day, movedPlayer.id);
         } else if (isFromGroup && group) {
@@ -446,7 +443,7 @@ function handleDrop(e) {
     // ---- SAVE BACK TO GLOBAL STATE ----
     App.state.groups[day] = g;
     App.state.reserves[day] = r;
-    App.state.guildMembers[day] = gm;
+    // Phase 13: guildMembers is a flat array, gm already points to it
     
     // ---- LOG TO HISTORY ----
     if (movedPlayer && (shouldRemoveFromSource || shouldAddToTarget)) {

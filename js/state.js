@@ -11,7 +11,7 @@ const App = {
     state: {
         groups: {},           // { sat: { groupKey: { title, players } }, sun: ... }
         reserves: {},         // { sat: [players], sun: [players] }
-        guildMembers: {},     // { sat: [players], sun: [players] }
+        guildMembers: [],     // Phase 13: single flat array of all registered players
         moderators: {},       // username -> role (staff list for everyone)
         lastUpdateTime: null, // ISO timestamp of the latest server save
         guildName: '',        // e.g. 'Mask Sinners'

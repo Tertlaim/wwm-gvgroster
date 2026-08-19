@@ -11,7 +11,7 @@ window.currentUser = null;
 window.currentDay = 'sat';
 App.state.groups = {};
 App.state.reserves = {};
-App.state.guildMembers = {};
+App.state.guildMembers = [];
 App.state.moderators = {};
 App.state.lastUpdateTime = null;
 App.state.announcementText = '';
@@ -194,7 +194,7 @@ function applyServerData(serverData) {
     
     App.state.groups = serverData.groups || {};
     App.state.reserves = serverData.reserves || {};
-    App.state.guildMembers = serverData.guildMembers || {};
+    App.state.guildMembers = serverData.guildMembers || [];
     App.state.guildName = serverData.guildName || 'Mask Sinners';
     
     if (serverData.lastUpdateTime) {
@@ -241,7 +241,7 @@ function initializeEmptyData() {
         }
     };
     App.state.reserves = { sat: [], sun: [] };
-    App.state.guildMembers = { sat: [], sun: [] };
+    App.state.guildMembers = [];
     App.state.guildName = 'Mask Sinners';
 }
 
@@ -794,16 +794,14 @@ function setupGuildActions() {
                     selectedIds.forEach(function(playerId) {
                         let removed = false;
                         
-                        // 1. Remove from guildMembers (master list) - both days
-                        days.forEach(function(day) {
-                            if (App.state.guildMembers && App.state.guildMembers[day]) {
-                                const idx = App.state.guildMembers[day].findIndex(function(p) { return p.id === playerId; });
-                                if (idx !== -1) {
-                                    App.state.guildMembers[day].splice(idx, 1);
-                                    removed = true;
-                                }
+                        // 1. Remove from guildMembers (master list - flat array)
+                        if (Array.isArray(App.state.guildMembers)) {
+                            const gmIdx = App.state.guildMembers.findIndex(function(p) { return p.id === playerId; });
+                            if (gmIdx !== -1) {
+                                App.state.guildMembers.splice(gmIdx, 1);
+                                removed = true;
                             }
-                        });
+                        }
                         
                         // 2. Remove from groups - both days
                         days.forEach(function(day) {

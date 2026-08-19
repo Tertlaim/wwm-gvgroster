@@ -104,10 +104,7 @@ function initDatabase() {
                 sat: [],
                 sun: []
             },
-            guildMembers: {
-                sat: [],
-                sun: []
-            },
+            guildMembers: [],
             lastUpdateTime: new Date().toISOString(),
             announcement: 'Welcome to Mask Sinners Guild War!'
         };
@@ -120,93 +117,89 @@ function initDatabase() {
 // GUILD MEMBERS MIGRATION
 // ============================================
 
-// Populate guildMembers from groups and reserves (deduplicated)
+// Phase 13: Migrate guildMembers from day-split { sat:[], sun:[] } to a
+// single flat array. Also backfills any players present in groups/reserves
+// but missing from the master list.
 function migrateGuildMembers(data) {
+    // Phase 13 migration: flatten old day-split shape to single array
+    if (data.guildMembers && typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) {
+        const merged = new Map();
+        Object.values(data.guildMembers).forEach(arr => {
+            if (Array.isArray(arr)) {
+                arr.forEach(p => { if (p && p.id) merged.set(p.id, { ...p }); });
+            }
+        });
+        data.guildMembers = [...merged.values()];
+    }
+
+    if (!Array.isArray(data.guildMembers)) {
+        data.guildMembers = [];
+    }
+
+    const existingIds = new Set(data.guildMembers.map(p => p && p.id).filter(Boolean));
     const days = ['sat', 'sun'];
     let migrated = 0;
     let totalPlayers = 0;
-    
+
+    // Collect players from ALL groups across ALL days
     days.forEach(day => {
-        // Initialize guildMembers for this day if not exists
-        if (!data.guildMembers) {
-            data.guildMembers = {};
-        }
-        if (!data.guildMembers[day]) {
-            data.guildMembers[day] = [];
-        }
-        
-        const seen = new Set();
-        const existingIds = new Set();
-        
-        // Track existing guildMembers to avoid duplicates
-        if (data.guildMembers[day]) {
-            data.guildMembers[day].forEach(p => {
-                if (p.id) existingIds.add(p.id);
-            });
-        }
-        
-        // Collect players from groups - ALL groups for the day (not just the
-        // default four keys: admins add custom groups, and those players must
-        // reach the master list too).
         if (data.groups && data.groups[day]) {
             Object.keys(data.groups[day]).forEach(key => {
                 if (data.groups[day][key] && data.groups[day][key].players) {
                     data.groups[day][key].players.forEach(p => {
-                        if (p.id && !seen.has(p.id)) {
-                            seen.add(p.id);
+                        if (p && p.id) {
                             totalPlayers++;
                             if (!existingIds.has(p.id)) {
-                                data.guildMembers[day].push({ ...p });
-                                migrated++;
+                                data.guildMembers.push({ ...p });
                                 existingIds.add(p.id);
+                                migrated++;
                             }
                         }
                     });
                 }
             });
         }
-        
-        // Collect players from reserves
+    });
+
+    // Collect players from reserves across all days
+    days.forEach(day => {
         if (data.reserves && data.reserves[day]) {
             data.reserves[day].forEach(p => {
-                if (p.id && !seen.has(p.id)) {
-                    seen.add(p.id);
+                if (p && p.id) {
                     totalPlayers++;
                     if (!existingIds.has(p.id)) {
-                        data.guildMembers[day].push({ ...p });
-                        migrated++;
+                        data.guildMembers.push({ ...p });
                         existingIds.add(p.id);
+                        migrated++;
                     }
                 }
             });
         }
     });
-    
+
     return { migrated, totalPlayers };
 }
 
 // Check if guildMembers is empty but players exist
 function needsGuildMembersMigration(data) {
     if (!data.guildMembers) return true;
-    
+
+    // Phase 13: old day-split shape always needs migration
+    if (typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) return true;
+
     // Check if guildMembers has any players
-    const hasPlayers = Object.values(data.guildMembers).some(arr => arr && arr.length > 0);
-    if (hasPlayers) return false;
-    
+    if (data.guildMembers.length > 0) return false;
+
     // Check if groups or reserves have players
-    const hasData = Object.values(data.groups).some(day => 
+    const hasData = Object.values(data.groups).some(day =>
         Object.values(day).some(group => group.players && group.players.length > 0)
     ) || Object.values(data.reserves).some(arr => arr && arr.length > 0);
-    
+
     return hasData;
 }
 
-// Master-list integrity: every player that exists in groups or reserves must
-// also appear in guildMembers for the same day. The day-split master can
-// drift - e.g. a Saturday-registered player dragged into a Sunday group was
-// never added to guildMembers.sun - so this backfills on every save and at
-// boot. migrateGuildMembers() does the per-day merge; this is the semantic
-// wrapper (returns players added).
+// Master-list integrity: every player in groups/reserves must appear in the
+// flat guildMembers array. Backfills on every save and at boot.
 function ensureMasterList(data) {
     return migrateGuildMembers(data).migrated;
 }
@@ -229,21 +222,18 @@ function runGuildMembersMigration() {
         console.log('No data found, skipping migration.');
         return;
     }
-    
+
     if (needsGuildMembersMigration(data)) {
-        console.log('guildMembers is empty but players exist. Running migration...');
+        console.log('guildMembers migration needed. Running...');
         const result = migrateGuildMembers(data);
-        
-        // Save the migrated data
+
         if (writeDatabase(data)) {
             console.log(`✅ Migration complete: ${result.migrated} players added to guildMembers (total players: ${result.totalPlayers})`);
         } else {
             console.log('❌ Failed to save migrated data.');
         }
     } else {
-        const count = data.guildMembers ? 
-            Object.values(data.guildMembers).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0) : 0;
-        console.log(`✅ guildMembers already populated (${count} players). No migration needed.`);
+        console.log(`✅ guildMembers already populated (${data.guildMembers.length} players). No migration needed.`);
     }
 }
 

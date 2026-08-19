@@ -108,10 +108,7 @@ const SAMPLE_DATA = {
             { name: 'Fjordwitch', class: 'DPS', role: 'Member' }
         ]
     },
-    guildMembers: {
-        sat: [],
-        sun: []
-    },
+    guildMembers: [],
     moderators: { 'Eira': 'Mod123', 'Thorne': 'Mod123', 'Vex': 'Mod123' }
 };
 
@@ -153,8 +150,7 @@ function calculateGuildMembers() {
         }
     });
     
-    SAMPLE_DATA.guildMembers.sat = guildMembers;
-    SAMPLE_DATA.guildMembers.sun = guildMembers;
+    SAMPLE_DATA.guildMembers = guildMembers;
 }
 
 // Calculate guild members on load

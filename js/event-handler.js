@@ -172,40 +172,34 @@ EventHandlers.saveItem = function(event) {
         }
     } 
     else if (type === 'guild' && guildIndex !== null && guildIndex !== undefined) {
-        const days = ['sat', 'sun'];
+        // Phase 13: guildMembers is a flat array
+        const gm = Array.isArray(App.state.guildMembers) ? App.state.guildMembers : [];
         let found = false;
         
-        days.forEach(function(day) {
-            if (App.state.guildMembers && App.state.guildMembers[day]) {
-                for (let i = 0; i < App.state.guildMembers[day].length; i++) {
-                    if (App.state.guildMembers[day][i].id === playerId) {
-                        App.state.guildMembers[day][i].name = value;
-                        App.state.guildMembers[day][i].class = cls;
-                        App.state.guildMembers[day][i].role = role;
-                        playerData = App.state.guildMembers[day][i];
-                        found = true;
-                        updated = true;
-                    }
-                }
+        // Try to find by ID first
+        for (let i = 0; i < gm.length; i++) {
+            if (gm[i].id === playerId) {
+                gm[i].name = value;
+                gm[i].class = cls;
+                gm[i].role = role;
+                playerData = gm[i];
+                found = true;
+                updated = true;
             }
-        });
+        }
         
         // If not found by ID, try name+class
         if (!found) {
-            days.forEach(function(day) {
-                if (App.state.guildMembers && App.state.guildMembers[day]) {
-                    for (let i = 0; i < App.state.guildMembers[day].length; i++) {
-                        if (App.state.guildMembers[day][i].name === playerName && App.state.guildMembers[day][i].class === playerClass) {
-                            App.state.guildMembers[day][i].name = value;
-                            App.state.guildMembers[day][i].class = cls;
-                            App.state.guildMembers[day][i].role = role;
-                            playerData = App.state.guildMembers[day][i];
-                            found = true;
-                            updated = true;
-                        }
-                    }
+            for (let i = 0; i < gm.length; i++) {
+                if (gm[i].name === playerName && gm[i].class === playerClass) {
+                    gm[i].name = value;
+                    gm[i].class = cls;
+                    gm[i].role = role;
+                    playerData = gm[i];
+                    found = true;
+                    updated = true;
                 }
-            });
+            }
         }
         
         if (found && playerData) {
@@ -478,21 +472,21 @@ EventHandlers.handleDeleteItem = function(event) {
             if (playerId && typeof trackDeletedPlayerIds === 'function') {
                 trackDeletedPlayerIds(playerId);
             }
+
+            // Phase 13: Remove from guildMembers (flat array, once)
+            if (Array.isArray(App.state.guildMembers)) {
+                for (let i = 0; i < App.state.guildMembers.length; i++) {
+                    if (App.state.guildMembers[i].id === playerId || 
+                        (App.state.guildMembers[i].name === name && App.state.guildMembers[i].class === cls)) {
+                        removedPlayer = App.state.guildMembers[i];
+                        App.state.guildMembers.splice(i, 1);
+                        break;
+                    }
+                }
+            }
             
             for (let d = 0; d < days.length; d++) {
                 const day = days[d];
-                
-                // Remove from guild members
-                if (App.state.guildMembers && App.state.guildMembers[day]) {
-                    for (let i = 0; i < App.state.guildMembers[day].length; i++) {
-                        if (App.state.guildMembers[day][i].id === playerId || 
-                            (App.state.guildMembers[day][i].name === name && App.state.guildMembers[day][i].class === cls)) {
-                            removedPlayer = App.state.guildMembers[day][i];
-                            App.state.guildMembers[day].splice(i, 1);
-                            break;
-                        }
-                    }
-                }
                 
                 // Remove from groups
                 for (let k = 0; k < groupKeys.length; k++) {
