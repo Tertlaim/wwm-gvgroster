@@ -119,7 +119,7 @@ function setupAnnouncement() {
             }
 
             // Capture author and timestamp
-            var author = (typeof window.currentUser === 'string' && window.currentUser) ? window.currentUser : '';
+            var author = (typeof AuthModule !== 'undefined' && AuthModule.currentUser && AuthModule.currentUser.name) ? AuthModule.currentUser.name : '';
             var timestamp = new Date().toISOString();
 
             // Get old value for history

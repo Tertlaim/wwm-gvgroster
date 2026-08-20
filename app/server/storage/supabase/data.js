@@ -82,7 +82,7 @@ async function initDatabase() {
     if (error && error.code === 'PGRST116') {
         // No rows found - insert default
         const defaultData = {
-            guildName: "Mask Sinners",
+            guildName: "Guild Name",
             groups: {
                 sat: {
                     offence1: { title: 'Offense 1', players: [] },
@@ -100,7 +100,7 @@ async function initDatabase() {
             reserves: { sat: [], sun: [] },
             guildMembers: [],
             lastUpdateTime: new Date().toISOString(),
-            announcement: { text: 'Welcome to Mask Sinners Guild War!', author: '', timestamp: '' }
+            announcement: { text: 'Welcome to Guild War!', author: '', timestamp: '' }
         };
 
         await client.from('app_state').insert({ id: 'main', value: defaultData });
@@ -213,6 +213,17 @@ async function runGuildMembersMigration() {
     }
 }
 
+// Phase 15: Migrate legacy string announcement to {text, author, timestamp}
+async function runAnnouncementMigration() {
+    const data = await readDatabase();
+    if (!data) return;
+    if (typeof data.announcement === 'string') {
+        data.announcement = { text: data.announcement, author: '', timestamp: '' };
+        await writeDatabase(data);
+        console.log('✅ Migrated legacy announcement string to object format');
+    }
+}
+
 // Tombstones: stored in the app_state JSON blob alongside other data
 const DELETED_PLAYERS = new Map();
 
@@ -236,5 +247,6 @@ module.exports = {
     persistTombstones,
     migrateGuildMembers,
     needsGuildMembersMigration,
-    runGuildMembersMigration
+    runGuildMembersMigration,
+    runAnnouncementMigration
 };

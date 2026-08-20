@@ -156,7 +156,21 @@ RenderHelpers.renderGroups = function(groups, canEdit) {
     }
     
     const groupKeys = Object.keys(groups);
-    groupKeys.sort();
+    // Sort: default keys first (offence1, offence2, defence1, jungle), then custom groups
+    const defaultOrder = ['offence1', 'offence2', 'defence1', 'jungle'];
+    groupKeys.sort(function(a, b) {
+        const aIdx = defaultOrder.indexOf(a);
+        const bIdx = defaultOrder.indexOf(b);
+        // Both default: keep original order
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        // One default, one custom: default first
+        if (aIdx !== -1) return -1;
+        if (bIdx !== -1) return 1;
+        // Both custom: sort by timestamp (extract number after underscore)
+        const aTime = parseInt(a.split('_')[1]) || 0;
+        const bTime = parseInt(b.split('_')[1]) || 0;
+        return aTime - bTime;
+    });
     
     for (let i = 0; i < groupKeys.length; i++) {
         const key = groupKeys[i];
