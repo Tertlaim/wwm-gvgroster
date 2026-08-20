@@ -19,6 +19,7 @@ const DEFAULT_AUTH = {
     moderators: [],
     settings: {
         allowModeratorRegistration: true,
+        publicRegistration: true,
         maxGroups: 6,
         defaultModPassword: "Admin123",
         discordWebhook: "",

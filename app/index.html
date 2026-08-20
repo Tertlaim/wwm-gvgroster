@@ -206,6 +206,9 @@
                 <!-- E - REGISTER PANEL -->
                 <div class="panel-section collapsible" id="registerPanel">
                     <h3><i class="fas fa-user-plus"></i> Register</h3>
+                    <div id="registerDisabledMsg" style="display:none; background:var(--accent-red); color:white; padding:var(--spacing-md); border-radius:var(--radius-md); text-align:center; margin-bottom:var(--spacing-md); font-weight:600;">
+                        <i class="fas fa-ban"></i> Public registration is currently disabled by an admin.
+                    </div>
                     <form id="registerForm">
                         <div class="form-group">
                             <label>SELECT DAYS :</label>
@@ -314,6 +317,22 @@
                             <div class="stat-hint" id="groupCountStats" >
                                 <span id="groupCount">Groups: 4/6</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Public Registration Toggle -->
+                    <div class="admin-tools-section mb-md" >
+                        <div class="flex-row" style="align-items:center; justify-content:space-between; padding:var(--spacing-sm) 0;">
+                            <div>
+                                <strong style="font-size:var(--font-size-sm);">Public Registration</strong>
+                                <div class="hint-xs-top">
+                                    <i class="fas fa-info-circle"></i> Allow public users to register
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="publicRegToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
 

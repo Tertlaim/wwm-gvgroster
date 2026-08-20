@@ -539,6 +539,26 @@ function setupRegistration() {
             playerName.focus();
         });
     }
+    
+    // Check if public registration is enabled
+    checkPublicRegistration();
+}
+
+// Check public registration setting and show/disable form if blocked
+async function checkPublicRegistration() {
+    try {
+        const response = await fetch('/api/register/status');
+        const data = await response.json();
+        const disabledMsg = document.getElementById('registerDisabledMsg');
+        const form = document.getElementById('registerForm');
+        if (!data.enabled && disabledMsg && form) {
+            disabledMsg.style.display = 'block';
+            form.style.opacity = '0.5';
+            form.style.pointerEvents = 'none';
+        }
+    } catch (e) {
+        // Ignore errors
+    }
 }
 
 // ---- Reserve Actions ----

@@ -115,6 +115,12 @@ module.exports = function registerDataRoutes(app, ctx) {
 
     // POST /api/register - Public self-registration (no auth)
     app.post('/api/register', async (req, res) => {
+        // Check if public registration is enabled
+        const authConfig = await auth.readAuthConfig();
+        if (authConfig && authConfig.settings && authConfig.settings.publicRegistration === false) {
+            return res.status(403).json({ success: false, error: 'Public registration is currently disabled.' });
+        }
+
         const rl = rate.checkRateLimit('register:' + rate.clientIp(req), rate.REGISTER_MAX, rate.RATE_WINDOW_MS);
         if (!rl.allowed) {
             return res.status(429).json({ success: false, error: 'Too many registration attempts. Try again later.', retryAfter: rl.retryAfterSec });
