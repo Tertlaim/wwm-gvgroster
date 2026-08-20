@@ -7,6 +7,44 @@ function setupAdminTools() {
     const clearToGuildBtn = document.getElementById('clearToGuildBtn');
     const clearToReserveBtn = document.getElementById('clearToReserveBtn');
     const downloadBackupBtn = document.getElementById('downloadBackupBtn');
+    const publicRegToggle = document.getElementById('publicRegToggle');
+    
+    // Public Registration toggle
+    if (publicRegToggle) {
+        // Load current setting
+        fetch('/api/auth/settings', { headers: getAuthHeader() })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                publicRegToggle.checked = data.publicRegistration !== false;
+            })
+            .catch(function() {});
+        
+        publicRegToggle.addEventListener('change', async function() {
+            if (!AuthModule.isMod()) {
+                publicRegToggle.checked = !publicRegToggle.checked;
+                showToast('Only moderators can change this setting.', 'error', 3000);
+                return;
+            }
+            const enabled = publicRegToggle.checked;
+            try {
+                const response = await fetch('/api/auth/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                    body: JSON.stringify({ publicRegistration: enabled })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(enabled ? 'Public registration enabled' : 'Public registration disabled', 'success', 3000);
+                } else {
+                    publicRegToggle.checked = !publicRegToggle.checked;
+                    showToast(result.error || 'Failed to update setting', 'error', 3000);
+                }
+            } catch (error) {
+                publicRegToggle.checked = !publicRegToggle.checked;
+                showToast('Error updating setting', 'error', 3000);
+            }
+        });
+    }
     
     if (downloadBackupBtn) {
         downloadBackupBtn.addEventListener('click', function() {

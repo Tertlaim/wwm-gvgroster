@@ -68,6 +68,12 @@ module.exports = function registerAuthRoutes(app, ctx) {
         });
     });
 
+    // GET /api/register/status - Public check if registration is enabled
+    app.get('/api/register/status', async (req, res) => {
+        const authConfig = await auth.readAuthConfig();
+        res.json({ enabled: authConfig && authConfig.settings && authConfig.settings.publicRegistration !== false });
+    });
+
     // GET /api/staff - Public staff list (names + roles only, no credentials)
     app.get('/api/staff', async (req, res) => {
         const authConfig = await auth.readAuthConfig();
@@ -211,6 +217,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
         
         res.json({
             allowModeratorRegistration: authConfig.settings.allowModeratorRegistration,
+            publicRegistration: authConfig.settings.publicRegistration !== false,
             maxGroups: authConfig.settings.maxGroups,
             moderators: authConfig.moderators.map(mod => ({ username: mod.username, role: mod.role }))
         });
@@ -218,7 +225,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
 
     // POST /api/auth/settings - Update auth settings (admin only)
     app.post('/api/auth/settings', auth.requireAuth, auth.requireAdmin, async (req, res) => {
-        const { allowModeratorRegistration, maxGroups, defaultModPassword } = req.body;
+        const { allowModeratorRegistration, publicRegistration, maxGroups, defaultModPassword } = req.body;
         const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
@@ -227,6 +234,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
 
         if (allowModeratorRegistration !== undefined) {
             authConfig.settings.allowModeratorRegistration = allowModeratorRegistration;
+        }
+        if (publicRegistration !== undefined) {
+            authConfig.settings.publicRegistration = publicRegistration;
         }
         if (maxGroups !== undefined) {
             authConfig.settings.maxGroups = maxGroups;
