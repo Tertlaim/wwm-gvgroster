@@ -14,7 +14,7 @@ const App = {
         guildMembers: [],     // Phase 13: single flat array of all registered players
         moderators: {},       // username -> role (staff list for everyone)
         lastUpdateTime: null, // ISO timestamp of the latest server save
-        guildName: '',        // e.g. 'Mask Sinners'
+        guildName: '',        // e.g. 'Guild Name'
         announcement: { text: '', author: '', timestamp: '' }  // current announcement with metadata
     }
 };

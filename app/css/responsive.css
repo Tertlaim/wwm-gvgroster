@@ -2,11 +2,104 @@
    RESPONSIVE - Media queries (UPDATED with variables)
    ============================================================ */
 
-/* ===== TABLETS AND SMALL DESKTOPS ===== */
+/* ===== SIDE PANEL TOGGLE (vertical floating button) ===== */
+.side-panel-toggle {
+    display: none;
+    position: fixed;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 1000;
+    background: var(--accent-gold);
+    color: var(--text-inverse);
+    border: 2px solid var(--text-inverse);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    padding: 20px 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    writing-mode: sideways-lr;
+    text-orientation: mixed;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.side-panel-toggle i {
+    display: none;
+}
+
+.side-panel-toggle:hover {
+    right: 4px;
+    box-shadow: -6px 0 24px rgba(0,0,0,0.4);
+}
+
+.side-panel-toggle:active {
+    right: 2px;
+}
+
+/* When panel is open, button moves slightly left of panel edge */
+.side-panel-toggle.active {
+    right: auto;
+    background: var(--accent-red);
+    border-left: none;
+    border-right: 2px solid var(--text-inverse);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 4px 0 16px rgba(0,0,0,0.3);
+}
+
+.side-panel-toggle.active:hover {
+    left: calc(var(--btn-left, 0px) + 4px);
+}
+
+/* ===== TABLETS AND SMALL DESKTOPS (1024px and below) ===== */
 @media (max-width: 1024px) {
     .grid {
-        grid-template-columns: 1fr 280px;
+        grid-template-columns: 1fr;
         gap: var(--spacing-lg);
+    }
+    
+    .side-panel-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .side-panel {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 85%;
+        max-width: 350px;
+        height: 100vh;
+        background: var(--bg-card);
+        z-index: 999;
+        overflow-y: auto;
+        padding: var(--spacing-lg);
+        padding-top: 80px;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+        transition: right 0.3s ease;
+    }
+    
+    .side-panel.open {
+        right: 0;
+    }
+    
+    .side-panel-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 998;
+    }
+    
+    .side-panel-overlay.active {
+        display: block;
     }
     
     .group-grid {
@@ -17,11 +110,6 @@
 
 /* ===== MOBILE LANDSCAPE ===== */
 @media (max-width: 800px) {
-    .grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-lg);
-    }
-    
     .group-grid {
         grid-template-columns: 1fr;
         gap: var(--spacing-md);
@@ -35,23 +123,13 @@
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .reserve-header {
+    .reserve-header, .guild-header {
         flex-direction: column;
         align-items: stretch;
         gap: var(--spacing-sm);
     }
     
-    .guild-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--spacing-sm);
-    }
-    
-    .guild-actions {
-        justify-content: center;
-    }
-    
-    .reserve-actions {
+    .guild-actions, .reserve-actions {
         justify-content: center;
     }
     
@@ -92,11 +170,7 @@
         border-radius: var(--radius-md);
     }
     
-    .reserve-pool {
-        grid-template-columns: 1fr;
-    }
-    
-    .guild-member-pool {
+    .reserve-pool, .guild-member-pool {
         grid-template-columns: 1fr;
     }
     
@@ -120,12 +194,10 @@
         padding: var(--spacing-xs) var(--spacing-sm);
     }
     
-    /* Hide labels on very small screens */
     .panel-label {
         display: none !important;
     }
     
-    /* Full width buttons */
     .btn-sm {
         width: 100% !important;
     }
@@ -135,7 +207,6 @@
         width: 100% !important;
     }
     
-    /* Modal adjustments */
     .modal-box {
         padding: var(--spacing-md) var(--spacing-sm);
         max-width: 98%;
@@ -168,17 +239,7 @@
         padding: var(--spacing-xs) var(--spacing-sm);
     }
     
-    .player-badge {
-        font-size: var(--font-size-xs);
-        padding: var(--spacing-xs) var(--spacing-sm);
-    }
-    
-    .reserve-badge {
-        font-size: var(--font-size-xs);
-        padding: var(--spacing-xs) var(--spacing-sm);
-    }
-    
-    .guild-member-badge {
+    .player-badge, .reserve-badge, .guild-member-badge {
         font-size: var(--font-size-xs);
         padding: var(--spacing-xs) var(--spacing-sm);
     }
@@ -202,8 +263,6 @@
         color: black !important;
     }
     
-    /* Phase 10: PDF/print uses the dedicated printable roster (#printRoster);
-       the app UI (including the Register panel) is hidden entirely. */
     .app {
         display: none !important;
     }
@@ -225,11 +284,7 @@
         background: white !important;
     }
     
-    .theme-toggle {
-        display: none !important;
-    }
-    
-    .btn {
+    .theme-toggle, .btn {
         display: none !important;
     }
     
@@ -242,9 +297,7 @@
         display: none !important;
     }
     
-    .guild-checkbox,
-    .reserve-checkbox,
-    .group-card .group-remove-btn {
+    .guild-checkbox, .reserve-checkbox, .group-card .group-remove-btn {
         display: none !important;
     }
     
@@ -262,12 +315,7 @@
 
 /* ===== DARK MODE PRINT OVERRIDE ===== */
 @media print and (prefers-color-scheme: dark) {
-    body {
-        background: white !important;
-        color: black !important;
-    }
-    
-    .app {
+    body, .app {
         background: white !important;
         color: black !important;
     }

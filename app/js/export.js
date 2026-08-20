@@ -172,7 +172,7 @@ function exportRosterImage() {
         ctx.textBaseline = 'alphabetic';
         ctx.font = 'bold 34px system-ui';
         ctx.fillStyle = TITLE_COL;
-        ctx.fillText((App.state.guildName || 'Mask Sinners') + ' — Guild War Roster', PAD, 62);
+        ctx.fillText((App.state.guildName || 'Guild Name') + ' — Guild War Roster', PAD, 62);
         ctx.font = '18px system-ui';
         ctx.fillStyle = MUTED;
         ctx.fillText('Generated ' + new Date().toLocaleString(), PAD, 92);
@@ -276,7 +276,7 @@ function exportRosterPDF() {
         if (!el) { window.print(); return; }
         
         let html = '';
-        html += '<h1>' + esc(App.state.guildName || 'Mask Sinners') + ' — Guild War Roster</h1>';
+        html += '<h1>' + esc(App.state.guildName || 'Guild Name') + ' — Guild War Roster</h1>';
         html += '<p class="print-sub">Generated ' + esc(new Date().toLocaleString()) + '</p>';
         
         const dayNames = { sat: 'Saturday', sun: 'Sunday' };

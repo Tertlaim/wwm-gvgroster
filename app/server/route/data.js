@@ -93,7 +93,7 @@ module.exports = function registerDataRoutes(app, ctx) {
             merged = merge.mergeDatabase(current, incoming, deletedIds, baseTimeMs);
         }
         
-        merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Mask Sinners');
+        merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Guild Name');
         // Announcement: accept object {text, author, timestamp} or legacy string
         if (incoming.announcement && typeof incoming.announcement === 'object') {
             merged.announcement = incoming.announcement;

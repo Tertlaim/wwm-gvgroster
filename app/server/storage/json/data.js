@@ -85,7 +85,7 @@ function initDatabase() {
 
     if (!fs.existsSync(DB_PATH)) {
         const defaultData = {
-            guildName: "Mask Sinners",
+            guildName: "Guild Name",
             groups: {
                 sat: {
                     offence1: { title: 'Offense 1', players: [] },
@@ -106,7 +106,7 @@ function initDatabase() {
             },
             guildMembers: [],
             lastUpdateTime: new Date().toISOString(),
-            announcement: { text: 'Welcome to Mask Sinners Guild War!', author: '', timestamp: '' }
+            announcement: { text: 'Welcome to Guild War!', author: '', timestamp: '' }
         };
         atomicWriteFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
         console.log('Created new database file');

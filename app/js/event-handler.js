@@ -685,7 +685,7 @@ function removeGroup(day, groupKey) {
         body: JSON.stringify({ day: day, groupKey: groupKey })
     })
     .then(function(r) { return r.json(); })
-    .then(function(result) {
+    .then(async function(result) {
         if (result.success) {
             showToast('Group removed', 'success', 2000);
             if (typeof History !== 'undefined' && History.add) {
@@ -695,7 +695,11 @@ function removeGroup(day, groupKey) {
                     to: day === 'sat' ? 'Saturday' : 'Sunday'
                 });
             }
-            if (typeof loadState === 'function') loadState();
+            // Re-sync from server and force render to refresh the panel
+            if (typeof loadState === 'function') {
+                await loadState();
+                if (typeof render === 'function') render(true);
+            }
         } else {
             showToast(result.error || 'Failed to remove group', 'error', 3000);
         }

@@ -110,7 +110,7 @@ async function saveState() {
         guildMembers: App.state.guildMembers, 
         lastUpdateTime: App.state.lastUpdateTime,
         announcement: App.state.announcement,
-        guildName: App.state.guildName || 'Mask Sinners',
+        guildName: App.state.guildName || 'Guild Name',
         // Concurrency metadata (Phase 4.5): the base version this snapshot
         // is derived from, ids fully deleted, and ids removed from specific
         // lists since our last save. The server merges stale snapshots and
@@ -197,7 +197,7 @@ function applyServerData(serverData) {
     App.state.groups = serverData.groups || {};
     App.state.reserves = serverData.reserves || {};
     App.state.guildMembers = serverData.guildMembers || [];
-    App.state.guildName = serverData.guildName || 'Mask Sinners';
+    App.state.guildName = serverData.guildName || 'Guild Name';
     
     if (serverData.lastUpdateTime) {
         App.state.lastUpdateTime = serverData.lastUpdateTime;
@@ -248,7 +248,7 @@ function initializeEmptyData() {
     };
     App.state.reserves = { sat: [], sun: [] };
     App.state.guildMembers = [];
-    App.state.guildName = 'Mask Sinners';
+    App.state.guildName = 'Guild Name';
 }
 
 // ============================================================
@@ -337,7 +337,7 @@ async function saveGuildName(name) {
                 History.add('guild_name', {
                     details: name,
                     newValue: name,
-                    oldValue: window._oldGuildName || 'Mask Sinners'
+                    oldValue: window._oldGuildName || 'Guild Name'
                 });
                 window._oldGuildName = name;
             }
@@ -367,8 +367,7 @@ function setupGroupManagement() {
             const response = await fetch('/api/groups/config');
             const config = await response.json();
             if (groupCount) {
-                const total = config.currentGroups.sat + config.currentGroups.sun;
-                groupCount.textContent = `Groups: ${total}/${config.maxGroups} (Sat: ${config.currentGroups.sat}, Sun: ${config.currentGroups.sun})`;
+                groupCount.textContent = `Groups — Sat: ${config.currentGroups.sat}/${config.maxGroups} · Sun: ${config.currentGroups.sun}/${config.maxGroups}`;
             }
         } catch (error) {
             console.error('Error loading group stats:', error);
@@ -865,6 +864,9 @@ async function init() {
 
 		// Collapsible panels (persisted per user)
 		setupCollapsiblePanels();
+
+		// Side panel toggle (mobile)
+		setupSidePanelToggle();
 
 		// Initialize Context Menu + keyboard select (Phase 7)
 		if (typeof ContextMenu !== 'undefined') {

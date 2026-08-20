@@ -12,3 +12,4 @@ package-lock.json
 # Logs
 *.log
 .kilo/
+app/js/panel-fix.js

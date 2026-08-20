@@ -25,8 +25,8 @@ const Shortcuts = {
                     }
                 }
             },
-            'ctrl+enter': {
-                keys: ['ctrl', 'enter'],
+            'enter': {
+                keys: ['enter'],
                 description: 'Save edit',
                 action: () => {
                     // Trigger save on active edit field
@@ -57,8 +57,8 @@ const Shortcuts = {
                     }
                 }
             },
-            'ctrl+t': {
-                keys: ['ctrl', 't'],
+            'ctrl+shift+t': {
+                keys: ['ctrl', 'shift', 't'],
                 description: 'Toggle theme',
                 action: () => {
                     if (typeof ThemeManager !== 'undefined') {
@@ -159,17 +159,22 @@ const Shortcuts = {
     
     setupKeyListener: function() {
         document.addEventListener('keydown', (e) => {
-            // Don't trigger shortcuts if typing in input
+            // Don't trigger shortcuts if typing in input (except Enter)
             const tag = e.target.tagName.toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || tag === 'select') {
-                // Allow Ctrl+Enter to save in inputs
-                if (e.key === 'Enter' && e.ctrlKey) {
-                    const saveBtn = e.target.closest('[data-editable]')?.querySelector('[data-action="save"]');
-                    if (saveBtn) {
-                        e.preventDefault();
-                        saveBtn.click();
-                    }
+            const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+            
+            // Allow Enter to save in inputs
+            if (isInput && e.key === 'Enter') {
+                const saveBtn = e.target.closest('[data-editable]')?.querySelector('[data-action="save"]');
+                if (saveBtn) {
+                    e.preventDefault();
+                    saveBtn.click();
+                    return;
                 }
+            }
+            
+            // Don't trigger other shortcuts if typing in input
+            if (isInput) {
                 return;
             }
             
