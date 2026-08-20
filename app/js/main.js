@@ -496,7 +496,7 @@ function setupRegistration() {
         if (daySun) days.push('sun');
         
         confirmRegisterBtn.disabled = true;
-        const result = await registerPlayer(name, cls, days);
+        const result = await registerPlayer(name, cls, days, role);
         confirmRegisterBtn.disabled = false;
         
         if (!result || !result.success) {

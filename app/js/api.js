@@ -57,12 +57,12 @@ async function saveDataToServer(data) {
 
 // Public self-registration (no auth needed)
 // Returns the full updated data set so the client can re-sync immediately.
-async function registerPlayer(name, playerClass, days) {
+async function registerPlayer(name, playerClass, days, role) {
     try {
         const response = await fetch(`${API_BASE}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, class: playerClass, days })
+            body: JSON.stringify({ name, class: playerClass, days, role })
         });
         return await response.json();
     } catch (error) {

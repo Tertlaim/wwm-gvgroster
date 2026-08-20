@@ -126,6 +126,9 @@ module.exports = function registerDataRoutes(app, ctx) {
         const days = Array.isArray(body.days) ? body.days : [];
         const validDays = ['sat', 'sun'];
         const validClasses = ['Tank', 'DPS', 'Heal'];
+        const validRoles = ['Member', 'Vice Commander', 'Commander', 'Healer'];
+        // Public users always get 'Member'; moderators can set a custom role
+        const role = validRoles.includes(body.role) ? body.role : 'Member';
         
         if (!name) {
             return res.status(400).json({ success: false, error: 'Please enter a name.' });
@@ -154,7 +157,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         if (!db.reserves) db.reserves = {};
         
         const playerId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        const player = { id: playerId, name: name, class: cls, role: 'Member' };
+        const player = { id: playerId, name: name, class: cls, role: role };
         let added = 0;
         const skipped = [];
         
