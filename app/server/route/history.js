@@ -4,17 +4,17 @@ module.exports = function registerHistoryRoutes(app, ctx) {
     const { auth, history } = ctx;
 
     // GET /api/history - Get history entries
-    app.get('/api/history', (req, res) => {
-        const h = history.readHistory();
+    app.get('/api/history', async (req, res) => {
+        const h = await history.readHistory();
         res.json(h);
     });
 
     // POST /api/history - Add history entry (public - registrations also log here)
-    app.post('/api/history', (req, res) => {
+    app.post('/api/history', async (req, res) => {
         const { action, playerId, playerName, from, to, day, field, oldValue, newValue, details, user } = req.body || {};
         
-        if (history.appendHistory({ action, playerId, playerName, from, to, day, field, oldValue, newValue, details, user })) {
-            const h = history.readHistory();
+        if (await history.appendHistory({ action, playerId, playerName, from, to, day, field, oldValue, newValue, details, user })) {
+            const h = await history.readHistory();
             res.json({ success: true, entry: h.entries[0] });
         } else {
             res.status(500).json({ success: false, error: 'Failed to save history' });
@@ -22,7 +22,7 @@ module.exports = function registerHistoryRoutes(app, ctx) {
     });
 
     // POST /api/history/init - Initialize history file (mod+)
-    app.post('/api/history/init', auth.requireAuth, (req, res) => {
+    app.post('/api/history/init', auth.requireAuth, async (req, res) => {
         const defaultHistory = {
             entries: [],
             maxEntries: 100,
@@ -30,7 +30,7 @@ module.exports = function registerHistoryRoutes(app, ctx) {
         };
         
         try {
-            history.writeHistory(defaultHistory);
+            await history.writeHistory(defaultHistory);
             res.json({ success: true, message: 'History initialized' });
         } catch (error) {
             res.status(500).json({ success: false, error: error.message });
@@ -38,12 +38,12 @@ module.exports = function registerHistoryRoutes(app, ctx) {
     });
 
     // DELETE /api/history - Clear history (admin only)
-    app.delete('/api/history', auth.requireAuth, auth.requireAdmin, (req, res) => {
-        const h = history.readHistory();
+    app.delete('/api/history', auth.requireAuth, auth.requireAdmin, async (req, res) => {
+        const h = await history.readHistory();
         h.entries = [];
         h.lastCleared = new Date().toISOString();
         
-        if (history.writeHistory(h)) {
+        if (await history.writeHistory(h)) {
             res.json({ success: true, message: 'History cleared' });
         } else {
             res.status(500).json({ success: false, error: 'Failed to clear history' });

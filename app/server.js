@@ -1,7 +1,7 @@
 // server.js - Express server boot file (Phase 11.1 split)
 // All logic lives in ./server modules; this file builds the app, wires the
 // routes with a shared context, runs boot-time initialization and listens.
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

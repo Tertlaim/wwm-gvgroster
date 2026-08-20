@@ -4,11 +4,9 @@ module.exports = function registerDataRoutes(app, ctx) {
     const { auth, data, merge, history, rate, sse } = ctx;
 
     // GET /api/data - Load all data
-    app.get('/api/data', (req, res) => {
-        const db = data.readDatabase();
+    app.get('/api/data', async (req, res) => {
+        const db = await data.readDatabase();
         if (db) {
-            // Tombstones are a server-side deletion ledger; clients don't need
-            // them (they send their own deletedIds per save).
             const { deletedPlayers, ...publicData } = db;
             res.json({
                 ...publicData,
@@ -20,12 +18,11 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // GET /api/data/updated - Cheap last-update timestamp (Phase 11.7)
-    // Lets the client poller skip the full-state download unless data changed.
-    app.get('/api/data/updated', (req, res) => {
-        res.json({ lastUpdateTime: data.getLastUpdateTime() });
+    app.get('/api/data/updated', async (req, res) => {
+        res.json({ lastUpdateTime: await data.getLastUpdateTime() });
     });
 
-    // GET /api/events - Server-Sent Events stream; clients re-sync on 'update'
+    // GET /api/events - Server-Sent Events stream
     app.get('/api/events', (req, res) => {
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
@@ -46,27 +43,21 @@ module.exports = function registerDataRoutes(app, ctx) {
         });
     });
 
-    // POST /api/data - Save all data
-    // AUTH REQUIRED (mod+) - Public writes go through the dedicated /api/register endpoint.
-    // Previously this endpoint was unauthenticated and let any visitor overwrite the
-    // entire database (wipe or tamper with all roster data).
-    // Since Phase 4.5 the server merges stale snapshots instead of blind-overwriting.
-    app.post('/api/data', auth.requireAuth, (req, res) => {
+    // POST /api/data - Save all data (mod+)
+    app.post('/api/data', auth.requireAuth, async (req, res) => {
         const incoming = req.body;
         if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) {
             return res.status(400).json({ success: false, error: 'Invalid data payload' });
         }
-        // Require at least one real data key so an empty payload cannot wipe the roster
         if (!('groups' in incoming) && !('reserves' in incoming) && !('guildMembers' in incoming)) {
             return res.status(400).json({ success: false, error: 'Invalid data payload' });
         }
         
-        const current = data.readDatabase();
+        const current = await data.readDatabase();
         if (!current) {
             return res.status(500).json({ success: false, error: 'Failed to read database' });
         }
         
-        // Version the client's snapshot is based on (its last sync).
         const baseVersion = typeof incoming.baseVersion === 'string' ? incoming.baseVersion : null;
         let baseTimeMs = baseVersion ? Date.parse(baseVersion) : null;
         if (baseTimeMs === null || isNaN(baseTimeMs)) baseTimeMs = null;
@@ -83,7 +74,6 @@ module.exports = function registerDataRoutes(app, ctx) {
         
         let merged;
         if (isFresh) {
-            // No one else saved since this client's base - the snapshot is authoritative.
             merged = {
                 groups: incoming.groups || current.groups || {},
                 reserves: incoming.reserves || current.reserves || {},
@@ -94,36 +84,23 @@ module.exports = function registerDataRoutes(app, ctx) {
         }
         
         merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Guild Name');
-        // Announcement: accept object {text, author, timestamp} or legacy string
         if (incoming.announcement && typeof incoming.announcement === 'object') {
             merged.announcement = incoming.announcement;
         } else if (typeof incoming.announcement === 'string') {
-            // Legacy string format from old clients — migrate on save
             merged.announcement = { text: incoming.announcement, author: '', timestamp: '' };
         } else {
-            // Fallback: keep current announcement or default
             merged.announcement = (current.announcement && typeof current.announcement === 'object')
                 ? current.announcement
                 : { text: (typeof current.announcement === 'string' ? current.announcement : ''), author: '', timestamp: '' };
         }
         
-        // Apply tombstoned deletes (matters for fresh replaces) and explicit
-        // removals (moves / list removals) on top of the merge.
         merge.removeDeletedFromDb(merged, deletedIds);
         merge.applyRemovals(merged, incoming.removed);
-        
-        // Master-list integrity: backfill guildMembers[day] from that day's
-        // groups+reserves so a stale snapshot or an older client can't leave
-        // gaps in the master list.
         data.ensureMasterList(merged);
-        
-        // Phase 8.2: persist the tombstone ledger with every save so deletion
-        // protection survives a server restart.
         merged.deletedPlayers = Object.fromEntries(merge.DELETED_PLAYERS);
-        
         merged.lastUpdateTime = new Date().toISOString();
         
-        if (data.writeDatabase(merged)) {
+        if (await data.writeDatabase(merged)) {
             sse.broadcastUpdate(merged.lastUpdateTime);
             res.json({ 
                 success: true, 
@@ -137,10 +114,7 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // POST /api/register - Public self-registration (no auth)
-    // Adds the player to guildMembers + reserves for the selected days only.
-    // This is the ONLY public write path; it cannot modify groups, titles,
-    // announcements, or any other data.
-    app.post('/api/register', (req, res) => {
+    app.post('/api/register', async (req, res) => {
         const rl = rate.checkRateLimit('register:' + rate.clientIp(req), rate.REGISTER_MAX, rate.RATE_WINDOW_MS);
         if (!rl.allowed) {
             return res.status(429).json({ success: false, error: 'Too many registration attempts. Try again later.', retryAfter: rl.retryAfterSec });
@@ -171,7 +145,7 @@ module.exports = function registerDataRoutes(app, ctx) {
             return res.status(400).json({ success: false, error: 'Please select at least one day.' });
         }
         
-        const db = data.readDatabase();
+        const db = await data.readDatabase();
         if (!db) {
             return res.status(500).json({ success: false, error: 'Database error' });
         }
@@ -184,7 +158,6 @@ module.exports = function registerDataRoutes(app, ctx) {
         let added = 0;
         const skipped = [];
         
-        // Phase 13: guildMembers is a flat array - add player once (if not already present)
         const gmExists = db.guildMembers.some(p => p && p.name === name && p.class === cls);
         if (!gmExists) {
             db.guildMembers.push({ ...player });
@@ -203,7 +176,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         
         db.lastUpdateTime = new Date().toISOString();
         
-        if (!data.writeDatabase(db)) {
+        if (!await data.writeDatabase(db)) {
             return res.status(500).json({ success: false, error: 'Failed to save data' });
         }
         
@@ -231,9 +204,9 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // POST /api/guild/name - Update guild name (mod+)
-    app.post('/api/guild/name', auth.requireAuth, (req, res) => {
+    app.post('/api/guild/name', auth.requireAuth, async (req, res) => {
         const { name } = req.body;
-        const db = data.readDatabase();
+        const db = await data.readDatabase();
         
         if (!db) {
             return res.status(500).json({ success: false, error: 'Database error' });
@@ -242,7 +215,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         db.guildName = name;
         db.lastUpdateTime = new Date().toISOString();
         
-        if (data.writeDatabase(db)) {
+        if (await data.writeDatabase(db)) {
             sse.broadcastUpdate(db.lastUpdateTime);
             res.json({ success: true, guildName: name });
         } else {
@@ -251,10 +224,10 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // POST /api/groups/add - Add a new group (moderator)
-    app.post('/api/groups/add', auth.requireAuth, (req, res) => {
+    app.post('/api/groups/add', auth.requireAuth, async (req, res) => {
         const { day, groupKey, title } = req.body;
-        const db = data.readDatabase();
-        const authConfig = auth.readAuthConfig();
+        const db = await data.readDatabase();
+        const authConfig = await auth.readAuthConfig();
         
         if (!db || !authConfig) {
             return res.status(500).json({ success: false, error: 'Database error' });
@@ -281,7 +254,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         db.groups[day][groupKey] = { title: title || groupKey, players: [] };
         db.lastUpdateTime = new Date().toISOString();
         
-        if (data.writeDatabase(db)) {
+        if (await data.writeDatabase(db)) {
             sse.broadcastUpdate(db.lastUpdateTime);
             res.json({ 
                 success: true, 
@@ -294,9 +267,9 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // POST /api/groups/remove - Remove a group (moderator)
-    app.post('/api/groups/remove', auth.requireAuth, (req, res) => {
+    app.post('/api/groups/remove', auth.requireAuth, async (req, res) => {
         const { day, groupKey } = req.body;
-        const db = data.readDatabase();
+        const db = await data.readDatabase();
         
         if (!db) {
             return res.status(500).json({ success: false, error: 'Database error' });
@@ -316,7 +289,7 @@ module.exports = function registerDataRoutes(app, ctx) {
         delete db.groups[day][groupKey];
         db.lastUpdateTime = new Date().toISOString();
         
-        if (data.writeDatabase(db)) {
+        if (await data.writeDatabase(db)) {
             sse.broadcastUpdate(db.lastUpdateTime);
             res.json({ success: true, message: 'Group removed' });
         } else {
@@ -325,9 +298,9 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // GET /api/groups/config - Get group configuration
-    app.get('/api/groups/config', (req, res) => {
-        const db = data.readDatabase();
-        const authConfig = auth.readAuthConfig();
+    app.get('/api/groups/config', async (req, res) => {
+        const db = await data.readDatabase();
+        const authConfig = await auth.readAuthConfig();
         
         if (!db || !authConfig) {
             return res.status(500).json({ error: 'Database error' });
@@ -347,15 +320,15 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // POST /api/migrate-guild-members - Manual migration (admin only)
-    app.post('/api/migrate-guild-members', auth.requireAuth, auth.requireAdmin, (req, res) => {
-        const db = data.readDatabase();
+    app.post('/api/migrate-guild-members', auth.requireAuth, auth.requireAdmin, async (req, res) => {
+        const db = await data.readDatabase();
         if (!db) {
             return res.status(500).json({ success: false, error: 'Failed to read database' });
         }
         
         const result = data.migrateGuildMembers(db);
         
-        if (data.writeDatabase(db)) {
+        if (await data.writeDatabase(db)) {
             sse.broadcastUpdate(db.lastUpdateTime || new Date().toISOString());
             res.json({ 
                 success: true, 
@@ -369,8 +342,8 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // GET /api/guild-members-status - Check if migration is needed
-    app.get('/api/guild-members-status', (req, res) => {
-        const db = data.readDatabase();
+    app.get('/api/guild-members-status', async (req, res) => {
+        const db = await data.readDatabase();
         if (!db) {
             return res.status(500).json({ error: 'Failed to read database' });
         }
@@ -378,7 +351,6 @@ module.exports = function registerDataRoutes(app, ctx) {
         const needsMigration = data.needsGuildMembersMigration(db);
         const guildCount = Array.isArray(db.guildMembers) ? db.guildMembers.length : 0;
         
-        // Count players in groups and reserves
         let groupCount = 0;
         let reserveCount = 0;
         const days = ['sat', 'sun'];
@@ -407,8 +379,8 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // GET /api/backup - Download backup (mod+)
-    app.get('/api/backup', auth.requireAuth, (req, res) => {
-        const db = data.readDatabase();
+    app.get('/api/backup', auth.requireAuth, async (req, res) => {
+        const db = await data.readDatabase();
         if (db) {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Content-Disposition', `attachment; filename=guild-war-backup-${Date.now()}.json`);
@@ -419,8 +391,8 @@ module.exports = function registerDataRoutes(app, ctx) {
     });
 
     // GET /api/health - Health check
-    app.get('/api/health', (req, res) => {
-        const db = data.readDatabase();
+    app.get('/api/health', async (req, res) => {
+        const db = await data.readDatabase();
         res.json({ 
             status: 'ok', 
             timestamp: new Date().toISOString(),
