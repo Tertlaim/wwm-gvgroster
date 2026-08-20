@@ -62,10 +62,21 @@ async function writeAuthConfig(authData) {
 async function initAuthConfig() {
     const existing = await readAuthConfig();
     if (!existing) {
+        // No auth row exists — create default with hashed password
         await writeAuthConfig(DEFAULT_AUTH);
         console.log('Created default auth in Supabase');
     } else {
-        console.log('✅ Supabase auth exists');
+        // Auth row exists — check if admin password is empty or missing
+        const adminPassword = existing.admin && existing.admin.password;
+        if (!adminPassword || adminPassword === '') {
+            // Password is empty — set it to default hashed password
+            existing.admin.password = DEFAULT_AUTH.admin.password;
+            existing.admin.createdAt = existing.admin.createdAt || new Date().toISOString();
+            await writeAuthConfig(existing);
+            console.log('✅ Fixed empty admin password in Supabase');
+        } else {
+            console.log('✅ Supabase auth exists');
+        }
     }
 }
 
