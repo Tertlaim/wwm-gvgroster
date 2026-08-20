@@ -5,20 +5,19 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const { auth, rate } = ctx;
 
     // POST /api/login - Authenticate user, returns session token
-    app.post('/api/login', (req, res) => {
+    app.post('/api/login', async (req, res) => {
         const rl = rate.checkRateLimit('login:' + rate.clientIp(req), rate.LOGIN_MAX, rate.RATE_WINDOW_MS);
         if (!rl.allowed) {
             return res.status(429).json({ success: false, error: 'Too many login attempts. Try again later.', retryAfter: rl.retryAfterSec });
         }
 
         const { username, password } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
         }
 
-        // Roles come from the stored user record (superadmin/admin/mod), never hardcoded.
         const user = auth.getAllAuthUsers(authConfig).find(u => u && u.username === username && auth.verifyPassword(password, u.password));
         if (user) {
             const role = auth.getUserRole(user);
@@ -58,8 +57,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // GET /api/moderators/list - Get all auth users + roles (admin+)
-    app.get('/api/moderators/list', auth.requireAuth, auth.requireAdmin, (req, res) => {
-        const authConfig = auth.readAuthConfig();
+    app.get('/api/moderators/list', auth.requireAuth, auth.requireAdmin, async (req, res) => {
+        const authConfig = await auth.readAuthConfig();
         if (!authConfig) {
             return res.status(500).json({ error: 'Auth config error' });
         }
@@ -69,10 +68,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
         });
     });
 
-    // GET /api/staff - Public staff list (names + roles only, no credentials).
-    // Lets everyone see who the admins/moderators are; never exposes passwords.
-    app.get('/api/staff', (req, res) => {
-        const authConfig = auth.readAuthConfig();
+    // GET /api/staff - Public staff list (names + roles only, no credentials)
+    app.get('/api/staff', async (req, res) => {
+        const authConfig = await auth.readAuthConfig();
         if (!authConfig) {
             return res.status(500).json({ error: 'Auth config error' });
         }
@@ -83,15 +81,14 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // POST /api/moderators/add - Add staff (mod by default; admin requires SuperAdmin)
-    app.post('/api/moderators/add', auth.requireAuth, auth.requireAdmin, (req, res) => {
+    app.post('/api/moderators/add', auth.requireAuth, auth.requireAdmin, async (req, res) => {
         const { username, password, role } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
         }
 
-        // Only 'mod' and 'admin' can be created here; superadmin is never assignable.
         const targetRole = role === 'admin' ? 'admin' : 'mod';
         if (targetRole === 'admin' && req.session.role !== 'superadmin') {
             return res.status(403).json({ success: false, error: 'Only SuperAdmin can add admins.' });
@@ -110,7 +107,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
             createdAt: new Date().toISOString()
         });
 
-        if (auth.writeAuthConfig(authConfig)) {
+        if (await auth.writeAuthConfig(authConfig)) {
             res.json({ 
                 success: true, 
                 message: `${targetRole === 'admin' ? 'Admin' : 'Moderator'} ${username} added successfully`,
@@ -122,10 +119,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
         }
     });
 
-    // POST /api/moderators/remove - Remove staff (admins can remove mods; SuperAdmin can remove admins)
-    app.post('/api/moderators/remove', auth.requireAuth, auth.requireAdmin, (req, res) => {
+    // POST /api/moderators/remove - Remove staff
+    app.post('/api/moderators/remove', auth.requireAuth, auth.requireAdmin, async (req, res) => {
         const { username } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
@@ -136,14 +133,13 @@ module.exports = function registerAuthRoutes(app, ctx) {
             return res.status(404).json({ success: false, error: 'Staff member not found' });
         }
 
-        // Demoting an admin is SuperAdmin-only; the owner (auth.admin) is never listed here.
         if (auth.getUserRole(authConfig.moderators[index]) === 'admin' && req.session.role !== 'superadmin') {
             return res.status(403).json({ success: false, error: 'Only SuperAdmin can demote admins.' });
         }
 
         authConfig.moderators.splice(index, 1);
         
-        if (auth.writeAuthConfig(authConfig)) {
+        if (await auth.writeAuthConfig(authConfig)) {
             res.json({ success: true, message: `${username} removed from staff` });
         } else {
             res.status(500).json({ success: false, error: 'Failed to save auth config' });
@@ -151,9 +147,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // POST /api/moderators/reset-password - Reset moderator password (admin only)
-    app.post('/api/moderators/reset-password', auth.requireAuth, auth.requireAdmin, (req, res) => {
+    app.post('/api/moderators/reset-password', auth.requireAuth, auth.requireAdmin, async (req, res) => {
         const { username } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
@@ -167,7 +163,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
         const newPassword = authConfig.settings.defaultModPassword || 'Sin1234';
         mod.password = auth.hashPassword(newPassword);
         
-        if (auth.writeAuthConfig(authConfig)) {
+        if (await auth.writeAuthConfig(authConfig)) {
             res.json({ 
                 success: true, 
                 message: `Password reset for ${username}`,
@@ -179,16 +175,14 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // POST /api/moderators/change-password - Change own password (moderator)
-    app.post('/api/moderators/change-password', auth.requireAuth, (req, res) => {
+    app.post('/api/moderators/change-password', auth.requireAuth, async (req, res) => {
         const { username, oldPassword, newPassword } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
         }
 
-        // Staff (mods/admins) live in auth.moderators; the owner (SuperAdmin)
-        // lives in auth.admin. Either may change their own password.
         const mod = authConfig.moderators.find(m => m.username === username) ||
             (authConfig.admin && authConfig.admin.username === username ? authConfig.admin : null);
         if (!mod) {
@@ -201,7 +195,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
 
         mod.password = auth.hashPassword(newPassword);
         
-        if (auth.writeAuthConfig(authConfig)) {
+        if (await auth.writeAuthConfig(authConfig)) {
             res.json({ success: true, message: 'Password updated successfully' });
         } else {
             res.status(500).json({ success: false, error: 'Failed to save auth config' });
@@ -209,8 +203,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // GET /api/auth/settings - Get auth settings (admin only)
-    app.get('/api/auth/settings', auth.requireAuth, auth.requireAdmin, (req, res) => {
-        const authConfig = auth.readAuthConfig();
+    app.get('/api/auth/settings', auth.requireAuth, auth.requireAdmin, async (req, res) => {
+        const authConfig = await auth.readAuthConfig();
         if (!authConfig) {
             return res.status(500).json({ error: 'Auth config error' });
         }
@@ -223,9 +217,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
     });
 
     // POST /api/auth/settings - Update auth settings (admin only)
-    app.post('/api/auth/settings', auth.requireAuth, auth.requireAdmin, (req, res) => {
+    app.post('/api/auth/settings', auth.requireAuth, auth.requireAdmin, async (req, res) => {
         const { allowModeratorRegistration, maxGroups, defaultModPassword } = req.body;
-        const authConfig = auth.readAuthConfig();
+        const authConfig = await auth.readAuthConfig();
         
         if (!authConfig) {
             return res.status(500).json({ success: false, error: 'Auth config error' });
@@ -241,7 +235,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
             authConfig.settings.defaultModPassword = defaultModPassword;
         }
 
-        if (auth.writeAuthConfig(authConfig)) {
+        if (await auth.writeAuthConfig(authConfig)) {
             res.json({ success: true, message: 'Settings updated' });
         } else {
             res.status(500).json({ success: false, error: 'Failed to save auth config' });
