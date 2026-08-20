@@ -35,6 +35,8 @@ function setupAdminTools() {
                 const result = await response.json();
                 if (result.success) {
                     showToast(enabled ? 'Public registration enabled' : 'Public registration disabled', 'success', 3000);
+                    // Update Register panel immediately
+                    if (typeof checkPublicRegistration === 'function') checkPublicRegistration();
                 } else {
                     publicRegToggle.checked = !publicRegToggle.checked;
                     showToast(result.error || 'Failed to update setting', 'error', 3000);
