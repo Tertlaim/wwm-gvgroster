@@ -66,14 +66,37 @@ async function initAuthConfig() {
         await writeAuthConfig(DEFAULT_AUTH);
         console.log('Created default auth in Supabase');
     } else {
-        // Auth row exists — check if admin password is empty or missing
+        // Auth row exists — check if admin password is empty, missing, or invalid
         const adminPassword = existing.admin && existing.admin.password;
+        let needsFix = false;
+        
         if (!adminPassword || adminPassword === '') {
-            // Password is empty — set it to default hashed password
+            // Password is empty
+            needsFix = true;
+            console.log('⚠️ Admin password is empty, resetting to default');
+        } else {
+            // Password exists — verify the hash is valid by trying to compare
+            try {
+                if (!bcrypt.compareSync('Admin123', adminPassword)) {
+                    // Hash doesn't match default password — could be corrupted or user changed it
+                    // Only fix if it looks like a corrupted hash (not a valid bcrypt hash)
+                    if (!adminPassword.startsWith('$2')) {
+                        needsFix = true;
+                        console.log('⚠️ Admin password hash is corrupted, resetting to default');
+                    }
+                }
+            } catch (e) {
+                // Hash is invalid/corrupted
+                needsFix = true;
+                console.log('⚠️ Admin password hash is invalid, resetting to default');
+            }
+        }
+        
+        if (needsFix) {
             existing.admin.password = DEFAULT_AUTH.admin.password;
             existing.admin.createdAt = existing.admin.createdAt || new Date().toISOString();
             await writeAuthConfig(existing);
-            console.log('✅ Fixed empty admin password in Supabase');
+            console.log('✅ Fixed admin password in Supabase');
         } else {
             console.log('✅ Supabase auth exists');
         }
