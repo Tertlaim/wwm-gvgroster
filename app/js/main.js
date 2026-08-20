@@ -551,10 +551,16 @@ async function checkPublicRegistration() {
         const data = await response.json();
         const disabledMsg = document.getElementById('registerDisabledMsg');
         const form = document.getElementById('registerForm');
-        if (!data.enabled && disabledMsg && form) {
-            disabledMsg.style.display = 'block';
-            form.style.opacity = '0.5';
-            form.style.pointerEvents = 'none';
+        if (disabledMsg && form) {
+            if (!data.enabled) {
+                disabledMsg.style.display = 'block';
+                form.style.opacity = '0.5';
+                form.style.pointerEvents = 'none';
+            } else {
+                disabledMsg.style.display = 'none';
+                form.style.opacity = '';
+                form.style.pointerEvents = '';
+            }
         }
     } catch (e) {
         // Ignore errors
