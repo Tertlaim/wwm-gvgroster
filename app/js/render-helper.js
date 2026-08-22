@@ -450,12 +450,8 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
                     '<input type="checkbox" class="guild-checkbox" data-player-id="' + esc(player.id) + '" data-type="guild" aria-label="Select ' + esc(player.name) + '" ' + (isSelected ? 'checked' : '') + '>' +
                 '</div>' : '') +
         '<div class="card-body">' +
-            '<div class="card-class">' +
-                '<span>Class:</span>' +
+            '<div class="card-meta">' +
                 '<span class="class-tag">' + esc(player.class) + '</span>' +
-            '</div>' +
-            '<div class="card-role">' +
-                '<span>Role:</span>' +
                 '<span class="role-tag ' + roleClass + '">' + esc(roleDisplay) + '</span>' +
             '</div>' +
             (player.note ? 
@@ -537,8 +533,8 @@ RenderHelpers.enterGuildCardEditMode = function(card, player) {
     card.draggable = false;
     
     const nameEl = card.querySelector('.card-name .name');
-    const classEl = card.querySelector('.card-class .class-tag');
-    const roleEl = card.querySelector('.card-role .role-tag');
+        const classEl = card.querySelector('.card-meta .class-tag');
+        const roleEl = card.querySelector('.card-meta .role-tag');
     const footer = card.querySelector('.card-footer');
     
     const originalName = player.name;
