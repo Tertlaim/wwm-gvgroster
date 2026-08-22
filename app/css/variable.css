@@ -27,7 +27,8 @@
     /* Text */
     --text-primary: #e8f0fe;
     --text-secondary: #cbd5e1;
-    --text-muted: #6f8aa8;
+    /* WCAG AA: >=4.5:1 against every surface incl. bg-active (was #6f8aa8) */
+    --text-muted: #92a8c1;
     --text-inverse: #0b1a2f;
     
     /* Borders */
@@ -98,7 +99,8 @@
     /* Text */
     --text-primary: #1a1a2e;
     --text-secondary: #2d2d44;
-    --text-muted: #6b6b7a;
+    /* WCAG AA: >=4.5:1 against every surface incl. bg-active (was #6b6b7a) */
+    --text-muted: #565664;
     --text-inverse: #f5efe8;
     
     /* Borders */
@@ -106,16 +108,17 @@
     --border-light: #d4c5b0;
     --border-active: #b4a590;
     
-    /* Accents */
-    --accent-gold: #d4a830;
-    --accent-gold-hover: #e8b840;
-    --accent-gold-glow: rgba(212, 168, 48, 0.3);
+    /* Accents - deepened to 700-weight hues so cream/white label text and
+       accent-as-text usages clear WCAG AA 4.5:1 (was 500-weight, 1.8-3.9:1) */
+    --accent-gold: #755c00;
+    --accent-gold-hover: #8f7212;
+    --accent-gold-glow: rgba(138, 109, 0, 0.3);
     
-    --accent-blue: #3b82f6;
-    --accent-green: #22c55e;
-    --accent-red: #dc2626;
-    --accent-amber: #d97706;
-    --accent-purple: #8b5cf6;
+    --accent-blue: #1d4ed8;
+    --accent-green: #116632;
+    --accent-red: #b91c1c;
+    --accent-amber: #8a3d06;
+    --accent-purple: #6d28d9;
     
     /* Shadows */
     --shadow-color: rgba(0, 0, 0, 0.15);

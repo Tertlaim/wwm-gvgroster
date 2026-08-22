@@ -135,12 +135,14 @@
 <div class="guild-member-area collapsible collapsed" id="guildMemberArea">
     <div class="guild-header">
         <h3><i class="fas fa-users"></i> Guild Members · <span id="guildMemberCount">0</span></h3>
+        <input type="search" id="guildFilterInput" class="guild-filter-input" aria-label="Filter guild members by name" placeholder="Filter members…" style="display:none;">
         <div class="guild-actions" id="guildActions" data-role-show="mod" style="display:none;">
             <button class="btn btn-sm btn-outline" id="moveToReserveBtn"><i class="fas fa-arrow-right"></i> Copy to Reserve</button>
             <button class="btn btn-sm btn-outline" id="deleteSelectedGuildBtn" data-role-show="admin" style="display:none;"><i class="fas fa-trash"></i> Delete Selected</button>
         </div>
     </div>
     <div class="guild-member-pool" id="guildMemberPool"></div>
+                    <div id="guildFilterEmpty" class="empty-state-sm" style="display:none;">No members match that filter.</div>
                     <!-- Guild member CSV export/import (admin+) - Phase 10B -->
                     <div id="guildCsvTools" class="guild-csv-tools" data-role-show="admin" style="display:none;">
                         <span class="hint-xs" ><i class="fas fa-file-csv"></i> Guild Member List:</span>
@@ -373,9 +375,9 @@
     </div>
 
     <!-- PREVIEW MODAL -->
-    <div class="modal-overlay" id="previewModal">
+    <div class="modal-overlay" id="previewModal" role="dialog" aria-modal="true" aria-labelledby="previewModalTitle">
         <div class="modal-box">
-            <h2><i class="fas fa-clipboard-list"></i> Preview Registration</h2>
+            <h2 id="previewModalTitle"><i class="fas fa-clipboard-list"></i> Preview Registration</h2>
             <div class="info-box" id="previewContent" >
                 <p><strong>Name:</strong> <span id="previewName"></span></p>
                 <p><strong>Class:</strong> <span id="previewClass"></span></p>
@@ -391,12 +393,12 @@
     </div>
 
     <!-- LOGIN MODAL -->
-    <div class="modal-overlay" id="loginModal">
+    <div class="modal-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
         <div class="modal-box">
-            <h2><i class="fas fa-lock"></i> Mod Login</h2>
+            <h2 id="loginModalTitle"><i class="fas fa-lock"></i> Mod Login</h2>
             <form id="loginForm">
-                <div class="form-group"><label>Username</label><input type="text" id="loginUser" placeholder="Admin or mod" /></div>
-                <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" /></div>
+                <div class="form-group"><label for="loginUser">Username</label><input type="text" id="loginUser" placeholder="Admin or mod" /></div>
+                <div class="form-group"><label for="loginPass">Password</label><input type="password" id="loginPass" placeholder="••••••••" /></div>
                 <button type="submit" class="btn"><i class="fas fa-sign-in-alt"></i> Login</button>
                 <div class="modal-error" id="loginError"></div>
                 <button type="button" class="btn btn-outline mt-sm" id="loginCloseBtn" >Cancel</button>
@@ -405,13 +407,13 @@
     </div>
 
     <!-- CHANGE PASSWORD MODAL -->
-    <div class="modal-overlay" id="changePwModal">
+    <div class="modal-overlay" id="changePwModal" role="dialog" aria-modal="true" aria-labelledby="changePwModalTitle">
         <div class="modal-box">
-            <h2><i class="fas fa-key"></i> Change Password</h2>
+            <h2 id="changePwModalTitle"><i class="fas fa-key"></i> Change Password</h2>
             <form id="changePwForm">
-                <div class="form-group"><label>Current Password</label><input type="password" id="oldPwInput" placeholder="current password" required autocomplete="current-password" /></div>
-                <div class="form-group"><label>New Password</label><input type="password" id="newPwInput" placeholder="new password" required autocomplete="new-password" /></div>
-                <div class="form-group"><label>Confirm</label><input type="password" id="confirmPwInput" placeholder="confirm" required /></div>
+                <div class="form-group"><label for="oldPwInput">Current Password</label><input type="password" id="oldPwInput" placeholder="current password" required autocomplete="current-password" /></div>
+                <div class="form-group"><label for="newPwInput">New Password</label><input type="password" id="newPwInput" placeholder="new password" required autocomplete="new-password" /></div>
+                <div class="form-group"><label for="confirmPwInput">Confirm</label><input type="password" id="confirmPwInput" placeholder="confirm" required /></div>
                 <button type="submit" class="btn"><i class="fas fa-save"></i> Update</button>
                 <div class="modal-error" id="changePwError"></div>
                 <div class="modal-success" id="changePwSuccess"></div>
@@ -421,9 +423,9 @@
     </div>
 
     <!-- CONFIRMATION MODAL -->
-    <div class="modal-overlay" id="confirmationModal">
+    <div class="modal-overlay" id="confirmationModal" role="dialog" aria-modal="true" aria-labelledby="confirmationModalTitle">
         <div class="modal-box modal-sm">
-            <h2><i class="fas fa-question-circle"></i> Confirm Action</h2>
+            <h2 id="confirmationModalTitle"><i class="fas fa-question-circle"></i> Confirm Action</h2>
             <p class="modal-message" id="confirmationMessage" ></p>
             <div class="flex-btn-center" >
                 <button class="btn btn-xl" id="confirmActionBtn"><i class="fas fa-check"></i> Confirm</button>
@@ -433,7 +435,7 @@
     </div>
 
     <!-- ALERT MODAL -->
-    <div class="modal-overlay" id="alertModal">
+    <div class="modal-overlay" id="alertModal" role="alertdialog" aria-modal="true" aria-labelledby="alertTitle">
         <div class="modal-box modal-sm">
             <div class="alert-icon"  id="alertIcon">⚠️</div>
             <h2 class="text-center" id="alertTitle" >Alert</h2>
@@ -448,19 +450,19 @@
     <div id="printRoster" aria-hidden="true"></div>
 
     <!-- CSV IMPORT MODAL (Phase 10B: admin-only guild member import) -->
-    <div class="modal-overlay" id="guildImportModal">
+    <div class="modal-overlay" id="guildImportModal" role="dialog" aria-modal="true" aria-labelledby="guildImportModalTitle">
         <div class="modal-box modal-scroll" >
-            <h2><i class="fas fa-file-import"></i> Import Guild Members (CSV)</h2>
+            <h2 id="guildImportModalTitle"><i class="fas fa-file-import"></i> Import Guild Members (CSV)</h2>
             <div class="info-block" >
                 <i class="fas fa-info-circle"></i> Export the list to CSV, edit it in Excel (columns: <strong>Name, Class, Role</strong>), save as CSV, then import it back here.
                 Or paste rows directly (one per line: <em>Name,Class,Role</em>). Class: Tank/DPS/Heal &middot; Role: Member/Commander/Vice Commander/Healer (blank = default).
             </div>
             <div class="form-group">
-                <label>CSV FILE (optional):</label>
+                <label for="guildImportFile">CSV FILE (optional):</label>
                 <input type="file" id="guildImportFile" accept=".csv,text/csv" />
             </div>
             <div class="form-group">
-                <label>OR PASTE ROWS (Name,Class,Role per line):</label>
+                <label for="guildImportText">OR PASTE ROWS (Name,Class,Role per line):</label>
                 <textarea class="full-textarea" id="guildImportText" rows="6" placeholder="Antony,Heal,Vice Commander&#10;Bayu,DPS,Commander&#10;Mei,Heal,Healer" ></textarea>
             </div>
             <div class="preview-block" id="guildImportPreview" ></div>

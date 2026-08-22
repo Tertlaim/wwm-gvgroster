@@ -29,6 +29,12 @@ function setupScrollShadow() {
 }
 
 // ---- Collapsible panels (click a header to expand/collapse, persisted) ----
+// aria-expanded mirrors the collapsed state for assistive tech; the chevron
+// is decorative (aria-hidden) because the whole header row is the control.
+function syncCollapseAria(panel) {
+    panel.setAttribute('aria-expanded', panel.classList.contains('collapsed') ? 'false' : 'true');
+}
+
 function saveCollapseState() {
     try {
         const collapsed = [];
@@ -53,6 +59,7 @@ function restoreCollapseState() {
             if (panel) panel.classList.add('collapsed');
         });
     } catch (e) {}
+    document.querySelectorAll('.collapsible').forEach(syncCollapseAria);
 }
 
 function setupCollapsiblePanels() {
@@ -67,12 +74,15 @@ function setupCollapsiblePanels() {
         if (!row.querySelector('.collapse-chevron')) {
             const chevron = document.createElement('span');
             chevron.className = 'collapse-chevron';
+            chevron.setAttribute('aria-hidden', 'true');
             chevron.innerHTML = '<i class="fas fa-chevron-up"></i>';
             row.appendChild(chevron);
         }
+        syncCollapseAria(panel);
         row.addEventListener('click', function(e) {
             if (e.target.closest('button, input, select, a')) return;
             panel.classList.toggle('collapsed');
+            syncCollapseAria(panel);
             saveCollapseState();
         });
     });

@@ -128,7 +128,7 @@ const AuthModule = {
                         '<i class="fas fa-' + roleIcon + '"></i> ' +
                         safeName + ' (' + safeRole + ')' +
                         '<button class="logout-btn-small" id="changePwBtn" title="Change password" aria-label="Change password"><i class="fas fa-key"></i></button>' +
-                        '<button class="logout-btn-small" id="logoutBtn" aria-label="Logout"><i class="fas fa-sign-out-alt"></i> logout</button>' +
+                        '<button class="logout-btn-small" id="logoutBtn" aria-label="Log out"><i class="fas fa-sign-out-alt"></i> logout</button>' +
                     '</div>';
                 const logoutBtn = document.getElementById('logoutBtn');
                 if (logoutBtn) {

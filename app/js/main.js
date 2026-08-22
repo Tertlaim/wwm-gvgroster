@@ -928,6 +928,10 @@ async function init() {
         setupAnnouncement();
         setupGroupManagement();
         setupGuildNameEditor();
+        // Guild member name filter (CSS-hide; state survives re-renders)
+        if (typeof RenderHelpers !== 'undefined' && RenderHelpers.setupGuildFilter) {
+            RenderHelpers.setupGuildFilter();
+        }
 		// Setup scroll shadow
         setupScrollShadow();
         
