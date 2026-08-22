@@ -229,9 +229,9 @@
 }
 
 /* ===== RESPONSIVE ===== */
-/* Tablet gap rhythm (was a duplicate grid-template override in
-   responsive.css; the fluid base rule owns column counts now). */
-@media (max-width: 1024px) {
+/* Tablet gap rhythm (follows the sidebar-drawer breakpoint: once the
+   side panel collapses at 1200px the group grid owns the full width). */
+@media (max-width: 1200px) {
     .group-grid {
         gap: var(--spacing-md);
     }

@@ -54,8 +54,11 @@
     left: calc(var(--btn-left, 0px) + 4px);
 }
 
-/* ===== TABLETS AND SMALL DESKTOPS (1024px and below) ===== */
-@media (max-width: 1024px) {
+/* ===== TABLETS AND SMALL DESKTOPS (1200px and below) =====
+   The static 340px sidebar squeezes the main column below a comfortable
+   width before 1024px is reached (1080p portrait = 1080px wide), so the
+   slide-in drawer now kicks in at 1200px. */
+@media (max-width: 1200px) {
     .grid {
         grid-template-columns: 1fr;
         gap: var(--spacing-lg);

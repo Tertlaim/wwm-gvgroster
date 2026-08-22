@@ -121,9 +121,10 @@
     font-weight: 600;
     font-size: var(--font-size-lg);
     color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Full name always visible: wrap instead of ellipsis (names were cut
+       off). break-word keeps whole words intact. */
+    white-space: normal;
+    overflow-wrap: break-word;
 }
 
 .guild-card .card-header .card-checkbox {
@@ -164,16 +165,15 @@
     gap: var(--spacing-xs);
 }
 
-.guild-card .card-body .card-class,
-.guild-card .card-body .card-role {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
+/* Class + role pills share one line directly under the full-width name */
+.guild-card .card-body .card-meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-xs);
 }
 
-.guild-card .card-body .card-class .class-tag {
+.guild-card .card-meta .class-tag {
     background: var(--bg-input);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-full);
@@ -182,29 +182,29 @@
     color: var(--text-secondary);
 }
 
-.guild-card .card-body .card-role .role-tag {
+.guild-card .card-meta .role-tag {
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-full);
     font-size: var(--font-size-xs);
     font-weight: 600;
 }
 
-.guild-card .card-body .card-role .role-tag.commander {
+.guild-card .card-meta .role-tag.commander {
     background: var(--accent-gold);
     color: var(--text-inverse);
 }
 
-.guild-card .card-body .card-role .role-tag.vice-commander {
+.guild-card .card-meta .role-tag.vice-commander {
     background: var(--accent-blue);
     color: var(--text-inverse);
 }
 
-.guild-card .card-body .card-role .role-tag.healer {
+.guild-card .card-meta .role-tag.healer {
     background: var(--accent-green);
     color: var(--text-inverse);
 }
 
-.guild-card .card-body .card-role .role-tag.member {
+.guild-card .card-meta .role-tag.member {
     background: var(--bg-input);
     color: var(--text-secondary);
 }
@@ -461,8 +461,7 @@
         font-size: var(--font-size-sm);
     }
     
-    .guild-card .card-body .card-class,
-    .guild-card .card-body .card-role {
+    .guild-card .card-body .card-meta {
         font-size: var(--font-size-xs);
     }
     
