@@ -11,6 +11,7 @@ const {
     defaultDatabase
 } = require('../../migration');
 const { pruneTombstones, hydrateTombstonesFromDb } = require('../../merge');
+const { withRetry } = require('../../util');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -28,20 +29,48 @@ function getClient() {
     return supabase;
 }
 
-// Read the full database state (single row in 'app_state' table)
-async function readDatabase() {
+// Raw read of the 'main' row (single source for both read paths)
+async function readRaw() {
     const client = getClient();
-    const { data, error } = await client
+    return client
         .from('app_state')
         .select('value')
         .eq('id', 'main')
         .single();
+}
+
+// Read the full database state (single row in 'app_state' table).
+// Runtime path: single-shot, fails fast (clients re-sync on their own).
+async function readDatabase() {
+    const { data, error } = await readRaw();
 
     if (error || !data) {
         console.error('Error reading database:', error);
         return null;
     }
     return data.value;
+}
+
+// Boot-time read: retries transient gateway faults (e.g. a Cloudflare 502 in
+// front of Supabase) so initialization steps like tombstone hydration cannot
+// be silently skipped by a momentary blip. A missing row (PGRST116) is a
+// definitive answer, not a fault, and resolves to null immediately.
+async function readValueForBoot() {
+    const { data, error } = await readRaw();
+    if (!error && data) return data.value;
+    if (error && error.code === 'PGRST116') return null;
+    const err = new Error(error ? (error.message || 'Supabase read failed') : 'Empty response from Supabase');
+    err.cause = error;
+    throw err;
+}
+
+async function readDatabaseBoot() {
+    try {
+        return await withRetry(readValueForBoot, { retries: 3, delayMs: 600, label: 'Supabase boot read' });
+    } catch (err) {
+        console.error('Error reading database:', err.cause || err);
+        return null;
+    }
 }
 
 // Write the full database state (upsert single row)
@@ -81,21 +110,19 @@ async function getLastUpdateTime() {
 // Initialize: seed default data when the 'main' row does not exist yet.
 // (The app_state table itself is created via SUPABASE_SETUP.md migrations.)
 async function initDatabase() {
-    const client = getClient();
+    let existing;
+    try {
+        existing = await withRetry(readValueForBoot, { retries: 3, delayMs: 600, label: 'Supabase init read' });
+    } catch (err) {
+        console.error('Error checking Supabase:', err.cause || err);
+        return;
+    }
 
-    // Check if row exists by trying to read
-    const { error } = await client
-        .from('app_state')
-        .select('id')
-        .eq('id', 'main')
-        .single();
-
-    if (error && error.code === 'PGRST116') {
+    if (existing === null) {
         // No rows found - insert default
+        const client = getClient();
         await client.from('app_state').insert({ id: 'main', value: defaultDatabase() });
         console.log('Created default app_state in Supabase');
-    } else if (error) {
-        console.error('Error checking Supabase:', error);
     } else {
         console.log('✅ Supabase app_state exists');
     }
@@ -103,10 +130,11 @@ async function initDatabase() {
 
 // Phase 8.2 (Supabase path): hydrate the shared tombstone ledger from the
 // stored db.deletedPlayers table. Previously a no-op, which let stale editor
-// snapshots resurrect players deleted before a server restart.
+// snapshots resurrect players deleted before a server restart. Uses the
+// retrying boot read so a transient gateway blip cannot skip hydration.
 async function loadTombstonesFromDisk() {
     try {
-        const db = await readDatabase();
+        const db = await readDatabaseBoot();
         if (db) {
             hydrateTombstonesFromDb(db.deletedPlayers);
             pruneTombstones();
@@ -121,7 +149,7 @@ function persistTombstones() {
 }
 
 async function runMasterListBackfill() {
-    const db = await readDatabase();
+    const db = await readDatabaseBoot();
     if (!db) return;
     const { migrated } = migrateGuildMembers(db);
     if (migrated > 0 && await writeDatabase(db)) {
@@ -131,7 +159,7 @@ async function runMasterListBackfill() {
 
 async function runGuildMembersMigration() {
     console.log('Checking if guildMembers migration is needed...');
-    const data = await readDatabase();
+    const data = await readDatabaseBoot();
     if (!data) {
         console.log('No data found, skipping migration.');
         return;
@@ -149,7 +177,7 @@ async function runGuildMembersMigration() {
 
 // Phase 15: Migrate legacy string announcement to {text, author, timestamp}
 async function runAnnouncementMigration() {
-    const data = await readDatabase();
+    const data = await readDatabaseBoot();
     if (!data) return;
     if (typeof data.announcement === 'string') {
         data.announcement = { text: data.announcement, author: '', timestamp: '' };

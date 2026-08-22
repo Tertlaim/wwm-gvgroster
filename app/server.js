@@ -86,7 +86,7 @@ async function init() {
     // Phase 9.1: hash any legacy plaintext passwords before serving requests.
     await auth.migratePlaintextPasswords();
 
-    data.initDatabase();
+    await data.initDatabase();
     history.initHistory();
 
     // Phase 8.2: hydrate the tombstone ledger before serving requests,
