@@ -15,3 +15,6 @@ package-lock.json
 *.log
 .kilo/
 app/js/panel-fix.js
+
+# Tooling artifacts
+.playwright-mcp/
