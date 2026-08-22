@@ -1,6 +1,7 @@
 // server/history.js - History read/write/init + append
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { atomicWriteFileSync } = require('../../util');
 
 const HISTORY_PATH = path.join(__dirname, '..', '..', '..', 'data', 'history.json');
@@ -67,7 +68,7 @@ function appendHistory(fields) {
     if (!history || !history.entries) return false;
     
     const entry = {
-        id: 'h_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        id: 'h_' + crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         action: fields.action || null,
         playerId: fields.playerId || null,

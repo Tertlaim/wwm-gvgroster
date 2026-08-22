@@ -1,31 +1,13 @@
 // storage/supabase/auth.js - Supabase-backed auth storage
 const bcrypt = require('bcrypt');
 const { createClient } = require('@supabase/supabase-js');
+const { DEFAULT_AUTH } = require('../auth-defaults');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const client = (supabaseUrl && supabaseKey)
     ? createClient(supabaseUrl, supabaseKey)
     : null;
-
-const DEFAULT_AUTH = {
-    admin: {
-        id: "admin_001",
-        username: "SuperAdmin",
-        password: bcrypt.hashSync('Admin123', 10),
-        role: "superadmin",
-        createdAt: new Date().toISOString()
-    },
-    moderators: [],
-    settings: {
-        allowModeratorRegistration: true,
-        publicRegistration: true,
-        maxGroups: 6,
-        defaultModPassword: "Admin123",
-        discordWebhook: "",
-        historyLimit: 100
-    }
-};
 
 async function readAuthConfig() {
     if (!client) return null;

@@ -9,10 +9,12 @@ module.exports = function registerHistoryRoutes(app, ctx) {
         res.json(h);
     });
 
-    // POST /api/history - Add history entry (public - registrations also log here)
-    app.post('/api/history', async (req, res) => {
+    // POST /api/history - Add history entry (mod+ required: this is an
+    // audit log, so anonymous callers must not be able to forge entries.
+    // Server-side flows like /api/register log via history.appendHistory.)
+    app.post('/api/history', auth.requireAuth, async (req, res) => {
         const { action, playerId, playerName, from, to, day, field, oldValue, newValue, details, user } = req.body || {};
-        
+
         if (await history.appendHistory({ action, playerId, playerName, from, to, day, field, oldValue, newValue, details, user })) {
             const h = await history.readHistory();
             res.json({ success: true, entry: h.entries[0] });
