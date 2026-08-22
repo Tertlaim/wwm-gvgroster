@@ -243,11 +243,13 @@
 }
 /* ===== COLLAPSIBLE PANELS (click header to expand/collapse) ===== */
 /* The header row is a real control: one tonal step off the panel
-   background plus a hairline border so it reads as a button instead of
-   blending into the section. touch-action: manipulation stops mobile
-   browsers from cancelling the tap (micro-scroll jitter used to eat the
-   first tap = "dead first click"). Negative side margins keep content
-   aligned with un-padded rows. */
+   background so it reads as a button instead of blending into the
+   section (borderless per user request - tone only). touch-action:
+   manipulation stops mobile browsers from cancelling the tap
+   (micro-scroll jitter used to eat the first tap = "dead first click").
+   Negative side margins keep content aligned with un-padded rows; the
+   uniform md bottom margin gives every panel the same header-to-content
+   rhythm (reserves used to sit only 8px under the header). */
 .panel-header-row {
     display: flex;
     align-items: center;
@@ -255,18 +257,16 @@
     cursor: pointer;
     user-select: none;
     background: var(--bg-input);
-    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
-    margin: calc(-1 * var(--spacing-xs)) calc(-1 * var(--spacing-sm)) 0;
-    transition: background var(--transition-fast), border-color var(--transition-fast);
+    margin: calc(-1 * var(--spacing-xs)) calc(-1 * var(--spacing-sm)) var(--spacing-md);
+    transition: background var(--transition-fast);
     touch-action: manipulation;
     position: relative;
 }
 
 .panel-header-row:hover {
     background: var(--bg-active);
-    border-color: var(--border-light);
 }
 
 /* The chevron is pinned to its header row's right edge, vertically

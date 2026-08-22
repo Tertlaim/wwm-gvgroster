@@ -59,10 +59,14 @@
     --gradient-card: linear-gradient(135deg, #0d1a2b 0%, #13263f 100%);
     
     /* Borders */
+    /* Corner language unified (2026-08-22): every container uses the
+       tight 8px corner; the old 16/24/32px token tiers remain as aliases
+       so existing rules keep working. Stadium shapes (--radius-full:
+       buttons, pills, badges, inputs) are intentionally untouched. */
     --radius-sm: 8px;
-    --radius-md: 16px;
-    --radius-lg: 24px;
-    --radius-xl: 32px;
+    --radius-md: 8px;
+    --radius-lg: 8px;
+    --radius-xl: 8px;
     --radius-full: 9999px;
     
     /* Spacing */
