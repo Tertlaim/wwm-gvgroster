@@ -14,4 +14,27 @@ function atomicWriteFileSync(filePath, data) {
     fs.renameSync(tmpPath, filePath);
 }
 
-module.exports = { atomicWriteFileSync };
+// ============================================
+// RETRY (boot-time resilience)
+// ============================================
+// Retry an async operation with linear backoff. Used by boot-time reads so a
+// transient CDN/gateway blip (e.g. a Cloudflare 502 in front of Supabase)
+// cannot silently skip initialization steps such as tombstone hydration.
+// Runtime request paths stay single-shot: they should fail fast, and the
+// client re-syncs.
+async function withRetry(fn, { retries = 3, delayMs = 500, label = 'operation' } = {}) {
+    let lastErr;
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+        try {
+            return await fn(attempt);
+        } catch (err) {
+            lastErr = err;
+            if (attempt > retries) break;
+            console.warn(`⚠️ ${label} failed (attempt ${attempt}/${retries + 1}), retrying...`);
+            await new Promise(r => setTimeout(r, delayMs * attempt));
+        }
+    }
+    throw lastErr;
+}
+
+module.exports = { atomicWriteFileSync, withRetry };
