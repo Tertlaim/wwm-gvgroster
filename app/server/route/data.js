@@ -1,7 +1,18 @@
 // server/route/data.js - Guild data + realtime + migration + backup routes (Phase 11.1)
+//
+// Concurrency hardening: every route that does read -> mutate -> write on the
+// database runs inside a keyed mutex (see server/mutex.js) so concurrent
+// requests cannot silently overwrite each other.
+
+const crypto = require('crypto');
+const { createMutex } = require('../mutex');
+
+const VALID_DAYS = ['sat', 'sun'];
+const GROUP_KEY_RE = /^[a-z0-9_-]{1,32}$/i;
 
 module.exports = function registerDataRoutes(app, ctx) {
     const { auth, data, merge, history, rate, sse } = ctx;
+    const withDataLock = createMutex();
 
     // GET /api/data - Load all data
     app.get('/api/data', async (req, res) => {
@@ -32,11 +43,11 @@ module.exports = function registerDataRoutes(app, ctx) {
         });
         res.write('retry: 5000\n\n');
         sse.SSE_CLIENTS.add(res);
-        
+
         const heartbeat = setInterval(() => {
             try { res.write(': ping\n\n'); } catch (e) { clearInterval(heartbeat); sse.SSE_CLIENTS.delete(res); }
         }, 25000);
-        
+
         req.on('close', () => {
             clearInterval(heartbeat);
             sse.SSE_CLIENTS.delete(res);
@@ -52,65 +63,67 @@ module.exports = function registerDataRoutes(app, ctx) {
         if (!('groups' in incoming) && !('reserves' in incoming) && !('guildMembers' in incoming)) {
             return res.status(400).json({ success: false, error: 'Invalid data payload' });
         }
-        
-        const current = await data.readDatabase();
-        if (!current) {
-            return res.status(500).json({ success: false, error: 'Failed to read database' });
-        }
-        
-        const baseVersion = typeof incoming.baseVersion === 'string' ? incoming.baseVersion : null;
-        let baseTimeMs = baseVersion ? Date.parse(baseVersion) : null;
-        if (baseTimeMs === null || isNaN(baseTimeMs)) baseTimeMs = null;
-        
-        const currentVersion = current.lastUpdateTime || null;
-        const isFresh = baseTimeMs !== null && currentVersion !== null && Date.parse(currentVersion) <= baseTimeMs;
-        
-        const deletedIds = new Set(
-            Array.isArray(incoming.deletedIds)
-                ? incoming.deletedIds.filter(id => typeof id === 'string' && id)
-                : []
-        );
-        if (deletedIds.size > 0) merge.recordDeletedPlayers([...deletedIds]);
-        
-        let merged;
-        if (isFresh) {
-            merged = {
-                groups: incoming.groups || current.groups || {},
-                reserves: incoming.reserves || current.reserves || {},
-                guildMembers: Array.isArray(incoming.guildMembers) ? incoming.guildMembers : (Array.isArray(current.guildMembers) ? current.guildMembers : [])
-            };
-        } else {
-            merged = merge.mergeDatabase(current, incoming, deletedIds, baseTimeMs);
-        }
-        
-        merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Guild Name');
-        if (incoming.announcement && typeof incoming.announcement === 'object') {
-            merged.announcement = incoming.announcement;
-        } else if (typeof incoming.announcement === 'string') {
-            merged.announcement = { text: incoming.announcement, author: '', timestamp: '' };
-        } else {
-            merged.announcement = (current.announcement && typeof current.announcement === 'object')
-                ? current.announcement
-                : { text: (typeof current.announcement === 'string' ? current.announcement : ''), author: '', timestamp: '' };
-        }
-        
-        merge.removeDeletedFromDb(merged, deletedIds);
-        merge.applyRemovals(merged, incoming.removed);
-        data.ensureMasterList(merged);
-        merged.deletedPlayers = Object.fromEntries(merge.DELETED_PLAYERS);
-        merged.lastUpdateTime = new Date().toISOString();
-        
-        if (await data.writeDatabase(merged)) {
-            sse.broadcastUpdate(merged.lastUpdateTime);
-            res.json({ 
-                success: true, 
-                lastUpdate: merged.lastUpdateTime,
-                message: 'Data saved successfully',
-                data: merged
-            });
-        } else {
-            res.status(500).json({ error: 'Failed to save data' });
-        }
+
+        await withDataLock('data', async () => {
+            const current = await data.readDatabase();
+            if (!current) {
+                return res.status(500).json({ success: false, error: 'Failed to read database' });
+            }
+
+            const baseVersion = typeof incoming.baseVersion === 'string' ? incoming.baseVersion : null;
+            let baseTimeMs = baseVersion ? Date.parse(baseVersion) : null;
+            if (baseTimeMs === null || isNaN(baseTimeMs)) baseTimeMs = null;
+
+            const currentVersion = current.lastUpdateTime || null;
+            const isFresh = baseTimeMs !== null && currentVersion !== null && Date.parse(currentVersion) <= baseTimeMs;
+
+            const deletedIds = new Set(
+                Array.isArray(incoming.deletedIds)
+                    ? incoming.deletedIds.filter(id => typeof id === 'string' && id)
+                    : []
+            );
+            if (deletedIds.size > 0) merge.recordDeletedPlayers([...deletedIds]);
+
+            let merged;
+            if (isFresh) {
+                merged = {
+                    groups: incoming.groups || current.groups || {},
+                    reserves: incoming.reserves || current.reserves || {},
+                    guildMembers: Array.isArray(incoming.guildMembers) ? incoming.guildMembers : (Array.isArray(current.guildMembers) ? current.guildMembers : [])
+                };
+            } else {
+                merged = merge.mergeDatabase(current, incoming, deletedIds, baseTimeMs);
+            }
+
+            merged.guildName = typeof incoming.guildName === 'string' ? incoming.guildName : (current.guildName || 'Guild Name');
+            if (incoming.announcement && typeof incoming.announcement === 'object') {
+                merged.announcement = incoming.announcement;
+            } else if (typeof incoming.announcement === 'string') {
+                merged.announcement = { text: incoming.announcement, author: '', timestamp: '' };
+            } else {
+                merged.announcement = (current.announcement && typeof current.announcement === 'object')
+                    ? current.announcement
+                    : { text: (typeof current.announcement === 'string' ? current.announcement : ''), author: '', timestamp: '' };
+            }
+
+            merge.removeDeletedFromDb(merged, deletedIds);
+            merge.applyRemovals(merged, incoming.removed);
+            data.ensureMasterList(merged);
+            merged.deletedPlayers = Object.fromEntries(merge.DELETED_PLAYERS);
+            merged.lastUpdateTime = new Date().toISOString();
+
+            if (await data.writeDatabase(merged)) {
+                sse.broadcastUpdate(merged.lastUpdateTime);
+                res.json({
+                    success: true,
+                    lastUpdate: merged.lastUpdateTime,
+                    message: 'Data saved successfully',
+                    data: merged
+                });
+            } else {
+                res.status(500).json({ error: 'Failed to save data' });
+            }
+        });
     });
 
     // POST /api/register - Public self-registration (no auth)
@@ -130,12 +143,20 @@ module.exports = function registerDataRoutes(app, ctx) {
         const name = typeof body.name === 'string' ? body.name.trim() : '';
         const cls = body.class;
         const days = Array.isArray(body.days) ? body.days : [];
-        const validDays = ['sat', 'sun'];
+        const validDays = VALID_DAYS;
         const validClasses = ['Tank', 'DPS', 'Heal'];
         const validRoles = ['Member', 'Vice Commander', 'Commander', 'Healer'];
-        // Public users always get 'Member'; moderators can set a custom role
-        const role = validRoles.includes(body.role) ? body.role : 'Member';
-        
+
+        // Public callers always get 'Member'. A custom role is honored only
+        // when the request carries a valid mod+ session - otherwise anyone
+        // could self-assign 'Commander' via a direct API call.
+        const tokenHeader = req.headers['authorization'] || req.headers['x-auth-token'];
+        const session = tokenHeader
+            ? auth.getSession(String(tokenHeader).startsWith('Bearer ') ? String(tokenHeader).slice(7) : String(tokenHeader))
+            : null;
+        const isStaff = !!session && ['mod', 'admin', 'superadmin'].includes(session.role);
+        const role = (isStaff && validRoles.includes(body.role)) ? body.role : 'Member';
+
         if (!name) {
             return res.status(400).json({ success: false, error: 'Please enter a name.' });
         }
@@ -148,206 +169,234 @@ module.exports = function registerDataRoutes(app, ctx) {
         if (!validClasses.includes(cls)) {
             return res.status(400).json({ success: false, error: 'Invalid class.' });
         }
-        
+
         const requested = days.filter(d => validDays.includes(d));
         if (requested.length === 0) {
             return res.status(400).json({ success: false, error: 'Please select at least one day.' });
         }
-        
-        const db = await data.readDatabase();
-        if (!db) {
-            return res.status(500).json({ success: false, error: 'Database error' });
-        }
-        
-        if (!Array.isArray(db.guildMembers)) db.guildMembers = [];
-        if (!db.reserves) db.reserves = {};
-        
-        const playerId = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        const player = { id: playerId, name: name, class: cls, role: role };
-        let added = 0;
-        const skipped = [];
-        
-        const gmExists = db.guildMembers.some(p => p && p.name === name && p.class === cls);
-        if (!gmExists) {
-            db.guildMembers.push({ ...player });
-        }
-        
-        requested.forEach(day => {
-            if (!Array.isArray(db.reserves[day])) db.reserves[day] = [];
-            
-            if (gmExists) {
-                skipped.push(day);
-                return;
+
+        await withDataLock('data', async () => {
+            const db = await data.readDatabase();
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Database error' });
             }
-            db.reserves[day].push({ ...player });
-            added++;
-        });
-        
-        db.lastUpdateTime = new Date().toISOString();
-        
-        if (!await data.writeDatabase(db)) {
-            return res.status(500).json({ success: false, error: 'Failed to save data' });
-        }
-        
-        sse.broadcastUpdate(db.lastUpdateTime);
-        
-        if (added > 0) {
-            history.appendHistory({
-                action: 'add',
-                playerId: playerId,
-                playerName: name,
-                to: 'guild + reserves',
-                day: requested[0],
-                details: name + ' (' + cls + '/Member) registered for ' + requested.map(d => d === 'sat' ? 'Saturday' : 'Sunday').join(' & ')
+
+            if (!Array.isArray(db.guildMembers)) db.guildMembers = [];
+            if (!db.reserves) db.reserves = {};
+
+            const playerId = 'p_' + crypto.randomUUID();
+            const player = { id: playerId, name: name, class: cls, role: role };
+            let added = 0;
+            const skipped = [];
+
+            const gmExists = db.guildMembers.some(p => p && p.name === name && p.class === cls);
+            if (!gmExists) {
+                db.guildMembers.push({ ...player });
+            }
+
+            requested.forEach(day => {
+                if (!Array.isArray(db.reserves[day])) db.reserves[day] = [];
+
+                if (gmExists) {
+                    skipped.push(day);
+                    return;
+                }
+                db.reserves[day].push({ ...player });
+                added++;
             });
-        }
-        
-        res.json({
-            success: true,
-            added: added,
-            skipped: skipped,
-            player: added > 0 ? player : null,
-            lastUpdate: db.lastUpdateTime,
-            data: db
+
+            db.lastUpdateTime = new Date().toISOString();
+
+            if (!await data.writeDatabase(db)) {
+                return res.status(500).json({ success: false, error: 'Failed to save data' });
+            }
+
+            sse.broadcastUpdate(db.lastUpdateTime);
+
+            if (added > 0) {
+                history.appendHistory({
+                    action: 'add',
+                    playerId: playerId,
+                    playerName: name,
+                    to: 'guild + reserves',
+                    day: requested[0],
+                    details: name + ' (' + cls + '/' + role + ') registered for ' + requested.map(d => d === 'sat' ? 'Saturday' : 'Sunday').join(' & ')
+                });
+            }
+
+            res.json({
+                success: true,
+                added: added,
+                skipped: skipped,
+                player: added > 0 ? player : null,
+                lastUpdate: db.lastUpdateTime,
+                data: db
+            });
         });
     });
 
     // POST /api/guild/name - Update guild name (mod+)
     app.post('/api/guild/name', auth.requireAuth, async (req, res) => {
         const { name } = req.body;
-        const db = await data.readDatabase();
-        
-        if (!db) {
-            return res.status(500).json({ success: false, error: 'Database error' });
+        if (typeof name !== 'string' || !name.trim() || name.trim().length > 60) {
+            return res.status(400).json({ success: false, error: 'Invalid guild name (1-60 characters).' });
         }
 
-        db.guildName = name;
-        db.lastUpdateTime = new Date().toISOString();
-        
-        if (await data.writeDatabase(db)) {
-            sse.broadcastUpdate(db.lastUpdateTime);
-            res.json({ success: true, guildName: name });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to save' });
-        }
+        await withDataLock('data', async () => {
+            const db = await data.readDatabase();
+
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Database error' });
+            }
+
+            db.guildName = name.trim();
+            db.lastUpdateTime = new Date().toISOString();
+
+            if (await data.writeDatabase(db)) {
+                sse.broadcastUpdate(db.lastUpdateTime);
+                res.json({ success: true, guildName: db.guildName });
+            } else {
+                res.status(500).json({ success: false, error: 'Failed to save' });
+            }
+        });
     });
 
     // POST /api/groups/add - Add a new group (moderator)
     app.post('/api/groups/add', auth.requireAuth, async (req, res) => {
         const { day, groupKey, title } = req.body;
-        const db = await data.readDatabase();
-        const authConfig = await auth.readAuthConfig();
-        
-        if (!db || !authConfig) {
-            return res.status(500).json({ success: false, error: 'Database error' });
-        }
-
-        if (!db.groups[day]) {
+        if (!VALID_DAYS.includes(day)) {
             return res.status(400).json({ success: false, error: 'Invalid day' });
         }
-
-        const maxGroups = authConfig.settings.maxGroups || 6;
-        const currentGroups = Object.keys(db.groups[day]).length;
-        
-        if (currentGroups >= maxGroups) {
-            return res.status(400).json({ 
-                success: false, 
-                error: `Maximum ${maxGroups} groups allowed` 
-            });
+        if (typeof groupKey !== 'string' || !GROUP_KEY_RE.test(groupKey)) {
+            return res.status(400).json({ success: false, error: 'Invalid group key' });
         }
 
-        if (db.groups[day][groupKey]) {
-            return res.status(400).json({ success: false, error: 'Group already exists' });
-        }
+        await withDataLock('data', async () => {
+            const db = await data.readDatabase();
+            const authConfig = await auth.readAuthConfig();
 
-        db.groups[day][groupKey] = { title: title || groupKey, players: [] };
-        db.lastUpdateTime = new Date().toISOString();
-        
-        if (await data.writeDatabase(db)) {
-            sse.broadcastUpdate(db.lastUpdateTime);
-            res.json({ 
-                success: true, 
-                message: `Group ${title || groupKey} added`,
-                group: db.groups[day][groupKey]
-            });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to save' });
-        }
+            if (!db || !authConfig) {
+                return res.status(500).json({ success: false, error: 'Database error' });
+            }
+
+            if (!db.groups[day]) {
+                db.groups[day] = {};
+            }
+
+            const maxGroups = authConfig.settings.maxGroups || 6;
+            const currentGroups = Object.keys(db.groups[day]).length;
+
+            if (currentGroups >= maxGroups) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Maximum ${maxGroups} groups allowed`
+                });
+            }
+
+            if (db.groups[day][groupKey]) {
+                return res.status(400).json({ success: false, error: 'Group already exists' });
+            }
+
+            db.groups[day][groupKey] = { title: (typeof title === 'string' && title.trim() ? title.trim() : groupKey).slice(0, 60), players: [] };
+            db.lastUpdateTime = new Date().toISOString();
+
+            if (await data.writeDatabase(db)) {
+                sse.broadcastUpdate(db.lastUpdateTime);
+                res.json({
+                    success: true,
+                    message: `Group ${db.groups[day][groupKey].title} added`,
+                    group: db.groups[day][groupKey]
+                });
+            } else {
+                res.status(500).json({ success: false, error: 'Failed to save' });
+            }
+        });
     });
 
     // POST /api/groups/remove - Remove a group (moderator)
     app.post('/api/groups/remove', auth.requireAuth, async (req, res) => {
         const { day, groupKey } = req.body;
-        const db = await data.readDatabase();
-        
-        if (!db) {
-            return res.status(500).json({ success: false, error: 'Database error' });
+        if (!VALID_DAYS.includes(day)) {
+            return res.status(400).json({ success: false, error: 'Invalid day' });
         }
 
-        if (!db.groups[day] || !db.groups[day][groupKey]) {
-            return res.status(404).json({ success: false, error: 'Group not found' });
-        }
+        await withDataLock('data', async () => {
+            const db = await data.readDatabase();
 
-        if (db.groups[day][groupKey].players.length > 0) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Cannot remove group with players. Move players first.' 
-            });
-        }
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Database error' });
+            }
 
-        delete db.groups[day][groupKey];
-        db.lastUpdateTime = new Date().toISOString();
-        
-        if (await data.writeDatabase(db)) {
-            sse.broadcastUpdate(db.lastUpdateTime);
-            res.json({ success: true, message: 'Group removed' });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to save' });
-        }
+            if (!db.groups[day] || !db.groups[day][groupKey]) {
+                return res.status(404).json({ success: false, error: 'Group not found' });
+            }
+
+            if ((db.groups[day][groupKey].players || []).length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Cannot remove group with players. Move players first.'
+                });
+            }
+
+            delete db.groups[day][groupKey];
+            db.lastUpdateTime = new Date().toISOString();
+
+            if (await data.writeDatabase(db)) {
+                sse.broadcastUpdate(db.lastUpdateTime);
+                res.json({ success: true, message: 'Group removed' });
+            } else {
+                res.status(500).json({ success: false, error: 'Failed to save' });
+            }
+        });
     });
 
     // GET /api/groups/config - Get group configuration
     app.get('/api/groups/config', async (req, res) => {
         const db = await data.readDatabase();
         const authConfig = await auth.readAuthConfig();
-        
+
         if (!db || !authConfig) {
             return res.status(500).json({ error: 'Database error' });
         }
-        
+
+        const groups = db.groups && typeof db.groups === 'object' ? db.groups : {};
+        const dayKeys = (day) => (groups[day] && typeof groups[day] === 'object') ? Object.keys(groups[day]) : [];
+
         res.json({
             maxGroups: authConfig.settings.maxGroups || 6,
             currentGroups: {
-                sat: Object.keys(db.groups.sat).length,
-                sun: Object.keys(db.groups.sun).length
+                sat: dayKeys('sat').length,
+                sun: dayKeys('sun').length
             },
             groups: {
-                sat: Object.keys(db.groups.sat),
-                sun: Object.keys(db.groups.sun)
+                sat: dayKeys('sat'),
+                sun: dayKeys('sun')
             }
         });
     });
 
     // POST /api/migrate-guild-members - Manual migration (admin only)
     app.post('/api/migrate-guild-members', auth.requireAuth, auth.requireAdmin, async (req, res) => {
-        const db = await data.readDatabase();
-        if (!db) {
-            return res.status(500).json({ success: false, error: 'Failed to read database' });
-        }
-        
-        const result = data.migrateGuildMembers(db);
-        
-        if (await data.writeDatabase(db)) {
-            sse.broadcastUpdate(db.lastUpdateTime || new Date().toISOString());
-            res.json({ 
-                success: true, 
-                message: `Migrated ${result.migrated} players to guildMembers`,
-                migrated: result.migrated,
-                totalPlayers: result.totalPlayers
-            });
-        } else {
-            res.status(500).json({ success: false, error: 'Failed to save database' });
-        }
+        await withDataLock('data', async () => {
+            const db = await data.readDatabase();
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Failed to read database' });
+            }
+
+            const result = data.migrateGuildMembers(db);
+
+            if (await data.writeDatabase(db)) {
+                sse.broadcastUpdate(db.lastUpdateTime || new Date().toISOString());
+                res.json({
+                    success: true,
+                    message: `Migrated ${result.migrated} players to guildMembers`,
+                    migrated: result.migrated,
+                    totalPlayers: result.totalPlayers
+                });
+            } else {
+                res.status(500).json({ success: false, error: 'Failed to save database' });
+            }
+        });
     });
 
     // GET /api/guild-members-status - Check if migration is needed
@@ -356,15 +405,15 @@ module.exports = function registerDataRoutes(app, ctx) {
         if (!db) {
             return res.status(500).json({ error: 'Failed to read database' });
         }
-        
+
         const needsMigration = data.needsGuildMembersMigration(db);
         const guildCount = Array.isArray(db.guildMembers) ? db.guildMembers.length : 0;
-        
+
         let groupCount = 0;
         let reserveCount = 0;
-        const days = ['sat', 'sun'];
+        const days = VALID_DAYS;
         const groupKeys = ['offence1', 'offence2', 'defence1', 'jungle'];
-        
+
         days.forEach(day => {
             if (db.groups && db.groups[day]) {
                 groupKeys.forEach(key => {
@@ -377,7 +426,7 @@ module.exports = function registerDataRoutes(app, ctx) {
                 reserveCount += db.reserves[day].length;
             }
         });
-        
+
         res.json({
             needsMigration: needsMigration,
             guildMembersCount: guildCount,
@@ -402,8 +451,8 @@ module.exports = function registerDataRoutes(app, ctx) {
     // GET /api/health - Health check
     app.get('/api/health', async (req, res) => {
         const db = await data.readDatabase();
-        res.json({ 
-            status: 'ok', 
+        res.json({
+            status: 'ok',
             timestamp: new Date().toISOString(),
             hasData: !!db,
             dataSize: db ? Object.keys(db).length : 0

@@ -1,5 +1,9 @@
 // server/auth.js - Sessions, auth middleware, password hashing, auth config
-// Phase 15: auth storage is pluggable via the storage backend
+// Phase 15: auth storage is pluggable via the storage backend.
+// Concurrency hardening: the storage contract is uniformly async and every
+// read-modify-write cycle goes through updateAuthConfig(), which serializes
+// access so concurrent admin edits cannot interleave from a stale snapshot.
+
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
@@ -39,6 +43,12 @@ function getSession(token) {
 function destroySession(token) {
     if (token) SESSIONS.delete(token);
 }
+
+// Sweep expired sessions so the map cannot grow unbounded (mirrors rate-limit).
+setInterval(() => {
+    const now = Date.now();
+    SESSIONS.forEach((v, k) => { if (v.expiresAt <= now) SESSIONS.delete(k); });
+}, 10 * 60 * 1000).unref();
 
 // Auth middleware: requires valid session token
 function requireAuth(req, res, next) {
@@ -114,43 +124,71 @@ function verifyPassword(attempt, stored) {
 
 // ============================================
 // AUTH CONFIG READ/WRITE (delegates to storage backend)
+// Uniformly async: JSON adapter resolves immediately, Supabase awaits the DB.
 // ============================================
 
-function readAuthConfig() {
-    if (_authStorage && _authStorage.readAuthConfig) {
-        // For JSON storage this is sync; for Supabase we use the cached copy
-        const result = _authStorage.readAuthConfig();
-        // Handle async (Supabase) — return cached data
-        if (result && typeof result.then === 'function') {
-            return _cachedAuth;
-        }
-        return result;
-    }
-    // Fallback: no storage configured
-    return _cachedAuth;
-}
-
-// Cached auth data (populated at boot, used for sync reads)
+// Cached auth data (refreshed after reads/writes; fallback when no storage)
 let _cachedAuth = null;
 
-function writeAuthConfig(data) {
-    // Update cache immediately
-    _cachedAuth = data;
-    if (_authStorage && _authStorage.writeAuthConfig) {
-        const result = _authStorage.writeAuthConfig(data);
-        if (result && typeof result.then === 'function') {
-            // Async (Supabase) — fire and forget, already cached
-            result.catch(err => console.error('Async auth write failed:', err));
-            return true;
+async function readAuthConfig() {
+    let config = _cachedAuth;
+    if (_authStorage && _authStorage.readAuthConfig) {
+        try {
+            config = await _authStorage.readAuthConfig();
+        } catch (err) {
+            console.error('Error reading auth config:', err);
+            config = null;
         }
-        return result;
     }
-    return false;
+    if (config) _cachedAuth = config;
+    return config;
+}
+
+async function writeAuthConfig(data) {
+    if (!_authStorage || !_authStorage.writeAuthConfig) return false;
+    let ok = false;
+    try {
+        ok = await _authStorage.writeAuthConfig(data);
+    } catch (err) {
+        console.error('Error writing auth config:', err);
+        ok = false;
+    }
+    if (ok) _cachedAuth = data;
+    return !!ok;
+}
+
+// Serialized read-modify-write for the auth config.
+//
+// mutator(config) mutates the freshly-read config in place and:
+//   - returns/awaits normally  -> config is written, resolves to the config
+//   - returns false           -> aborts WITHOUT writing, resolves to null
+//   - throws                  -> aborts WITHOUT writing, rejects to the caller
+//
+// Concurrent calls are queued so each cycle reads the latest committed state.
+let _authLockTail = Promise.resolve();
+
+function updateAuthConfig(mutator) {
+    let release;
+    const ticket = _authLockTail;
+    _authLockTail = new Promise(resolve => { release = resolve; });
+
+    return ticket.then(async () => {
+        try {
+            const config = await readAuthConfig();
+            if (!config) return null;
+            const result = await mutator(config);
+            if (result === false) return null;
+            const ok = await writeAuthConfig(config);
+            return ok ? config : null;
+        } finally {
+            release();
+        }
+    });
 }
 
 // Migrate any plaintext passwords in auth to bcrypt hashes (boot-time).
-function migratePlaintextPasswords() {
-    const auth = readAuthConfig();
+async function migratePlaintextPasswords() {
+    const auth = await readAuthConfig();
     if (!auth) return;
     let changed = false;
     getAllAuthUsers(auth).forEach(u => {
@@ -159,27 +197,21 @@ function migratePlaintextPasswords() {
             changed = true;
         }
     });
-    if (changed && writeAuthConfig(auth)) {
+    if (changed && await writeAuthConfig(auth)) {
         console.log('🔐 Migrated plaintext passwords to bcrypt hashes');
     }
 }
 
-// Initialize auth config (async to support Supabase)
+// Initialize auth config (loads storage into cache)
 async function initAuthConfig() {
     if (_authStorage && _authStorage.initAuthConfig) {
-        const result = _authStorage.initAuthConfig();
-        if (result && typeof result.then === 'function') {
-            await result; // Supabase async init
-        }
+        await _authStorage.initAuthConfig();
     }
     // Load auth into cache
     if (_authStorage && _authStorage.readAuthConfig) {
-        const result = _authStorage.readAuthConfig();
-        if (result && typeof result.then === 'function') {
-            _cachedAuth = await result;
-        } else {
-            _cachedAuth = result;
-        }
+        _cachedAuth = await _authStorage.readAuthConfig();
+    } else {
+        _cachedAuth = null;
     }
 }
 
@@ -199,5 +231,6 @@ module.exports = {
     migratePlaintextPasswords,
     readAuthConfig,
     writeAuthConfig,
+    updateAuthConfig,
     initAuthConfig
 };

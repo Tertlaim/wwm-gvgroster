@@ -73,17 +73,13 @@ async function registerPlayer(name, playerClass, days, role) {
 
 // Login
 async function loginUser(username, password) {
-    console.log('loginUser called with:', username);
     try {
         const response = await fetch(`${API_BASE}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-        console.log('Login response status:', response.status);
-        const result = await response.json();
-        console.log('Login result:', result);
-        return result;
+        return await response.json();
     } catch (error) {
         console.error('Login error:', error);
         return { success: false, error: 'Network error' };

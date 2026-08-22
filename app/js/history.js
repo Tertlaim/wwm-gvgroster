@@ -36,7 +36,8 @@ const History = {
             this.renderHistory();
             // Try to create the file via the server
             try {
-                await fetch('/api/history/init', { method: 'POST' });
+                const initHeaders = typeof getAuthHeader === 'function' ? getAuthHeader() : {};
+                await fetch('/api/history/init', { method: 'POST', headers: initHeaders });
                 console.log('✅ Attempted to initialize history file');
             } catch (e) {
                 console.error('Could not initialize history:', e);
@@ -57,9 +58,15 @@ const History = {
         if (!this.isEnabled) return;
         
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            // POST /api/history requires a mod+ session; without the header
+            // the server now rejects the entry (audit-log hardening).
+            if (typeof getAuthHeader === 'function') {
+                Object.assign(headers, getAuthHeader());
+            }
             const response = await fetch('/api/history', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify({
                     action: action,
                     ...data

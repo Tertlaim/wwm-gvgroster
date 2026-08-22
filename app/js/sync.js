@@ -42,18 +42,15 @@ function startDataSync() {
     setupRealtimeSync();
 }
 
-// True if serverTime is newer than localTime (or local is unset). Both are
-// ISO strings (server always writes new Date().toISOString()); Date-object
-// form kept for backwards safety.
+// True if serverTime is newer than localTime (or local is unset). Values are
+// normally ISO strings; Date objects are accepted and normalized so mixed
+// types still compare correctly instead of silently returning false.
 function isNewerThan(serverTime, localTime) {
     if (!localTime) return true;
-    if (typeof serverTime === 'string' && typeof localTime === 'string') {
-        return serverTime > localTime;
-    }
-    if (typeof serverTime === 'object' && typeof localTime === 'object') {
-        return new Date(serverTime) > new Date(localTime);
-    }
-    return false;
+    const s = new Date(serverTime);
+    const l = new Date(localTime);
+    if (isNaN(s.getTime()) || isNaN(l.getTime())) return false;
+    return s.getTime() > l.getTime();
 }
 
 // Apply an already-fetched server snapshot if it is newer than ours.

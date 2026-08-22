@@ -1,6 +1,16 @@
 // storage/supabase/data.js - Supabase storage adapter for database
-// Tombstone logic lives in merge.js (shared with JSON storage)
+// Master-list migration logic lives in merge.js-adjacent server/migration.js
+// (shared with JSON storage). Tombstone logic lives in merge.js; tombstones
+// are hydrated at boot from the app_state blob so deletion protection
+// survives a restart exactly as it does in JSON mode.
 const { createClient } = require('@supabase/supabase-js');
+const {
+    migrateGuildMembers,
+    needsGuildMembersMigration,
+    ensureMasterList,
+    defaultDatabase
+} = require('../../migration');
+const { pruneTombstones, hydrateTombstonesFromDb } = require('../../merge');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -68,11 +78,12 @@ async function getLastUpdateTime() {
     return null;
 }
 
-// Initialize: create table if needed, seed default data
+// Initialize: seed default data when the 'main' row does not exist yet.
+// (The app_state table itself is created via SUPABASE_SETUP.md migrations.)
 async function initDatabase() {
     const client = getClient();
 
-    // Check if table exists by trying to read
+    // Check if row exists by trying to read
     const { error } = await client
         .from('app_state')
         .select('id')
@@ -81,29 +92,7 @@ async function initDatabase() {
 
     if (error && error.code === 'PGRST116') {
         // No rows found - insert default
-        const defaultData = {
-            guildName: "Guild Name",
-            groups: {
-                sat: {
-                    offence1: { title: 'Offense 1', players: [] },
-                    offence2: { title: 'Offense 2', players: [] },
-                    defence1: { title: 'Defense', players: [] },
-                    jungle: { title: 'Jungle', players: [] }
-                },
-                sun: {
-                    offence1: { title: 'Offense 1', players: [] },
-                    offence2: { title: 'Offense 2', players: [] },
-                    defence1: { title: 'Defense', players: [] },
-                    jungle: { title: 'Jungle', players: [] }
-                }
-            },
-            reserves: { sat: [], sun: [] },
-            guildMembers: [],
-            lastUpdateTime: new Date().toISOString(),
-            announcement: { text: 'Welcome to Guild War!', author: '', timestamp: '' }
-        };
-
-        await client.from('app_state').insert({ id: 'main', value: defaultData });
+        await client.from('app_state').insert({ id: 'main', value: defaultDatabase() });
         console.log('Created default app_state in Supabase');
     } else if (error) {
         console.error('Error checking Supabase:', error);
@@ -112,78 +101,23 @@ async function initDatabase() {
     }
 }
 
-// Migration helpers - same logic as JSON version, operates on data in-memory
-// These are called after reading from Supabase, before writing back
-
-function migrateGuildMembers(data) {
-    if (data.guildMembers && typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) {
-        const merged = new Map();
-        Object.values(data.guildMembers).forEach(arr => {
-            if (Array.isArray(arr)) {
-                arr.forEach(p => { if (p && p.id) merged.set(p.id, { ...p }); });
-            }
-        });
-        data.guildMembers = [...merged.values()];
-    }
-
-    if (!Array.isArray(data.guildMembers)) {
-        data.guildMembers = [];
-    }
-
-    const existingIds = new Set(data.guildMembers.map(p => p && p.id).filter(Boolean));
-    const days = ['sat', 'sun'];
-    let migrated = 0;
-    let totalPlayers = 0;
-
-    days.forEach(day => {
-        if (data.groups && data.groups[day]) {
-            Object.keys(data.groups[day]).forEach(key => {
-                if (data.groups[day][key] && data.groups[day][key].players) {
-                    data.groups[day][key].players.forEach(p => {
-                        if (p && p.id) {
-                            totalPlayers++;
-                            if (!existingIds.has(p.id)) {
-                                data.guildMembers.push({ ...p });
-                                existingIds.add(p.id);
-                                migrated++;
-                            }
-                        }
-                    });
-                }
-            });
+// Phase 8.2 (Supabase path): hydrate the shared tombstone ledger from the
+// stored db.deletedPlayers table. Previously a no-op, which let stale editor
+// snapshots resurrect players deleted before a server restart.
+async function loadTombstonesFromDisk() {
+    try {
+        const db = await readDatabase();
+        if (db) {
+            hydrateTombstonesFromDb(db.deletedPlayers);
+            pruneTombstones();
         }
-    });
-
-    days.forEach(day => {
-        if (data.reserves && data.reserves[day]) {
-            data.reserves[day].forEach(p => {
-                if (p && p.id) {
-                    totalPlayers++;
-                    if (!existingIds.has(p.id)) {
-                        data.guildMembers.push({ ...p });
-                        existingIds.add(p.id);
-                        migrated++;
-                    }
-                }
-            });
-        }
-    });
-
-    return { migrated, totalPlayers };
+    } catch (error) {
+        console.error('Error loading tombstones:', error);
+    }
 }
 
-function needsGuildMembersMigration(data) {
-    if (!data.guildMembers) return true;
-    if (typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) return true;
-    if (data.guildMembers.length > 0) return false;
-    const hasData = Object.values(data.groups).some(day =>
-        Object.values(day).some(group => group.players && group.players.length > 0)
-    ) || Object.values(data.reserves).some(arr => arr && arr.length > 0);
-    return hasData;
-}
-
-function ensureMasterList(data) {
-    return migrateGuildMembers(data).migrated;
+function persistTombstones() {
+    // Tombstones are saved as part of writeDatabase (included in the JSON blob)
 }
 
 async function runMasterListBackfill() {
@@ -222,18 +156,6 @@ async function runAnnouncementMigration() {
         await writeDatabase(data);
         console.log('✅ Migrated legacy announcement string to object format');
     }
-}
-
-// Tombstones: stored in the app_state JSON blob alongside other data
-const DELETED_PLAYERS = new Map();
-
-function loadTombstonesFromDisk() {
-    // Tombstones are part of the app_state JSON, loaded with readDatabase
-    // No separate file needed
-}
-
-function persistTombstones() {
-    // Tombstones are saved as part of writeDatabase (included in the JSON blob)
 }
 
 module.exports = {

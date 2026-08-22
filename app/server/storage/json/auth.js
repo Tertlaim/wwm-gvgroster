@@ -1,12 +1,12 @@
-// storage/json/auth.js - JSON file-based auth storage
+// storage/json/auth.js - JSON file-based auth storage (async contract)
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcrypt');
 const { atomicWriteFileSync } = require('../../util');
+const { DEFAULT_AUTH } = require('../auth-defaults');
 
 const AUTH_PATH = path.join(__dirname, '..', '..', '..', 'config', 'auth.json');
 
-function readAuthConfig() {
+async function readAuthConfig() {
     try {
         if (!fs.existsSync(AUTH_PATH)) return null;
         const data = fs.readFileSync(AUTH_PATH, 'utf8');
@@ -17,7 +17,7 @@ function readAuthConfig() {
     }
 }
 
-function writeAuthConfig(data) {
+async function writeAuthConfig(data) {
     try {
         const configDir = path.dirname(AUTH_PATH);
         if (!fs.existsSync(configDir)) {
@@ -31,32 +31,14 @@ function writeAuthConfig(data) {
     }
 }
 
-function initAuthConfig() {
+async function initAuthConfig() {
     const configDir = path.dirname(AUTH_PATH);
     if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
     }
 
     if (!fs.existsSync(AUTH_PATH)) {
-        const defaultAuth = {
-            admin: {
-                id: "admin_001",
-                username: "SuperAdmin",
-                password: bcrypt.hashSync('Admin123', 10),
-                role: "superadmin",
-                createdAt: new Date().toISOString()
-            },
-            moderators: [],
-            settings: {
-                allowModeratorRegistration: true,
-                publicRegistration: true,
-                maxGroups: 6,
-                defaultModPassword: "Admin123",
-                discordWebhook: "",
-                historyLimit: 100
-            }
-        };
-        atomicWriteFileSync(AUTH_PATH, JSON.stringify(defaultAuth, null, 2));
+        atomicWriteFileSync(AUTH_PATH, JSON.stringify(DEFAULT_AUTH, null, 2));
         console.log('Created new auth config file');
     }
 }

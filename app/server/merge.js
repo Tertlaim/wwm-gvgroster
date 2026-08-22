@@ -34,6 +34,23 @@ function recordDeletedPlayers(ids) {
     pruneTombstones();
 }
 
+// Hydrate the tombstone ledger from a stored db.deletedPlayers table
+// ({ id: timestamp }). Called at boot by both storage adapters so deletion
+// protection survives a restart regardless of backend. Returns the count
+// of hydrated entries.
+function hydrateTombstonesFromDb(deletedPlayers) {
+    if (!deletedPlayers || typeof deletedPlayers !== 'object') return 0;
+    let hydrated = 0;
+    Object.keys(deletedPlayers).forEach(id => {
+        const t = Number(deletedPlayers[id]);
+        if (id && !isNaN(t)) {
+            DELETED_PLAYERS.set(id, t);
+            hydrated++;
+        }
+    });
+    return hydrated;
+}
+
 // True if the id was deleted after the client's base version, i.e. the
 // incoming copy predates the deletion and must not resurrect the player.
 function isTombstoned(id, baseTimeMs) {
@@ -232,6 +249,7 @@ module.exports = {
     TOMBSTONE_TTL,
     pruneTombstones,
     recordDeletedPlayers,
+    hydrateTombstonesFromDb,
     isTombstoned,
     isRemoved,
     mergePlayersById,

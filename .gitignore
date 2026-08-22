@@ -1,4 +1,6 @@
-# Sensitive / live data (recreated automatically on server start)
+# Sensitive / live data (recreated automatically on server start).
+# These live under app/ but are NOT web-served: server.js only mounts
+# /css, /js and /vendor on express.static.
 app/config/auth.json
 app/data/
 

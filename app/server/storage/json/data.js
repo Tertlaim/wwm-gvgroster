@@ -1,8 +1,16 @@
-// server/data.js - Database read/write/init, tombstone persistence, migration
+// server/storage/json/data.js - Database read/write/init, tombstone persistence
+// Master-list migration logic lives in server/migration.js (shared with the
+// Supabase adapter so the two cannot drift).
 const fs = require('fs');
 const path = require('path');
 const { atomicWriteFileSync } = require('../../util');
-const { DELETED_PLAYERS, pruneTombstones } = require('../../merge');
+const {
+    migrateGuildMembers,
+    needsGuildMembersMigration,
+    ensureMasterList,
+    defaultDatabase
+} = require('../../migration');
+const { DELETED_PLAYERS, pruneTombstones, hydrateTombstonesFromDb } = require('../../merge');
 
 const DB_PATH = path.join(__dirname, '..', '..', '..', 'data', 'database.json');
 
@@ -51,12 +59,7 @@ function getLastUpdateTime() {
 function loadTombstonesFromDisk() {
     try {
         const db = readDatabase();
-        if (db && db.deletedPlayers && typeof db.deletedPlayers === 'object') {
-            Object.keys(db.deletedPlayers).forEach(id => {
-                const t = Number(db.deletedPlayers[id]);
-                if (id && !isNaN(t)) DELETED_PLAYERS.set(id, t);
-            });
-        }
+        if (db) hydrateTombstonesFromDb(db.deletedPlayers);
     } catch (error) {
         console.error('Error loading tombstones:', error);
     }
@@ -84,124 +87,9 @@ function initDatabase() {
     }
 
     if (!fs.existsSync(DB_PATH)) {
-        const defaultData = {
-            guildName: "Guild Name",
-            groups: {
-                sat: {
-                    offence1: { title: 'Offense 1', players: [] },
-                    offence2: { title: 'Offense 2', players: [] },
-                    defence1: { title: 'Defense', players: [] },
-                    jungle: { title: 'Jungle', players: [] }
-                },
-                sun: {
-                    offence1: { title: 'Offense 1', players: [] },
-                    offence2: { title: 'Offense 2', players: [] },
-                    defence1: { title: 'Defense', players: [] },
-                    jungle: { title: 'Jungle', players: [] }
-                }
-            },
-            reserves: {
-                sat: [],
-                sun: []
-            },
-            guildMembers: [],
-            lastUpdateTime: new Date().toISOString(),
-            announcement: { text: 'Welcome to Guild War!', author: '', timestamp: '' }
-        };
-        atomicWriteFileSync(DB_PATH, JSON.stringify(defaultData, null, 2));
+        atomicWriteFileSync(DB_PATH, JSON.stringify(defaultDatabase(), null, 2));
         console.log('Created new database file');
     }
-}
-
-// ============================================
-// GUILD MEMBERS MIGRATION
-// ============================================
-
-// Phase 13: Migrate guildMembers from day-split { sat:[], sun:[] } to a
-// single flat array. Also backfills any players present in groups/reserves
-// but missing from the master list.
-function migrateGuildMembers(data) {
-    // Phase 13 migration: flatten old day-split shape to single array
-    if (data.guildMembers && typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) {
-        const merged = new Map();
-        Object.values(data.guildMembers).forEach(arr => {
-            if (Array.isArray(arr)) {
-                arr.forEach(p => { if (p && p.id) merged.set(p.id, { ...p }); });
-            }
-        });
-        data.guildMembers = [...merged.values()];
-    }
-
-    if (!Array.isArray(data.guildMembers)) {
-        data.guildMembers = [];
-    }
-
-    const existingIds = new Set(data.guildMembers.map(p => p && p.id).filter(Boolean));
-    const days = ['sat', 'sun'];
-    let migrated = 0;
-    let totalPlayers = 0;
-
-    // Collect players from ALL groups across ALL days
-    days.forEach(day => {
-        if (data.groups && data.groups[day]) {
-            Object.keys(data.groups[day]).forEach(key => {
-                if (data.groups[day][key] && data.groups[day][key].players) {
-                    data.groups[day][key].players.forEach(p => {
-                        if (p && p.id) {
-                            totalPlayers++;
-                            if (!existingIds.has(p.id)) {
-                                data.guildMembers.push({ ...p });
-                                existingIds.add(p.id);
-                                migrated++;
-                            }
-                        }
-                    });
-                }
-            });
-        }
-    });
-
-    // Collect players from reserves across all days
-    days.forEach(day => {
-        if (data.reserves && data.reserves[day]) {
-            data.reserves[day].forEach(p => {
-                if (p && p.id) {
-                    totalPlayers++;
-                    if (!existingIds.has(p.id)) {
-                        data.guildMembers.push({ ...p });
-                        existingIds.add(p.id);
-                        migrated++;
-                    }
-                }
-            });
-        }
-    });
-
-    return { migrated, totalPlayers };
-}
-
-// Check if guildMembers is empty but players exist
-function needsGuildMembersMigration(data) {
-    if (!data.guildMembers) return true;
-
-    // Phase 13: old day-split shape always needs migration
-    if (typeof data.guildMembers === 'object' && !Array.isArray(data.guildMembers)) return true;
-
-    // Check if guildMembers has any players
-    if (data.guildMembers.length > 0) return false;
-
-    // Check if groups or reserves have players
-    const hasData = Object.values(data.groups).some(day =>
-        Object.values(day).some(group => group.players && group.players.length > 0)
-    ) || Object.values(data.reserves).some(arr => arr && arr.length > 0);
-
-    return hasData;
-}
-
-// Master-list integrity: every player in groups/reserves must appear in the
-// flat guildMembers array. Backfills on every save and at boot.
-function ensureMasterList(data) {
-    return migrateGuildMembers(data).migrated;
 }
 
 // Boot-time backfill: repair any existing master-list gaps and persist.
