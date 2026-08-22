@@ -20,7 +20,9 @@
    visible; CSV tools stay in normal flow below. */
 .guild-cards-grid {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    /* Floor 170px: with the meta line moved under the name, 4 cards fit
+       the first row on typical screens (4x170 + gaps ≈ 716px container). */
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: var(--spacing-md);
     padding: var(--spacing-xs);
     max-height: 60vh;

@@ -445,10 +445,11 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
                 '<span class="class-icon">' + classIcon + '</span>' +
                 '<span class="name">' + esc(player.name) + '</span>' +
             '</div>' +
-            (isAdmin ? 
+            (isAdmin ?
                 '<div class="card-checkbox">' +
                     '<input type="checkbox" class="guild-checkbox" data-player-id="' + esc(player.id) + '" data-type="guild" aria-label="Select ' + esc(player.name) + '" ' + (isSelected ? 'checked' : '') + '>' +
                 '</div>' : '') +
+        '</div>' +
         '<div class="card-body">' +
             '<div class="card-meta">' +
                 '<span class="class-tag">' + esc(player.class) + '</span>' +
