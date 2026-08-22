@@ -207,7 +207,7 @@
     right: 0;
     bottom: 0;
     background: var(--bg-inactive, #555);
-    border-radius: 24px;
+    border-radius: var(--radius-full);
     transition: 0.3s;
 }
 
