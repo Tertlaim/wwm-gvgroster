@@ -40,18 +40,20 @@
     right: 2px;
 }
 
-/* When panel is open, button moves slightly left of panel edge */
+/* When the panel is open the same button becomes the close control and
+   sits just LEFT of the panel edge: [button] | [panel]. Panel width is
+   85% capped at 350px, so the button offsets by the same amount. */
 .side-panel-toggle.active {
-    right: auto;
+    right: min(85vw, 350px);
     background: var(--accent-red);
     border-left: none;
-    border-right: 2px solid var(--text-inverse);
-    border-radius: 0 8px 8px 0;
-    box-shadow: 4px 0 16px rgba(0,0,0,0.3);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.3);
 }
 
 .side-panel-toggle.active:hover {
-    left: calc(var(--btn-left, 0px) + 4px);
+    right: calc(min(85vw, 350px) + 4px);
 }
 
 /* ===== TABLETS AND SMALL DESKTOPS (1200px and below) =====
@@ -76,14 +78,26 @@
         right: -100%;
         width: 85%;
         max-width: 350px;
+        /* 100dvh tracks the VISIBLE viewport on mobile browsers (100vh is
+           the tallest one, so the drawer bottom used to sit behind the URL
+           bar / home indicator and was unreachable with body scroll
+           locked). Fallback for older browsers. */
         height: 100vh;
+        height: 100dvh;
         background: var(--bg-card);
         z-index: 999;
         overflow-y: auto;
+        overscroll-behavior: contain;
         padding: var(--spacing-lg);
         padding-top: 80px;
         box-shadow: -4px 0 20px rgba(0,0,0,0.3);
         transition: right 0.3s ease;
+    }
+
+    /* Panels must keep their natural height; the drawer scrolls instead of
+       flex-compressing them (which clipped content with no scrollbar). */
+    .side-panel > * {
+        flex-shrink: 0;
     }
     
     .side-panel.open {
@@ -122,14 +136,18 @@
         justify-content: center;
     }
     
+    /* Keep day tabs in a compact row on mobile (natural width, wrapping
+       only when truly out of space) - full-length stacked buttons wasted
+       vertical space. */
     .day-tabs {
-        flex-direction: column;
-        align-items: stretch;
-        gap: var(--spacing-sm);
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
     }
-    
+
     .last-update {
-        margin-left: 0;
+        margin-left: auto;
         text-align: center;
     }
     

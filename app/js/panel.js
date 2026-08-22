@@ -148,7 +148,7 @@ function setupSidePanelToggle() {
     const toggleBtn = document.getElementById('sidePanelToggle');
     const sidePanel = document.getElementById('sidePanel');
     if (!toggleBtn || !sidePanel) return;
-    
+
     // Create overlay
     let overlay = document.querySelector('.side-panel-overlay');
     if (!overlay) {
@@ -156,41 +156,51 @@ function setupSidePanelToggle() {
         overlay.className = 'side-panel-overlay';
         document.body.appendChild(overlay);
     }
-    
+
+    const OPEN_TEXT = '>click< To Open';
+    const CLOSE_TEXT = '>click< To Close';
+
+    function setButtonState(isOpen) {
+        toggleBtn.textContent = isOpen ? CLOSE_TEXT : OPEN_TEXT;
+        toggleBtn.setAttribute('aria-label', isOpen ? 'Close side panel' : 'Open side panel');
+        toggleBtn.classList.toggle('active', isOpen);
+    }
+
     function openPanel() {
         sidePanel.classList.add('open');
         overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
-        // Hide the menu button when panel is open
-        toggleBtn.style.display = 'none';
+        // Button stays visible as the close control, left of the panel edge
+        setButtonState(true);
     }
-    
+
     function closePanel() {
         sidePanel.classList.remove('open');
         overlay.classList.remove('active');
         document.body.style.overflow = '';
-        // Show the menu button again
-        toggleBtn.style.display = '';
-        toggleBtn.style.left = '';
-        toggleBtn.style.right = '0';
+        setButtonState(false);
     }
-    
+
     toggleBtn.addEventListener('click', function() {
-        openPanel();
+        if (sidePanel.classList.contains('open')) {
+            closePanel();
+        } else {
+            openPanel();
+        }
     });
-    
+
     overlay.addEventListener('click', function() {
         closePanel();
     });
-    
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && sidePanel.classList.contains('open')) {
             closePanel();
         }
     });
-    
+
     window.addEventListener('resize', function() {
-        if (window.innerWidth > 1024 && sidePanel.classList.contains('open')) {
+        if (window.innerWidth > 1200 && sidePanel.classList.contains('open')) {
             closePanel();
         }
     });

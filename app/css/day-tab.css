@@ -84,24 +84,27 @@
 /* ===== RESPONSIVE TABS ===== */
 @media (max-width: 800px) {
     .sticky-tabs {
-        top: 100px; /* Height of header wrapper on mobile */
+        top: 70px; /* Height of single-row header wrapper on mobile */
     }
-    
+
+    /* Compact row (wrapping when needed) instead of stacked full-length
+       buttons - matches the desktop layout. */
     .day-tabs {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
         gap: 0.5rem;
         padding: 0.25rem 0;
     }
-    
+
     .day-tab {
         text-align: center;
-        padding: 0.4rem 1rem;
-        font-size: var(--font-size-md);
+        padding: 0.4rem 0.9rem;
+        font-size: var(--font-size-sm);
     }
-    
+
     .last-update {
-        margin-left: 0;
+        margin-left: auto;
         text-align: center;
         font-size: var(--font-size-xs);
     }
@@ -109,11 +112,11 @@
 
 @media (max-width: 500px) {
     .sticky-tabs {
-        top: 85px;
+        top: 62px;
     }
-    
+
     .day-tab {
         font-size: var(--font-size-sm);
-        padding: 0.3rem 0.8rem;
+        padding: 0.35rem 0.75rem;
     }
 }
