@@ -242,22 +242,41 @@
     }
 }
 /* ===== COLLAPSIBLE PANELS (click header to expand/collapse) ===== */
+/* The header row is a real control: one tonal step off the panel
+   background plus a hairline border so it reads as a button instead of
+   blending into the section. touch-action: manipulation stops mobile
+   browsers from cancelling the tap (micro-scroll jitter used to eat the
+   first tap = "dead first click"). Negative side margins keep content
+   aligned with un-padded rows. */
 .panel-header-row {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     cursor: pointer;
     user-select: none;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin: calc(-1 * var(--spacing-xs)) calc(-1 * var(--spacing-sm)) 0;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+    touch-action: manipulation;
+    position: relative;
 }
 
-/* The chevron is pinned to the panel's top-right corner so it sits in the
-   same place on every panel, even when a header row wraps (reserve/guild
-   action buttons) or the h3 is nested in a wrapper (admin panel). Panels
-   are position:relative, so the header row needs no positioning itself. */
+.panel-header-row:hover {
+    background: var(--bg-active);
+    border-color: var(--border-light);
+}
+
+/* The chevron is pinned to its header row's right edge, vertically
+   centered in the pill (the row is position:relative). Rotation for the
+   collapsed state must preserve the centering translate. */
 .collapsible .collapse-chevron {
     position: absolute;
-    top: 0.85rem;
+    top: 50%;
     right: 1.1rem;
+    transform: translateY(-50%);
     font-size: 0.75rem;
     opacity: 0.55;
     transition: transform 0.2s ease;
@@ -265,7 +284,7 @@
 }
 
 .collapsible.collapsed .collapse-chevron {
-    transform: rotate(-90deg);
+    transform: translateY(-50%) rotate(-90deg);
 }
 
 /* Keep header-row content (e.g. reserve/guild action buttons) clear of the

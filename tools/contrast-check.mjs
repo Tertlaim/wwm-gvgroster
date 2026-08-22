@@ -36,7 +36,7 @@ function ratio(fg, bg) {
 function pairsFor(t) {
     const v = themes[t];
     const P = [];
-    const surface = ['bg-body', 'bg-app', 'bg-card', 'bg-panel', 'bg-input', 'bg-active'];
+    const surface = ['bg-body', 'bg-app', 'bg-card', 'bg-panel', 'bg-input', 'bg-hover', 'bg-active'];
     for (const s of surface) {
         P.push([`text-primary on ${s}`, v['text-primary'], v[s], 4.5]);
         P.push([`text-secondary on ${s}`, v['text-secondary'], v[s], 4.5]);

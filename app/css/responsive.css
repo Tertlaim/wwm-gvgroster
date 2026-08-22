@@ -307,15 +307,15 @@
     }
 
     /* Expand the chevron's hit area to 44px while keeping the visual glyph
-       pinned to the panel's top-right corner (it is absolutely positioned;
-       offset by half the added size). */
+       pinned to the header pill's right edge (the box stays centered on
+       the row via the base top:50%/translateY(-50%); align/padding push
+       the glyph to the box's top-right). */
     .collapsible .collapse-chevron {
         min-width: 44px;
         min-height: 44px;
         display: inline-flex;
         align-items: flex-start;
         justify-content: flex-end;
-        top: -14px;
         right: -18px;
         padding: 14px 0 0 14px;
     }
