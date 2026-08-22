@@ -109,6 +109,40 @@ function setupModalFocusTraps() {
     });
 }
 
+// ---- Modal focus restoration (WCAG 2.4.3) ----
+// When a modal opens, remember which element had focus (if it was outside
+// every modal); when it closes, give focus back. Watches the .active class
+// via MutationObserver so ALL open/close paths are covered - including the
+// Esc shortcut loop and delayed closes - without touching their call sites.
+function setupModalFocusRestore() {
+    const returnFocus = new Map(); // modal element -> element to restore
+
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+            const modal = m.target;
+            if (modal.classList.contains('active')) {
+                const cur = document.activeElement;
+                if (cur && cur !== document.body &&
+                    !(cur.closest && cur.closest('.modal-overlay'))) {
+                    returnFocus.set(modal, cur);
+                } else {
+                    returnFocus.delete(modal);
+                }
+            } else {
+                const el = returnFocus.get(modal);
+                returnFocus.delete(modal);
+                if (el && el.isConnected && el.focus) {
+                    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+        observer.observe(m, { attributes: true, attributeFilter: ['class'] });
+    });
+}
+
 // ---- Side panel toggle (mobile: collapsible side panel) ----
 function setupSidePanelToggle() {
     const toggleBtn = document.getElementById('sidePanelToggle');

@@ -932,8 +932,10 @@ async function init() {
         if (typeof RenderHelpers !== 'undefined' && RenderHelpers.setupGuildFilter) {
             RenderHelpers.setupGuildFilter();
         }
-		// Setup scroll shadow
+ 		// Setup scroll shadow
         setupScrollShadow();
+        // Modal focus restoration (WCAG 2.4.3) - trap is set up in panel.js
+        setupModalFocusRestore();
         
         // Note: ThemeManager is initialized in theme.js
         console.log('Initializing drag and drop...');

@@ -89,7 +89,7 @@
 }
 
 .modal-error {
-    color: var(--accent-red);
+    color: var(--accent-red-soft);
     font-size: var(--font-size-sm);
     text-align: center;
     margin-top: var(--spacing-sm);

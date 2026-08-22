@@ -276,7 +276,7 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
                 '<button data-action="cancel" aria-label="Cancel editing ' + esc(player.name) + '"><i class="fas fa-times"></i></button>' +
             '</div>' +
             '<div class="guild-actions-right">' +
-                '<button data-action="delete" title="Remove from guild" aria-label="Remove ' + esc(player.name) + ' from guild"><i class="fas fa-trash" style="color:#f87171;"></i></button>' +
+                '<button data-action="delete" title="Remove from guild" aria-label="Remove ' + esc(player.name) + ' from guild"><i class="fas fa-trash" style="color:var(--accent-red-soft);"></i></button>' +
             '</div>' +
             '<input type="checkbox" class="guild-checkbox" data-guild="' + index + '" aria-label="Select ' + esc(player.name) + '">';
     } else {

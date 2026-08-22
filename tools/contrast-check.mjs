@@ -42,8 +42,10 @@ function pairsFor(t) {
         P.push([`text-secondary on ${s}`, v['text-secondary'], v[s], 4.5]);
         P.push([`text-muted on ${s}`, v['text-muted'], v[s], 4.5]);
     }
-    // Accent colors used as text/icons on panels and cards
-    for (const a of ['accent-gold', 'accent-blue', 'accent-green', 'accent-red', 'accent-amber', 'accent-purple']) {
+    // Accent colors used as text/icons on panels and cards.
+    // accent-red is background/border-only since the split: its TEXT/ICON
+    // usages now go through --accent-red-soft (checked separately below).
+    for (const a of ['accent-gold', 'accent-blue', 'accent-green', 'accent-red-soft', 'accent-amber', 'accent-purple']) {
         P.push([`${a} as text on bg-panel`, v[a], v['bg-panel'], 4.5]);
         P.push([`${a} as icon on bg-card`, v[a], v['bg-card'], 3.0]);
     }

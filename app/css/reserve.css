@@ -328,7 +328,7 @@
 }
 
 .reserve-badge.admin-view .reserve-actions-right .cancel-btn:hover {
-    color: var(--accent-red);
+    color: var(--accent-red-soft);
 }
 
 .draggable-hint {
