@@ -201,7 +201,7 @@
 }
 
 .player-badge.admin-view .actions-right .cancel-btn:hover {
-    color: var(--accent-red);
+    color: var(--accent-red-soft);
 }
 
 .player-badge.admin-view .class-select {

@@ -54,7 +54,7 @@
 }
 
 .context-menu-item.danger {
-    color: var(--accent-red);
+    color: var(--accent-red-soft);
 }
 
 .context-menu-item.danger:hover {

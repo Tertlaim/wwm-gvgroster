@@ -93,7 +93,7 @@
 }
 
 .group-card .card-corner .group-remove-btn:hover {
-    color: var(--accent-red);
+    color: var(--accent-red-soft);
     background: var(--bg-hover);
 }
 
