@@ -101,27 +101,13 @@
     .side-panel-overlay.active {
         display: block;
     }
-    
-    .group-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: var(--spacing-md);
-    }
 }
 
 /* ===== MOBILE LANDSCAPE ===== */
 @media (max-width: 800px) {
-    .group-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-md);
-    }
-    
-    .reserve-pool {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .guild-member-pool {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    /* Column counts for .group-grid / .reserve-pool are handled by their
+       fluid auto-fill base rules (diagram.css / reserve.css) — no overrides
+       needed here anymore. */
     
     .reserve-header, .guild-header {
         flex-direction: column;
@@ -169,11 +155,7 @@
         padding: var(--spacing-sm);
         border-radius: var(--radius-md);
     }
-    
-    .reserve-pool, .guild-member-pool {
-        grid-template-columns: 1fr;
-    }
-    
+
     .header-title h1 {
         font-size: 1.3rem;
         letter-spacing: 2px;
@@ -253,6 +235,68 @@
     .form-group select {
         font-size: var(--font-size-xs);
         padding: var(--spacing-xs) var(--spacing-sm);
+    }
+}
+
+/* ===== TOUCH TARGETS (Phase 12, conservative) =====
+   44x44px effective hit areas on touch devices only (@media pointer:coarse)
+   - the desktop look stays compact. Checkboxes get the WCAG 2.5.8 AA
+   minimum (24px); a full 44px checkbox would bloat every badge row. */
+@media (pointer: coarse) {
+    .player-badge.admin-view .actions-left button,
+    .player-badge.admin-view .actions-right button,
+    .reserve-badge.admin-view .reserve-actions-left button,
+    .reserve-badge.admin-view .reserve-actions-right button,
+    .group-card .card-corner .group-remove-btn,
+    .guild-card .edit-card-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .day-tab {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-sm,
+    .btn-auto {
+        min-height: 44px;
+    }
+
+    .logout-btn-small {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .guild-filter-input,
+    .form-group input,
+    .form-group select {
+        min-height: 44px;
+    }
+
+    .guild-checkbox,
+    .reserve-checkbox {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Expand the chevron's hit area to 44px while keeping the visual glyph
+       pinned to the panel's top-right corner (it is absolutely positioned;
+       offset by half the added size). */
+    .collapsible .collapse-chevron {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        top: -14px;
+        right: -18px;
+        padding: 14px 0 0 14px;
     }
 }
 

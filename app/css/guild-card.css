@@ -15,11 +15,53 @@
 }
 
 /* ===== GUILD CARDS CONTAINER ===== */
+/* Capped scroll region: ~100 members must not become an unbounded page
+   scroll. The header (count + filter) sits OUTSIDE this scroller and stays
+   visible; CSV tools stay in normal flow below. */
 .guild-cards-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: var(--spacing-md);
     padding: var(--spacing-xs);
+    max-height: 60vh;
+    overflow-y: auto;
+    /* Subtle bottom fade hinting more content; mask is fixed to the box,
+       so the affordance stays visible while scrolling. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), rgba(0, 0, 0, 0.55) 100%);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* Name-filtered cards are hidden, NOT removed: bulk checkboxes, open edit
+   forms and drag state all survive filtering. */
+.guild-card.filter-hidden {
+    display: none !important;
+}
+
+/* ===== GUILD FILTER (header input, all roles) ===== */
+.guild-filter-input {
+    flex: 0 1 220px;
+    min-width: 140px;
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.guild-filter-input:focus {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
+}
+
+/* Mobile: the header stacks to a column, so the filter goes full-width. */
+@media (max-width: 800px) {
+    .guild-filter-input {
+        flex-basis: auto;
+        width: 100%;
+    }
 }
 
 /* ===== GUILD CARD ===== */

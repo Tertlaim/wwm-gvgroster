@@ -12,7 +12,11 @@
 
 .group-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* Fluid: cards stack as the container narrows (the desktop side panel
+       eats 340px+gap from this column, so viewport breakpoints fire too
+       late). Floor 360px keeps the classic 2-column layout: a 3rd track
+       would need a >=1128px container, impossible inside the 1480px shell. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
 }
@@ -225,12 +229,15 @@
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 800px) {
+/* Tablet gap rhythm (was a duplicate grid-template override in
+   responsive.css; the fluid base rule owns column counts now). */
+@media (max-width: 1024px) {
     .group-grid {
-        grid-template-columns: 1fr;
         gap: var(--spacing-md);
     }
-    
+}
+
+@media (max-width: 800px) {
     .diagram {
         padding: var(--spacing-md);
         border-radius: var(--radius-lg);
@@ -282,9 +289,14 @@
 }
 
 /* ===== GROUP STATS (below the group grid, Phase 6.6) ===== */
+/* Flexbox row pinned right (replaced float+clearfix — the last legacy
+   layout hack in the panel CSS). */
 .group-stats {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    align-items: center;
+    margin-left: auto;
     gap: var(--spacing-lg);
     padding: var(--spacing-xs) var(--spacing-md);
     background: var(--bg-card);
@@ -292,16 +304,7 @@
     border: 1px solid var(--border-color);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    flex-wrap: wrap;
-    align-items: center;
-    width: auto;
-    float: right;
-}
-
-.group-stats::after {
-    content: '';
-    display: table;
-    clear: both;
+    width: fit-content;
 }
 
 .stat-item {

@@ -109,9 +109,9 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
         // the remove (trash) button lives at the card's bottom-right instead.
         titleHtml = 
             '<span class="title-actions">' +
-                '<button class="title-edit-btn" data-title-action="edit" data-group="' + groupKey + '" title="Edit group title"><i class="fas fa-edit"></i></button>' +
-                '<button class="title-save-btn" data-title-action="save" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-check"></i></button>' +
-                '<button class="title-cancel-btn" data-title-action="cancel" data-group="' + groupKey + '" style="display:none;"><i class="fas fa-times"></i></button>' +
+                '<button class="title-edit-btn" data-title-action="edit" data-group="' + groupKey + '" title="Edit group title" aria-label="Edit group title"><i class="fas fa-edit"></i></button>' +
+                '<button class="title-save-btn" data-title-action="save" data-group="' + groupKey + '" title="Save group title" aria-label="Save group title" style="display:none;"><i class="fas fa-check"></i></button>' +
+                '<button class="title-cancel-btn" data-title-action="cancel" data-group="' + groupKey + '" title="Cancel group title edit" aria-label="Cancel group title edit" style="display:none;"><i class="fas fa-times"></i></button>' +
             '</span>' +
             '<span class="title-display" data-group="' + groupKey + '">' + esc(title) + '</span>' +
             '<input class="title-edit" data-group="' + groupKey + '" value="' + esc(title) + '" maxlength="30" placeholder="Group name" style="display:none;">';
@@ -136,7 +136,7 @@ RenderHelpers.createGroupCard = function(groupKey, groupData, canEdit, label) {
         '</div>' +
         (canEdit ? 
             '<div class="card-corner">' +
-                '<button class="group-remove-btn" data-title-action="remove" data-group="' + groupKey + '" title="Remove group"><i class="fas fa-trash"></i></button>' +
+                '<button class="group-remove-btn" data-title-action="remove" data-group="' + groupKey + '" title="Remove group" aria-label="Remove group"><i class="fas fa-trash"></i></button>' +
                 '<span class="panel-label">' + labelText + '</span>' +
             '</div>' : 
             '<span class="panel-label">' + labelText + '</span>');
@@ -205,7 +205,7 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
     if (canEdit) {
         badge.innerHTML = 
             '<div class="reserve-actions-left">' +
-                '<button data-action="edit"><i class="fas fa-edit"></i></button>' +
+                '<button data-action="edit" aria-label="Edit ' + esc(player.name || '') + '"><i class="fas fa-edit"></i></button>' +
             '</div>' +
             '<div class="reserve-info">' +
                 '<span class="class-tag display-mode">' + classIcon + ' ' + esc(player.class || '') + '</span>' +
@@ -225,10 +225,10 @@ RenderHelpers.createReserveBadge = function(player, index, canEdit) {
                 '</select>' +
             '</div>' +
             '<div class="reserve-actions-right action-buttons" style="display:none;">' +
-                '<button data-action="save"><i class="fas fa-check"></i></button>' +
-                '<button data-action="cancel"><i class="fas fa-times"></i></button>' +
+                '<button data-action="save" aria-label="Save changes for ' + esc(player.name || '') + '"><i class="fas fa-check"></i></button>' +
+                '<button data-action="cancel" aria-label="Cancel editing ' + esc(player.name || '') + '"><i class="fas fa-times"></i></button>' +
             '</div>' +
-            '<input type="checkbox" class="reserve-checkbox" data-reserve="' + index + '">';
+            '<input type="checkbox" class="reserve-checkbox" data-reserve="' + index + '" aria-label="Select ' + esc(player.name || '') + '">';
     } else {
         badge.innerHTML = 
             '<span class="player-info public-layout">' +
@@ -259,7 +259,7 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
     if (isAdmin) {
         badge.innerHTML = 
             '<div class="guild-actions-left">' +
-                '<button data-action="edit"><i class="fas fa-edit"></i></button>' +
+                '<button data-action="edit" aria-label="Edit ' + esc(player.name) + '"><i class="fas fa-edit"></i></button>' +
             '</div>' +
             '<div class="guild-content">' +
                 '<span class="class-tag display-mode">' + classIcon + ' ' + esc(player.class) + '</span>' +
@@ -272,13 +272,13 @@ RenderHelpers.createGuildBadge = function(player, index, canEdit) {
                 '<input class="name-edit edit-input edit-mode" value="' + esc(player.name) + '" maxlength="20" style="display:none;">' +
             '</div>' +
             '<div class="guild-actions-right action-buttons" style="display:none;">' +
-                '<button data-action="save"><i class="fas fa-check"></i></button>' +
-                '<button data-action="cancel"><i class="fas fa-times"></i></button>' +
+                '<button data-action="save" aria-label="Save changes for ' + esc(player.name) + '"><i class="fas fa-check"></i></button>' +
+                '<button data-action="cancel" aria-label="Cancel editing ' + esc(player.name) + '"><i class="fas fa-times"></i></button>' +
             '</div>' +
             '<div class="guild-actions-right">' +
-                '<button data-action="delete" title="Remove from guild"><i class="fas fa-trash" style="color:#f87171;"></i></button>' +
+                '<button data-action="delete" title="Remove from guild" aria-label="Remove ' + esc(player.name) + ' from guild"><i class="fas fa-trash" style="color:#f87171;"></i></button>' +
             '</div>' +
-            '<input type="checkbox" class="guild-checkbox" data-guild="' + index + '">';
+            '<input type="checkbox" class="guild-checkbox" data-guild="' + index + '" aria-label="Select ' + esc(player.name) + '">';
     } else {
         badge.innerHTML = 
             '<div class="guild-content">' +
@@ -347,22 +347,69 @@ RenderHelpers.renderGuildCards = function() {
     
     const countEl = document.getElementById('guildMemberCount');
     if (countEl) countEl.textContent = allPlayers.length;
-    
+
+    // The filter is only meaningful when there are members to filter.
+    const filterInput = document.getElementById('guildFilterInput');
+    if (filterInput) filterInput.style.display = allPlayers.length ? '' : 'none';
+
     if (allPlayers.length === 0) {
         container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:var(--spacing-md);">No registered players</div>';
+        RenderHelpers.applyGuildFilter();
         return;
     }
-    
+
     const grid = document.createElement('div');
     grid.className = 'guild-cards-grid';
     grid.id = 'guildCardsGrid';
-    
+
     allPlayers.forEach(function(player, index) {
         const card = RenderHelpers.createGuildCard(player, index, canEdit);
         grid.appendChild(card);
     });
-    
+
     container.appendChild(grid);
+
+    // Re-apply the persisted query so a sync re-render does not resurrect
+    // filtered-out cards or a stale shown/total count.
+    RenderHelpers.applyGuildFilter();
+};
+
+// ---- Guild member name filter ----
+// CSS-hide approach: cards stay mounted, so bulk checkboxes, open edit forms
+// and drag state survive filtering. The query persists in the input across
+// re-renders and is re-applied by renderGuildCards().
+RenderHelpers.applyGuildFilter = function() {
+    const input = document.getElementById('guildFilterInput');
+    const pool = document.getElementById('guildMemberPool');
+    if (!input || !pool) return;
+
+    const q = input.value.trim().toLowerCase();
+    const cards = pool.querySelectorAll('.guild-card');
+    let shown = 0;
+    cards.forEach(function(card) {
+        const match = !q || String(card.dataset.name || '').toLowerCase().includes(q);
+        card.classList.toggle('filter-hidden', !match);
+        if (match) shown++;
+    });
+
+    // Header shows "shown/total" while filtering, plain total otherwise.
+    const countEl = document.getElementById('guildMemberCount');
+    if (countEl) countEl.textContent = q ? (shown + '/' + cards.length) : String(cards.length);
+
+    const emptyHint = document.getElementById('guildFilterEmpty');
+    if (emptyHint) emptyHint.style.display = (q && cards.length > 0 && shown === 0) ? '' : 'none';
+};
+
+RenderHelpers.setupGuildFilter = function() {
+    const input = document.getElementById('guildFilterInput');
+    if (!input) return;
+    input.addEventListener('input', RenderHelpers.applyGuildFilter);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            input.value = '';
+            RenderHelpers.applyGuildFilter();
+        }
+    });
 };
 
 RenderHelpers.createGuildCard = function(player, index, canEdit) {
@@ -391,7 +438,7 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
     card.innerHTML = 
         '<div class="card-header">' +
             (isAdmin ? 
-                '<button class="edit-card-btn" data-action="edit-guild-card" title="Edit player">' +
+                '<button class="edit-card-btn" data-action="edit-guild-card" title="Edit player" aria-label="Edit ' + esc(player.name) + '">' +
                     '<i class="fas fa-edit"></i>' +
                 '</button>' : '') +
             '<div class="card-name">' +
@@ -400,9 +447,8 @@ RenderHelpers.createGuildCard = function(player, index, canEdit) {
             '</div>' +
             (isAdmin ? 
                 '<div class="card-checkbox">' +
-                    '<input type="checkbox" class="guild-checkbox" data-player-id="' + esc(player.id) + '" data-type="guild" ' + (isSelected ? 'checked' : '') + '>' +
+                    '<input type="checkbox" class="guild-checkbox" data-player-id="' + esc(player.id) + '" data-type="guild" aria-label="Select ' + esc(player.name) + '" ' + (isSelected ? 'checked' : '') + '>' +
                 '</div>' : '') +
-        '</div>' +
         '<div class="card-body">' +
             '<div class="card-class">' +
                 '<span>Class:</span>' +

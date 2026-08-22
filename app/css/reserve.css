@@ -63,7 +63,9 @@
 
 .reserve-pool {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* Fluid: badges reflow continuously as the panel narrows. Floor 260px
+       preserves the classic max of 3 columns inside the 1480px shell. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
     gap: var(--spacing-sm);
     min-height: 40px;
 }
