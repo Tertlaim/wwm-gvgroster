@@ -71,6 +71,12 @@ function setupCollapsiblePanels() {
             row = row.parentElement;
         }
         row.classList.add('panel-header-row');
+        // Rows WITHOUT nested controls act as real buttons for assistive
+        // tech and keyboard users (Enter/Space handled below).
+        if (!row.querySelector('button, input, select, a, textarea')) {
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+        }
         if (!row.querySelector('.collapse-chevron')) {
             const chevron = document.createElement('span');
             chevron.className = 'collapse-chevron';
@@ -79,14 +85,33 @@ function setupCollapsiblePanels() {
             row.appendChild(chevron);
         }
         syncCollapseAria(panel);
-        row.addEventListener('click', function(e) {
-            if (e.target.closest('button, input, select, a')) return;
-            panel.classList.toggle('collapsed');
-            syncCollapseAria(panel);
-            saveCollapseState();
-        });
     });
     restoreCollapseState();
+
+    function toggleFromEvent(e) {
+        const row = e.target.closest ? e.target.closest('.panel-header-row') : null;
+        if (!row) return false;
+        if (e.target.closest('button, input, select, a')) return false;
+        const panel = row.closest('.collapsible');
+        if (!panel) return false;
+        panel.classList.toggle('collapsed');
+        syncCollapseAria(panel);
+        saveCollapseState();
+        return true;
+    }
+
+    // Delegated listeners on document instead of per-row bindings: they
+    // survive any re-render that rebuilds panel DOM (a stale per-row
+    // binding was the structural suspect behind "dead first click") and
+    // can never be double-bound.
+    document.addEventListener('click', function(e) {
+        toggleFromEvent(e);
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (toggleFromEvent(e)) e.preventDefault();
+    });
 }
 
 // ---- Modal focus trap: Tab stays inside the open modal (Phase 11 prep) ----
