@@ -173,6 +173,18 @@ test('player lines strip markdown control characters from names/roles', () => {
     assert.strictEqual(msg.embeds[0].fields[0].value, '**Evilname** · ⚔️ DPS · Member');
 });
 
+test('buildDayText renders plain markdown for embed-less platforms', () => {
+    const text = broadcast.buildDayText(fixtureDb(), 'sat', { updatedBy: 'moduser' });
+    assert.ok(text.startsWith('**Test Guild — Saturday roster**'), 'guild + day header');
+    assert.ok(text.includes('⚔️ **Offence 1** · 2/30'), 'group title with count');
+    assert.ok(text.includes('- **Antony** · 🌿 Heal · Vice Commander'), 'player bullets');
+    assert.ok(text.includes('🕐 **Reserves** · 1'), 'reserves section');
+    assert.ok(!text.includes('embeds'), 'plain markdown only');
+
+    assert.strictEqual(broadcast.buildDayText({ groups: {}, reserves: {} }, 'sun', {}), null);
+    assert.strictEqual(broadcast.buildDayText(null, 'sat', {}), null);
+});
+
 // ---- broadcaster queue behavior ----
 
 test('rapid notifies collapse into a single debounced push (trailing edge)', async () => {
@@ -350,9 +362,12 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
         assert.strictEqual(c.method, 'POST', 'create-only platform never PATCHes');
         assert.ok(!c.url.includes('/messages/'), 'no edit endpoints used');
         assert.ok(typeof c.body.content === 'string' && c.body.content.length > 0,
-            'gamevox payloads carry the required plain-text content header');
+            'gamevox payloads carry the required plain-text content');
+        assert.strictEqual(c.body.embeds, undefined,
+            'embeds are not wired in gamevox webhooks v1 - markdown text only');
     });
-    assert.ok(gv[0].body.content.includes('Test Guild'), 'content names the guild');
+    assert.ok(gv[0].body.content.includes('Test Guild — Saturday roster'), 'content is the markdown roster');
+    assert.ok(gv[0].body.content.includes('**Antony**'), 'players render as markdown bullets');
 
     calls.filter(c => c.url.includes('discord')).forEach(c =>
         assert.strictEqual(c.body.content, undefined, 'discord stays embeds-only'));

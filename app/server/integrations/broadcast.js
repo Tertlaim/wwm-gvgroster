@@ -212,6 +212,55 @@ function buildDayMessage(db, day, options) {
     return embeds.length > 0 ? { embeds } : null;
 }
 
+// Plain-markdown variant for create-only / embed-less surfaces (GameVox
+// incoming webhooks: docs say plain-text content only in v1, no embeds).
+// Returns null for empty days like buildDayMessage does.
+function buildDayText(db, day, options) {
+    const opts = options || {};
+    const groups = (db && db.groups && db.groups[day] && typeof db.groups[day] === 'object')
+        ? db.groups[day]
+        : {};
+    const groupKeys = Object.keys(groups);
+    const reserves = (db && db.reserves && Array.isArray(db.reserves[day])) ? db.reserves[day] : [];
+
+    const assignedCount = groupKeys.reduce((n, k) => {
+        const g = groups[k];
+        return n + ((g && Array.isArray(g.players)) ? g.players.length : 0);
+    }, 0);
+    if (assignedCount === 0 && reserves.length === 0) return null;
+
+    const guild = sanitizeText(db && db.guildName, 40) || 'WWM GvG Roster';
+    const lines = ['**' + guild + ' — ' + DAY_LABELS[day] + ' roster**'];
+    if (opts.updatedBy) lines.push('_updated by ' + sanitizeText(opts.updatedBy, 30) + '_');
+
+    for (const key of groupKeys) {
+        const group = groups[key] || {};
+        const players = Array.isArray(group.players) ? group.players : [];
+        const title = sanitizeText(group.title, 40) || key;
+        lines.push('');
+        lines.push(groupIcon(title) + ' **' + title + '** · ' + players.length + '/' + GROUP_CAP);
+        if (players.length === 0) {
+            lines.push('- —');
+            continue;
+        }
+        for (const p of players) {
+            const l = playerLine(p);
+            if (l) lines.push('- ' + l);
+        }
+    }
+
+    if (reserves.length > 0) {
+        lines.push('');
+        lines.push('🕐 **Reserves** · ' + reserves.length);
+        for (const p of reserves) {
+            const l = playerLine(p);
+            if (l) lines.push('- ' + l);
+        }
+    }
+
+    return lines.join('\n');
+}
+
 // ============================================
 // BROADCASTER (queue + rate discipline + HTTP)
 // ============================================
@@ -334,17 +383,18 @@ function createBroadcaster(deps) {
 
     // Edit-in-place for one day. Discord-style platforms PATCH the stored
     // message id (falling back to create on 404); create-only platforms
-    // (GameVox incoming webhooks) always POST a fresh message and carry a
-    // required plain-text `content` header alongside the embeds.
+    // (GameVox incoming webhooks) always POST a fresh plain-markdown message
+    // - embeds are not wired in GameVox webhooks v1 (docs, 2026-08-23).
     async function ensureDayMessage(st, target, db, day, actor) {
-        const message = buildDayMessage(db, day, { updatedBy: actor });
-        if (!message) return { ok: true, skipped: true };
-
         const canEdit = target.platform !== 'gamevox';
-        if (target.platform === 'gamevox') {
-            const guild = sanitizeText(db && db.guildName, 40) || 'WWM GvG Roster';
-            message.content = '**' + guild + '** — ' + DAY_LABELS[day] + ' roster update';
+        let message;
+        if (canEdit) {
+            message = buildDayMessage(db, day, { updatedBy: actor });
+        } else {
+            const text = buildDayText(db, day, { updatedBy: actor });
+            message = text ? { content: text } : null;
         }
+        if (!message) return { ok: true, skipped: true };
 
         const idKey = day + 'MessageId';
         if (canEdit && target[idKey]) {
@@ -559,5 +609,6 @@ module.exports = {
     maskWebhookUrl,
     isValidWebhookUrl,
     buildDayMessage,
+    buildDayText,
     createBroadcaster
 };
