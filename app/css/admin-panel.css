@@ -270,6 +270,15 @@
     color: inherit;
 }
 
+/* Greyed-out placeholder target (e.g. Discord, deferred) */
+.broadcast-target-off {
+    opacity: 0.55;
+}
+
+.broadcast-target-off input[type="text"] {
+    cursor: not-allowed;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 500px) {
     .admin-tag {

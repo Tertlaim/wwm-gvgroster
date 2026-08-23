@@ -175,14 +175,25 @@ test('player lines strip markdown control characters from names/roles', () => {
 
 test('buildDayText renders plain markdown for embed-less platforms', () => {
     const text = broadcast.buildDayText(fixtureDb(), 'sat', { updatedBy: 'moduser' });
-    assert.ok(text.startsWith('**Test Guild — Saturday roster**'), 'guild + day header');
+    assert.ok(text.includes('**Saturday Roster**'), 'day-only header');
+    assert.ok(text.startsWith('**Saturday Roster**'), 'header is the first line');
     assert.ok(text.includes('⚔️ **Offence 1** · 2/30'), 'group title with count');
     assert.ok(text.includes('- **Antony** · 🌿 Heal · Vice Commander'), 'player bullets');
     assert.ok(text.includes('🕐 **Reserves** · 1'), 'reserves section');
+    assert.ok(text.endsWith('_updated by moduser_'), 'signature footer last');
     assert.ok(!text.includes('embeds'), 'plain markdown only');
 
     assert.strictEqual(broadcast.buildDayText({ groups: {}, reserves: {} }, 'sun', {}), null);
     assert.strictEqual(broadcast.buildDayText(null, 'sat', {}), null);
+});
+
+test('buildDayText never includes the announcement segment', () => {
+    const db = fixtureDb();
+    db.announcement = { text: 'Signups close Friday.\nBe on time.', author: 'Kaste', timestamp: '' };
+    const text = broadcast.buildDayText(db, 'sat', { updatedBy: 'moduser' });
+    assert.ok(!text.includes('Announcement'), 'no announcement segment');
+    assert.ok(!text.includes('Signups close Friday.'), 'announcement text stays on the web');
+    assert.ok(text.startsWith('**Saturday Roster**'), 'message opens with the roster header');
 });
 
 // ---- broadcaster queue behavior ----
@@ -366,7 +377,7 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
         assert.strictEqual(c.body.embeds, undefined,
             'embeds are not wired in gamevox webhooks v1 - markdown text only');
     });
-    assert.ok(gv[0].body.content.includes('Test Guild — Saturday roster'), 'content is the markdown roster');
+    assert.ok(gv[0].body.content.includes('**Saturday Roster**'), 'content is the markdown roster');
     assert.ok(gv[0].body.content.includes('**Antony**'), 'players render as markdown bullets');
 
     calls.filter(c => c.url.includes('discord')).forEach(c =>

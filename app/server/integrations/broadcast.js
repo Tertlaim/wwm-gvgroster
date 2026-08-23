@@ -213,7 +213,14 @@ function buildDayMessage(db, day, options) {
 }
 
 // Plain-markdown variant for create-only / embed-less surfaces (GameVox
-// incoming webhooks: docs say plain-text content only in v1, no embeds).
+// incoming webhooks: docs say plain-text content only in v1, and live tests
+// confirm embeds do not render).
+// Message anatomy (user-approved layout, 2026-08-23):
+//   1. "<Day> Roster" header            - no guild prefix, one line per day
+//   2. One section per group: icon+title+count, player bullets
+//   3. Reserves section                 - when non-empty
+//   4. "_updated by <actor>_" signature - when known
+// The web UI's single announcement is intentionally NOT repeated here.
 // Returns null for empty days like buildDayMessage does.
 function buildDayText(db, day, options) {
     const opts = options || {};
@@ -229,9 +236,9 @@ function buildDayText(db, day, options) {
     }, 0);
     if (assignedCount === 0 && reserves.length === 0) return null;
 
-    const guild = sanitizeText(db && db.guildName, 40) || 'WWM GvG Roster';
-    const lines = ['**' + guild + ' — ' + DAY_LABELS[day] + ' roster**'];
-    if (opts.updatedBy) lines.push('_updated by ' + sanitizeText(opts.updatedBy, 30) + '_');
+    const lines = [];
+
+    lines.push('**' + DAY_LABELS[day] + ' Roster**');
 
     for (const key of groupKeys) {
         const group = groups[key] || {};
@@ -256,6 +263,12 @@ function buildDayText(db, day, options) {
             const l = playerLine(p);
             if (l) lines.push('- ' + l);
         }
+    }
+
+    const by = sanitizeText(opts.updatedBy || '', 30);
+    if (by) {
+        lines.push('');
+        lines.push('_updated by ' + by + '_');
     }
 
     return lines.join('\n');

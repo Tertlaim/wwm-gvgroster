@@ -367,8 +367,18 @@
                                 <strong>1.</strong> install the app bot on your GameVox server (Developer Portal &rarr; Installation link &mdash; it may show as offline, that is fine);
                                 <strong>2.</strong> create the incoming webhook on a channel that was created inside GameVox (channels imported from Discord may not deliver webhook messages).
                             </div>
-                            <div class="hint-xs-top">
-                                <i class="fas fa-clock"></i> Discord broadcasting is planned for a later release.
+                            <div class="broadcast-target broadcast-target-off">
+                                <div class="broadcast-target-head">
+                                    <strong style="font-size:var(--font-size-sm);"><i class="fab fa-discord"></i> Discord</strong>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" disabled>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <input type="text" placeholder="Coming in a later release" disabled>
+                                <div class="hint-xs-top">
+                                    <i class="fas fa-clock"></i> Discord broadcasting is planned for a later release.
+                                </div>
                             </div>
                             <div class="flex-btn-row" >
                                 <button class="btn btn-sm btn-auto" id="broadcastSaveBtn">

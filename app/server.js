@@ -14,10 +14,12 @@ const history = storage.history;
 const merge = require('./server/merge');
 const rate = require('./server/rate-limit');
 const sse = require('./server/sse');
+const broadcast = require('./server/integrations/broadcast');
 
 const registerAuthRoutes = require('./server/route/auth');
 const registerDataRoutes = require('./server/route/data');
 const registerHistoryRoutes = require('./server/route/history');
+const registerBroadcastRoutes = require('./server/route/broadcast');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,11 +63,20 @@ app.use(express.json({ limit: '1mb' }));
 });
 
 // Shared context handed to every route module.
-const ctx = { auth, data, history, merge, rate, sse };
+// Broadcaster: GvG Broadcast queue (Discord/GameVox webhooks). Inert until
+// an admin configures a webhook; failures never block saves.
+const broadcaster = broadcast.createBroadcaster({
+    readConfig: data.readIntegrations,
+    writeConfig: data.writeIntegrations,
+    readData: data.readDatabase,
+    appendHistory: history.appendHistory
+});
+const ctx = { auth, data, history, merge, rate, sse, broadcaster };
 
 registerAuthRoutes(app, ctx);
 registerDataRoutes(app, ctx);
 registerHistoryRoutes(app, ctx);
+registerBroadcastRoutes(app, ctx);
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
