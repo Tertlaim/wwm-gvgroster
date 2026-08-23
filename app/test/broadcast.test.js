@@ -321,3 +321,41 @@ test('unconfigured targets are inert: notify never reaches HTTP', async () => {
 
     b.destroy();
 });
+
+test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fresh posts', async () => {
+    assert.strictEqual(broadcast.defaultIntegrationsConfig().targets.discord.mode, 'auto');
+    assert.strictEqual(broadcast.defaultIntegrationsConfig().targets.gamevox.mode, 'manual');
+
+    const calls = [];
+    const fetchImpl = async (url, opts) => {
+        calls.push({ method: opts.method, url, body: JSON.parse(opts.body) });
+        return okResponse({ id: 'gv' + calls.length });
+    };
+    const { b } = makeBroadcaster({
+        config: { debounceSec: 0.05 },
+        enableGamevox: true,
+        deps: { fetchImpl }
+    });
+
+    b.notify(); // debounced auto-push round
+    await sleep(300);
+    assert.strictEqual(calls.filter(c => c.url.includes('gamevox')).length, 0,
+        'auto-push never touches manual-mode targets');
+    assert.strictEqual(calls.length, 2, 'discord still auto-pushes sat+sun');
+
+    await b.pushNow('moduser', 'gamevox'); // the Push Now button path
+    const gv = calls.filter(c => c.url.includes('gamevox'));
+    assert.strictEqual(gv.length, 2, 'manual push covers both days');
+    gv.forEach(c => {
+        assert.strictEqual(c.method, 'POST', 'create-only platform never PATCHes');
+        assert.ok(!c.url.includes('/messages/'), 'no edit endpoints used');
+        assert.ok(typeof c.body.content === 'string' && c.body.content.length > 0,
+            'gamevox payloads carry the required plain-text content header');
+    });
+    assert.ok(gv[0].body.content.includes('Test Guild'), 'content names the guild');
+
+    calls.filter(c => c.url.includes('discord')).forEach(c =>
+        assert.strictEqual(c.body.content, undefined, 'discord stays embeds-only'));
+
+    b.destroy();
+});

@@ -19,6 +19,7 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
             const t = merged.targets[key] || base.targets[key];
             targets[key] = {
                 enabled: !!t.enabled,
+                mode: broadcast.TARGET_MODES.includes(t.mode) ? t.mode : 'auto',
                 hasWebhook: !!t.webhookUrl,
                 webhookMasked: broadcast.maskWebhookUrl(t.webhookUrl),
                 satMessageId: t.satMessageId || null,
@@ -70,6 +71,12 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 t.enabled = incoming && typeof incoming.enabled === 'boolean'
                     ? incoming.enabled
                     : !!cur.enabled;
+
+                t.mode = incoming && broadcast.TARGET_MODES.includes(incoming.mode)
+                    ? incoming.mode
+                    : (broadcast.TARGET_MODES.includes(cur.mode)
+                        ? cur.mode
+                        : next.targets[key].mode); // platform default for legacy configs
 
                 let url = cur.webhookUrl || '';
                 if (incoming && typeof incoming.webhookUrl === 'string') {

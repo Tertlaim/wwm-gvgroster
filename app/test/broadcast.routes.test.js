@@ -125,7 +125,8 @@ test('GET config returns the masked shape with live status and never leaks URLs'
 
     const t = r.json.targets.discord;
     assert.deepStrictEqual(Object.keys(t).sort(),
-        ['enabled', 'hasWebhook', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked']);
+        ['enabled', 'hasWebhook', 'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked']);
+    assert.strictEqual(t.mode, 'auto');
     assert.strictEqual(t.hasWebhook, true);
     assert.strictEqual(t.webhookMasked, 'discord.com/api/webhooks/123456789012345678/…OKEN');
     assert.ok(!JSON.stringify(r.json).includes('tokentoken'), 'raw token must never appear');
@@ -133,6 +134,7 @@ test('GET config returns the masked shape with live status and never leaks URLs'
     const g = r.json.targets.gamevox;
     assert.strictEqual(g.hasWebhook, false);
     assert.strictEqual(g.enabled, false);
+    assert.strictEqual(g.mode, 'manual', 'gamevox ships manual-push by default');
     assert.ok(g.status && typeof g.status.breakerActive === 'boolean', 'status comes from getStatus()');
 });
 
@@ -173,6 +175,18 @@ test('POST config accepts pinned URLs, rejects foreign hosts, preserves message 
         assert.strictEqual(r.status, 200, label + ' family must be accepted');
         assert.strictEqual(ctx.data._peek().targets.gamevox.webhookUrl, url);
     }
+
+    // Mode flips are explicit and validated; bogus values keep the prior one.
+    const rm = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { mode: 'auto' } }
+    }, admin);
+    assert.strictEqual(rm.status, 200);
+    assert.strictEqual(rm.json.targets.gamevox.mode, 'auto');
+    const rb = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { mode: 'whenever' } }
+    }, admin);
+    assert.strictEqual(rb.status, 200);
+    assert.strictEqual(rb.json.targets.gamevox.mode, 'auto', 'invalid mode ignored');
 
     // Omitted URL keeps stored value AND message ids; changed URL clears them.
     const seeded = broadcast.defaultIntegrationsConfig();

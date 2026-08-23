@@ -48,14 +48,21 @@ const WEBHOOK_RES = {
     gamevox: /^https:\/\/(?:api|bot-api)\.gamevox\.com\/(?:api\/v10\/)?webhooks\/[\w-]+\/[\w.-]{16,}$/
 };
 
+// Per-target push mode. Discord webhooks support edit-in-place, so they
+// default to full automation. GameVox incoming webhooks are CREATE-ONLY
+// (D0 spike: PATCH/DELETE/GET all 405) - every push would post fresh
+// messages - so GameVox defaults to manual pushes (the Push Now button)
+// until the platform ships edits. Admins can flip either target.
+const TARGET_MODES = ['auto', 'manual'];
+
 function defaultIntegrationsConfig() {
     return {
         version: 1,
         debounceSec: 75,
         autoIntervalMin: 15,
         targets: {
-            discord: { platform: 'discord', enabled: false, webhookUrl: '', satMessageId: null, sunMessageId: null },
-            gamevox: { platform: 'gamevox', enabled: false, webhookUrl: '', satMessageId: null, sunMessageId: null }
+            discord: { platform: 'discord', enabled: false, mode: 'auto', webhookUrl: '', satMessageId: null, sunMessageId: null },
+            gamevox: { platform: 'gamevox', enabled: false, mode: 'manual', webhookUrl: '', satMessageId: null, sunMessageId: null }
         }
     };
 }
@@ -325,14 +332,22 @@ function createBroadcaster(deps) {
         return { ok: false, status: res.status, error: httpError(res, parsed) };
     }
 
-    // Edit-in-place for one day; falls back to create on 404 (message was
-    // deleted upstream) and re-stores the fresh message id.
+    // Edit-in-place for one day. Discord-style platforms PATCH the stored
+    // message id (falling back to create on 404); create-only platforms
+    // (GameVox incoming webhooks) always POST a fresh message and carry a
+    // required plain-text `content` header alongside the embeds.
     async function ensureDayMessage(st, target, db, day, actor) {
         const message = buildDayMessage(db, day, { updatedBy: actor });
         if (!message) return { ok: true, skipped: true };
 
+        const canEdit = target.platform !== 'gamevox';
+        if (target.platform === 'gamevox') {
+            const guild = sanitizeText(db && db.guildName, 40) || 'WWM GvG Roster';
+            message.content = '**' + guild + '** — ' + DAY_LABELS[day] + ' roster update';
+        }
+
         const idKey = day + 'MessageId';
-        if (target[idKey]) {
+        if (canEdit && target[idKey]) {
             const edited = await send(st, target.webhookUrl + '/messages/' + target[idKey], 'PATCH', message);
             if (edited.ok) return { ok: true, updated: true };
             if (edited.status !== 404) return { ok: false, day, error: edited.error };
@@ -347,7 +362,7 @@ function createBroadcaster(deps) {
         const created = await send(st, url, 'POST', message);
         if (!created.ok) return { ok: false, day, error: created.error };
         if (!created.body || !created.body.id) return { ok: false, day, error: 'no message id in response' };
-        target[idKey] = created.body.id;
+        if (canEdit) target[idKey] = created.body.id;
         return { ok: true, created: true };
     }
 
@@ -423,6 +438,7 @@ function createBroadcaster(deps) {
         for (const key of TARGET_KEYS) {
             const target = cfg.targets && cfg.targets[key];
             if (!target || !target.enabled || !target.webhookUrl) continue;
+            if (target.mode === 'manual') continue; // Push Now button only
             const st = stateFor(key);
             if (d.now() < st.breakerUntil) continue;
             if (st.lastPushedHash === hash) continue; // content-hash gate
@@ -524,6 +540,7 @@ function createBroadcaster(deps) {
 
 module.exports = {
     TARGET_KEYS,
+    TARGET_MODES,
     DAY_KEYS,
     DAY_LABELS,
     DAY_COLORS,
