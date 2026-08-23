@@ -347,23 +347,6 @@
                         <div id="broadcastContent" style="display:block;">
                             <div class="broadcast-target">
                                 <div class="broadcast-target-head">
-                                    <strong style="font-size:var(--font-size-sm);"><i class="fab fa-discord"></i> Discord</strong>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="broadcastDiscordEnabled">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <input type="text" id="broadcastDiscordUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
-                                <label class="broadcast-mode-row">
-                                    <input type="checkbox" id="broadcastDiscordManual">
-                                    Manual push only (Push now button)
-                                </label>
-                                <div class="hint-xs-top" id="broadcastDiscordStatus">
-                                    <i class="fas fa-info-circle"></i> Not configured
-                                </div>
-                            </div>
-                            <div class="broadcast-target">
-                                <div class="broadcast-target-head">
                                     <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> GameVox</strong>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="broadcastGamevoxEnabled">
@@ -379,6 +362,14 @@
                                     <i class="fas fa-info-circle"></i> Not configured
                                 </div>
                             </div>
+                            <div class="hint-xs-top">
+                                <i class="fas fa-circle-check"></i> Setup checklist:
+                                <strong>1.</strong> install the app bot on your GameVox server (Developer Portal &rarr; Installation link &mdash; it may show as offline, that is fine);
+                                <strong>2.</strong> create the incoming webhook on a channel that was created inside GameVox (channels imported from Discord may not deliver webhook messages).
+                            </div>
+                            <div class="hint-xs-top">
+                                <i class="fas fa-clock"></i> Discord broadcasting is planned for a later release.
+                            </div>
                             <div class="flex-btn-row" >
                                 <button class="btn btn-sm btn-auto" id="broadcastSaveBtn">
                                     <i class="fas fa-save"></i> Save
@@ -388,7 +379,7 @@
                                 </button>
                             </div>
                             <div class="hint-xs-top" >
-                                <i class="fas fa-info-circle"></i> One message per day per target, updated in place. Auto-push after saves: max 1 / 15 min.
+                                <i class="fas fa-info-circle"></i> Push now posts one roster message per day (Saturday + Sunday). Manual pushes have a 30s cooldown.
                             </div>
                         </div>
                     </div>

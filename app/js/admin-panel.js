@@ -359,16 +359,21 @@ function setupBroadcastTools() {
     const pushBtn = document.getElementById('broadcastPushBtn');
     if (!content || !saveBtn || !pushBtn) return;
 
-    const targets = ['discord', 'gamevox'];
+    // Targets rendered in the card; Discord is deferred for now, so only
+    // targets whose markup exists become active.
     const els = {};
-    targets.forEach(function(t) {
-        const cap = t.charAt(0).toUpperCase() + t.slice(1);
-        els[t] = {
+    const targets = [];
+    [['discord', 'Discord'], ['gamevox', 'GameVox']].forEach(function(pair) {
+        const t = pair[0];
+        const cap = pair[1];
+        const e = {
             enabled: document.getElementById('broadcast' + cap + 'Enabled'),
             url: document.getElementById('broadcast' + cap + 'Url'),
             mode: document.getElementById('broadcast' + cap + 'Manual'),
             status: document.getElementById('broadcast' + cap + 'Status')
         };
+        els[t] = e;
+        if (e.enabled) targets.push(t);
     });
 
     // Collapsible header (same visual pattern as Group Management)
@@ -499,7 +504,9 @@ function setupBroadcastTools() {
                 return;
             }
             const results = result.results || {};
-            const lines = Object.keys(results).map(function(k) {
+            const lines = Object.keys(results).filter(function(k) {
+                return targets.indexOf(k) !== -1;
+            }).map(function(k) {
                 const res = results[k];
                 if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
                 if (res && res.ok) return k + ': pushed';
