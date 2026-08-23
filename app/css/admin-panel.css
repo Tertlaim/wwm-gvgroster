@@ -246,6 +246,20 @@
     margin-bottom: var(--spacing-xs);
 }
 
+.broadcast-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.broadcast-mode-row input[type="checkbox"] {
+    margin: 0;
+}
+
 .broadcast-target input[type="text"] {
     width: 100%;
     font-size: var(--font-size-xs);

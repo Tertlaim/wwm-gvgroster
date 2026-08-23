@@ -366,6 +366,7 @@ function setupBroadcastTools() {
         els[t] = {
             enabled: document.getElementById('broadcast' + cap + 'Enabled'),
             url: document.getElementById('broadcast' + cap + 'Url'),
+            mode: document.getElementById('broadcast' + cap + 'Manual'),
             status: document.getElementById('broadcast' + cap + 'Status')
         };
     });
@@ -401,8 +402,10 @@ function setupBroadcastTools() {
                 els[t].enabled.checked = !!tgt.enabled;
                 els[t].url.value = '';
                 els[t].url.placeholder = tgt.hasWebhook ? 'Saved: ' + tgt.webhookMasked : 'Paste webhook URL';
+                if (els[t].mode) els[t].mode.checked = tgt.mode === 'manual';
                 let statusText = tgt.hasWebhook ? 'Webhook configured' : 'Not configured';
-                if (tgt.hasWebhook && (tgt.satMessageId || tgt.sunMessageId)) statusText += ' · daily message active';
+                if (tgt.hasWebhook && tgt.mode === 'auto' && (tgt.satMessageId || tgt.sunMessageId)) statusText += ' · daily message active';
+                if (tgt.hasWebhook && tgt.mode === 'manual') statusText += ' · manual pushes only';
                 if (tgt.status && tgt.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
                 setStatus(t, statusText);
             });
@@ -418,7 +421,10 @@ function setupBroadcastTools() {
             const body = { targets: {} };
             let invalid = null;
             targets.forEach(function(t) {
-                body.targets[t] = { enabled: !!els[t].enabled.checked };
+                body.targets[t] = {
+                    enabled: !!els[t].enabled.checked,
+                    mode: els[t].mode && els[t].mode.checked ? 'manual' : 'auto'
+                };
                 const v = els[t].url.value.trim();
                 if (v && !invalid) {
                     if (/^https:\/\//.test(v)) {

@@ -354,6 +354,10 @@
                                     </label>
                                 </div>
                                 <input type="text" id="broadcastDiscordUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                <label class="broadcast-mode-row">
+                                    <input type="checkbox" id="broadcastDiscordManual">
+                                    Manual push only (Push now button)
+                                </label>
                                 <div class="hint-xs-top" id="broadcastDiscordStatus">
                                     <i class="fas fa-info-circle"></i> Not configured
                                 </div>
@@ -367,6 +371,10 @@
                                     </label>
                                 </div>
                                 <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                <label class="broadcast-mode-row">
+                                    <input type="checkbox" id="broadcastGamevoxManual" checked>
+                                    Manual push only (GameVox webhooks cannot edit messages)
+                                </label>
                                 <div class="hint-xs-top" id="broadcastGamevoxStatus">
                                     <i class="fas fa-info-circle"></i> Not configured
                                 </div>
