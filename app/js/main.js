@@ -924,6 +924,7 @@ async function init() {
         setupGuildActions();
         setupAdminTools();
         setupAdminControls();
+        setupBroadcastTools();
         setupDayTabs();
         setupAnnouncement();
         setupGroupManagement();

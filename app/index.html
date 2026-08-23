@@ -338,6 +338,53 @@
                         </div>
                     </div>
 
+                    <!-- Broadcast (Discord / GameVox) -->
+                    <div class="admin-tools-section mb-md" >
+                        <h4 class="toggle-header" id="broadcastToggle">
+                            <i class="fas fa-chevron-down" id="broadcastIcon"></i>
+                            Broadcast
+                        </h4>
+                        <div id="broadcastContent" style="display:block;">
+                            <div class="broadcast-target">
+                                <div class="broadcast-target-head">
+                                    <strong style="font-size:var(--font-size-sm);"><i class="fab fa-discord"></i> Discord</strong>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="broadcastDiscordEnabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <input type="text" id="broadcastDiscordUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                <div class="hint-xs-top" id="broadcastDiscordStatus">
+                                    <i class="fas fa-info-circle"></i> Not configured
+                                </div>
+                            </div>
+                            <div class="broadcast-target">
+                                <div class="broadcast-target-head">
+                                    <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> GameVox</strong>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="broadcastGamevoxEnabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                <div class="hint-xs-top" id="broadcastGamevoxStatus">
+                                    <i class="fas fa-info-circle"></i> Not configured
+                                </div>
+                            </div>
+                            <div class="flex-btn-row" >
+                                <button class="btn btn-sm btn-auto" id="broadcastSaveBtn">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                                <button class="btn btn-sm btn-auto" id="broadcastPushBtn">
+                                    <i class="fas fa-satellite-dish"></i> Push now
+                                </button>
+                            </div>
+                            <div class="hint-xs-top" >
+                                <i class="fas fa-info-circle"></i> One message per day per target, updated in place. Auto-push after saves: max 1 / 15 min.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Admin Tools Buttons -->
                     <div class="flex-col" >
                         <button class="btn btn-danger btn-sm" id="clearToGuildBtn" data-role-show="admin" style="display:none; background:var(--accent-red); color:white; font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">

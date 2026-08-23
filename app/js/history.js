@@ -161,7 +161,8 @@ const History = {
             'group_remove': '📂',
             'guild_name': '🏷️',
             'announcement': '📢',
-            'clear': '🧹'
+            'clear': '🧹',
+            'broadcast': '📡'
         };
         return icons[action] || '📝';
     },
@@ -191,6 +192,8 @@ const History = {
                 return `Announcement updated`;
             case 'clear':
                 return `History cleared`;
+            case 'broadcast':
+                return details || 'Broadcast updated';
             default:
                 return `${action}: ${playerName || 'unknown'}`;
         }

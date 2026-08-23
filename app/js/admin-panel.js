@@ -350,6 +350,167 @@ function setupAdminControls() {
     }
 }
 
+// ---- Broadcast (Discord / GameVox webhooks) ----
+function setupBroadcastTools() {
+    const toggle = document.getElementById('broadcastToggle');
+    const content = document.getElementById('broadcastContent');
+    const icon = document.getElementById('broadcastIcon');
+    const saveBtn = document.getElementById('broadcastSaveBtn');
+    const pushBtn = document.getElementById('broadcastPushBtn');
+    if (!content || !saveBtn || !pushBtn) return;
+
+    const targets = ['discord', 'gamevox'];
+    const els = {};
+    targets.forEach(function(t) {
+        const cap = t.charAt(0).toUpperCase() + t.slice(1);
+        els[t] = {
+            enabled: document.getElementById('broadcast' + cap + 'Enabled'),
+            url: document.getElementById('broadcast' + cap + 'Url'),
+            status: document.getElementById('broadcast' + cap + 'Status')
+        };
+    });
+
+    // Collapsible header (same visual pattern as Group Management)
+    if (toggle) {
+        toggle.addEventListener('click', function(e) {
+            if (e.target.closest('button, input, label')) return;
+            const show = content.style.display === 'none';
+            content.style.display = show ? 'block' : 'none';
+            if (icon) icon.className = show ? 'fas fa-chevron-down' : 'fas fa-chevron-right';
+        });
+    }
+
+    function setStatus(t, text) {
+        if (!els[t].status) return;
+        els[t].status.textContent = '';
+        const i = document.createElement('i');
+        i.className = 'fas fa-info-circle';
+        els[t].status.appendChild(i);
+        els[t].status.appendChild(document.createTextNode(' ' + text));
+    }
+
+    async function refreshBroadcastConfig() {
+        try {
+            const r = await fetch('/api/broadcast/config', { headers: getAuthHeader() });
+            if (!r.ok) return;
+            const cfg = await r.json();
+            if (!cfg || !cfg.targets) return;
+            targets.forEach(function(t) {
+                const tgt = cfg.targets[t];
+                if (!tgt || !els[t].enabled) return;
+                els[t].enabled.checked = !!tgt.enabled;
+                els[t].url.value = '';
+                els[t].url.placeholder = tgt.hasWebhook ? 'Saved: ' + tgt.webhookMasked : 'Paste webhook URL';
+                let statusText = tgt.hasWebhook ? 'Webhook configured' : 'Not configured';
+                if (tgt.hasWebhook && (tgt.satMessageId || tgt.sunMessageId)) statusText += ' · daily message active';
+                if (tgt.status && tgt.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
+                setStatus(t, statusText);
+            });
+        } catch (e) { /* panel stays in default state */ }
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async function() {
+            if (!AuthModule.isAdmin()) {
+                showToast('Only admins can change broadcast settings.', 'error', 3000);
+                return;
+            }
+            const body = { targets: {} };
+            let invalid = null;
+            targets.forEach(function(t) {
+                body.targets[t] = { enabled: !!els[t].enabled.checked };
+                const v = els[t].url.value.trim();
+                if (v && !invalid) {
+                    if (/^https:\/\//.test(v)) {
+                        body.targets[t].webhookUrl = v;
+                    } else {
+                        invalid = t;
+                    }
+                }
+            });
+            if (invalid) {
+                showToast(invalid + ' webhook URL must start with https://', 'error', 3000);
+                return;
+            }
+            try {
+                saveBtn.disabled = true;
+                const r = await fetch('/api/broadcast/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                    body: JSON.stringify(body)
+                });
+                const result = await r.json();
+                if (result.success) {
+                    showToast('Broadcast settings saved', 'success', 2500);
+                    refreshBroadcastConfig();
+                } else {
+                    showToast(result.error || 'Failed to save broadcast settings', 'error', 4000);
+                }
+            } catch (e) {
+                showToast('Error saving broadcast settings', 'error', 3000);
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+    }
+
+    let pushCooldownUntil = 0;
+    let pushTimer = null;
+    function startPushCooldown(seconds) {
+        pushCooldownUntil = Date.now() + seconds * 1000;
+        pushBtn.disabled = true;
+        clearInterval(pushTimer);
+        const label = pushBtn.innerHTML;
+        pushTimer = setInterval(function() {
+            const remaining = Math.ceil((pushCooldownUntil - Date.now()) / 1000);
+            if (remaining <= 0) {
+                clearInterval(pushTimer);
+                pushBtn.innerHTML = label;
+                pushBtn.disabled = !AuthModule.isMod();
+                return;
+            }
+            pushBtn.textContent = 'Wait ' + remaining + 's';
+        }, 500);
+    }
+
+    pushBtn.addEventListener('click', async function() {
+        if (!AuthModule.isMod()) {
+            showToast('Only moderators and admins can push.', 'error', 3000);
+            return;
+        }
+        if (Date.now() < pushCooldownUntil) return;
+        try {
+            pushBtn.disabled = true;
+            const r = await fetch('/api/broadcast/push', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: '{}'
+            });
+            const result = await r.json();
+            startPushCooldown(30);
+            if (!result.success) {
+                showToast(result.error || 'Push failed', 'error', 3000);
+                return;
+            }
+            const results = result.results || {};
+            const lines = Object.keys(results).map(function(k) {
+                const res = results[k];
+                if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
+                if (res && res.ok) return k + ': pushed';
+                if (res && res.skipped) return k + ': not configured';
+                return k + ': failed';
+            });
+            const allOk = lines.every(function(l) { return l.indexOf(': pushed') !== -1; });
+            showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 6000);
+        } catch (e) {
+            startPushCooldown(5);
+            showToast('Push failed (network error)', 'error', 3000);
+        }
+    });
+
+    refreshBroadcastConfig();
+}
+
 // ---- Change Password ----
 function setupChangePassword() {
     const changePwCloseBtn = document.getElementById('changePwCloseBtn');

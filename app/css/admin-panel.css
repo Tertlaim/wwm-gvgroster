@@ -231,6 +231,31 @@
     transform: translateX(20px);
 }
 
+/* ===== BROADCAST (Discord / GameVox) ===== */
+.broadcast-target {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.broadcast-target-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-xs);
+}
+
+.broadcast-target input[type="text"] {
+    width: 100%;
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 500px) {
     .admin-tag {
