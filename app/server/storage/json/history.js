@@ -4,7 +4,11 @@ const path = require('path');
 const crypto = require('crypto');
 const { atomicWriteFileSync } = require('../../util');
 
-const HISTORY_PATH = path.join(__dirname, '..', '..', '..', 'data', 'history.json');
+// Env-overridable alongside DATA_DIR (see json/data.js) for isolated boots.
+const HISTORY_PATH = path.join(
+    process.env.DATA_DIR || path.join(__dirname, '..', '..', '..', 'data'),
+    'history.json'
+);
 
 // Read history
 function readHistory() {

@@ -12,7 +12,11 @@ const {
 } = require('../../migration');
 const { DELETED_PLAYERS, pruneTombstones, hydrateTombstonesFromDb } = require('../../merge');
 
-const DB_PATH = path.join(__dirname, '..', '..', '..', 'data', 'database.json');
+// Data dir is env-overridable so tests/smokes can boot an isolated server
+// (DATA_DIR=<temp>) without ever touching the real data files.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', '..', 'data');
+const DB_PATH = path.join(DATA_DIR, 'database.json');
+const INTEGRATIONS_PATH = path.join(DATA_DIR, 'integrations.json');
 
 // Phase 11.7: cached last-update timestamp so /api/data/updated can answer
 // without re-reading + parsing the whole database file on every poll.
@@ -138,8 +142,33 @@ function runAnnouncementMigration() {
     }
 }
 
+// GvG Broadcast config (webhook URLs + message ids). Kept in its own file
+// rather than inside database.json: client saves rebuild the db object and
+// would silently drop unknown top-level keys. Missing file -> null -> the
+// broadcast module falls back to defaults (feature inert until configured).
+function readIntegrations() {
+    try {
+        return JSON.parse(fs.readFileSync(INTEGRATIONS_PATH, 'utf8'));
+    } catch (error) {
+        return null;
+    }
+}
+
+function writeIntegrations(cfg) {
+    try {
+        const dataDir = path.join(__dirname, '..', '..', '..', 'data');
+        if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+        atomicWriteFileSync(INTEGRATIONS_PATH, JSON.stringify(cfg, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error writing integrations:', error);
+        return false;
+    }
+}
+
 module.exports = {
     DB_PATH,
+    INTEGRATIONS_PATH,
     readDatabase,
     writeDatabase,
     getLastUpdateTime,
@@ -151,5 +180,7 @@ module.exports = {
     migrateGuildMembers,
     needsGuildMembersMigration,
     runGuildMembersMigration,
-    runAnnouncementMigration
+    runAnnouncementMigration,
+    readIntegrations,
+    writeIntegrations
 };

@@ -11,8 +11,15 @@ const VALID_DAYS = ['sat', 'sun'];
 const GROUP_KEY_RE = /^[a-z0-9_-]{1,32}$/i;
 
 module.exports = function registerDataRoutes(app, ctx) {
-    const { auth, data, merge, history, rate, sse } = ctx;
+    const { auth, data, merge, history, rate, sse, broadcaster } = ctx;
     const withDataLock = createMutex();
+
+    // GvG Broadcast hook: content changed -> arm the debounced auto-push.
+    // Must never block or fail the save itself (feature inert unconfigured).
+    function notifyBroadcast() {
+        if (!broadcaster) return;
+        try { broadcaster.notify(); } catch (e) { /* never block saves */ }
+    }
 
     // GET /api/data - Load all data
     app.get('/api/data', async (req, res) => {
@@ -114,6 +121,7 @@ module.exports = function registerDataRoutes(app, ctx) {
 
             if (await data.writeDatabase(merged)) {
                 sse.broadcastUpdate(merged.lastUpdateTime);
+                notifyBroadcast();
                 res.json({
                     success: true,
                     lastUpdate: merged.lastUpdateTime,
@@ -212,6 +220,7 @@ module.exports = function registerDataRoutes(app, ctx) {
             }
 
             sse.broadcastUpdate(db.lastUpdateTime);
+            notifyBroadcast();
 
             if (added > 0) {
                 history.appendHistory({
@@ -302,6 +311,7 @@ module.exports = function registerDataRoutes(app, ctx) {
 
             if (await data.writeDatabase(db)) {
                 sse.broadcastUpdate(db.lastUpdateTime);
+                notifyBroadcast();
                 res.json({
                     success: true,
                     message: `Group ${db.groups[day][groupKey].title} added`,
@@ -343,6 +353,7 @@ module.exports = function registerDataRoutes(app, ctx) {
 
             if (await data.writeDatabase(db)) {
                 sse.broadcastUpdate(db.lastUpdateTime);
+                notifyBroadcast();
                 res.json({ success: true, message: 'Group removed' });
             } else {
                 res.status(500).json({ success: false, error: 'Failed to save' });

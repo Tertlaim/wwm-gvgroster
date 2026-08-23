@@ -186,6 +186,42 @@ async function runAnnouncementMigration() {
     }
 }
 
+// GvG Broadcast config rides the app_state KV pattern as a second doc id
+// ('integrations') - no schema change. Missing row -> null -> the broadcast
+// module falls back to defaults (feature inert until configured).
+async function readIntegrations() {
+    try {
+        const client = getClient();
+        const { data, error } = await client
+            .from('app_state')
+            .select('value')
+            .eq('id', 'integrations')
+            .single();
+        if (error || !data) return null;
+        return data.value;
+    } catch (error) {
+        console.error('Error reading integrations:', error);
+        return null;
+    }
+}
+
+async function writeIntegrations(cfg) {
+    try {
+        const client = getClient();
+        const { error } = await client
+            .from('app_state')
+            .upsert({ id: 'integrations', value: cfg }, { onConflict: 'id' });
+        if (error) {
+            console.error('Error writing integrations:', error);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Error writing integrations:', error);
+        return false;
+    }
+}
+
 module.exports = {
     readDatabase,
     writeDatabase,
@@ -198,5 +234,7 @@ module.exports = {
     migrateGuildMembers,
     needsGuildMembersMigration,
     runGuildMembersMigration,
-    runAnnouncementMigration
+    runAnnouncementMigration,
+    readIntegrations,
+    writeIntegrations
 };

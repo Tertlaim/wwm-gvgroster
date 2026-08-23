@@ -13,7 +13,8 @@ if (storageType === 'supabase') {
 }
 
 // Both sub-modules (data, history) share the same interface:
-// data: readDatabase, writeDatabase, getLastUpdateTime, initDatabase, etc.
+// data: readDatabase, writeDatabase, getLastUpdateTime, initDatabase,
+//       readIntegrations, writeIntegrations, etc.
 // history: readHistory, writeHistory, initHistory, appendHistory
 
 module.exports = storage;

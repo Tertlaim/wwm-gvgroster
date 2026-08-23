@@ -4,7 +4,7 @@ const path = require('path');
 const { atomicWriteFileSync } = require('../../util');
 const { DEFAULT_AUTH } = require('../auth-defaults');
 
-const AUTH_PATH = path.join(__dirname, '..', '..', '..', 'config', 'auth.json');
+const AUTH_PATH = process.env.AUTH_PATH || path.join(__dirname, '..', '..', '..', 'config', 'auth.json');
 
 async function readAuthConfig() {
     try {

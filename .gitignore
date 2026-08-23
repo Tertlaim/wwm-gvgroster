@@ -18,3 +18,8 @@ app/js/panel-fix.js
 
 # Tooling artifacts
 .playwright-mcp/
+
+# Webhook/broadcast local workspace (feat/gvg-broadcast): D0 spike scripts,
+# sample payloads and webhook URLs/secrets. Local-only scratch - the website
+# code lives in app/; nothing in webhook/ is ever committed or deployed.
+webhook/
