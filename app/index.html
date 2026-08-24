@@ -251,6 +251,23 @@
                         </div>
                         <button type="submit" class="btn" id="previewBtn"><i class="fas fa-eye"></i> Click to Register</button>
                     </form>
+
+                    <!-- Public Registration switch: mods/admins only, lives next
+                         to the form it controls -->
+                    <div class="admin-tools-section setting-row" data-role-show="mod,admin" style="display:none;">
+                        <span class="setting-label">
+                            Public Registration
+                            <span class="tip" tabindex="0" data-tip="Allow public users to register"><i class="tip-dot">i</i></span>
+                        </span>
+                        <span class="toggle-wrap">
+                            <span class="toggle-state on" id="publicRegState">ON</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="publicRegToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </span>
+                    </div>
+
                     <span class="panel-label">F</span>
                 </div>
 
@@ -296,23 +313,8 @@
                 <!-- G - ADMIN TOOLS PANEL (WITH GROUP MANAGEMENT INSIDE) -->
                 <div class="panel-section collapsible" id="adminToolsPanel" data-role-show="admin,mod" style="display:none;">
                     <h3><i class="fas fa-tools"></i> Admin Tools</h3>
-                    
-                    <!-- 1. Public Registration (always visible, inline toggle) -->
-                    <div class="admin-tools-section setting-row mb-md" >
-                        <span class="setting-label">
-                            Public Registration
-                            <span class="tip" tabindex="0" data-tip="Allow public users to register"><i class="tip-dot">i</i></span>
-                        </span>
-                        <span class="toggle-wrap">
-                            <span class="toggle-state on" id="publicRegState">ON</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="publicRegToggle" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </span>
-                    </div>
 
-                    <!-- 2. Group Management (accordion) -->
+                    <!-- 1. Group Management (accordion) -->
                     <div class="admin-tools-section accordion mb-md" >
                         <button type="button" class="toggle-header accordion-head" id="groupManagementToggle" aria-expanded="false" aria-controls="groupManagementContent">
                             <i class="fas fa-chevron-right" id="groupManagementIcon"></i>

@@ -396,17 +396,25 @@ function setupBroadcastTools() {
 
     let saveChain = Promise.resolve();
     let saveTimer = null;
+    let breakerActive = false;
 
     // One field accepts several channel URLs separated by spaces/commas.
     function parseWebhookInput() {
         return gvUrl.value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
     }
 
+    // Single source of truth for both the ON/OFF caption and the collapsed
+    // header chip, so they can never drift apart.
     function setStateText() {
-        if (!gvState) return;
         const on = !!gvEnabled.checked;
-        gvState.textContent = on ? 'ON' : 'OFF';
-        gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
+        if (gvState) {
+            gvState.textContent = on ? 'ON' : 'OFF';
+            gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
+        }
+        if (headStatus) {
+            headStatus.textContent = 'GameVox ' + (on ? 'ON' : 'OFF') +
+                (breakerActive ? ' · paused' : '');
+        }
     }
 
     function setGvStatus(text, savedFlash) {
@@ -437,12 +445,10 @@ function setupBroadcastTools() {
                 : 'Not configured';
             if (masks.length && t.mode === 'manual') statusText += ' · manual pushes only';
             if (masks.length && t.mode === 'auto' && (t.satMessageId || t.sunMessageId)) statusText += ' · daily message active';
-            if (t.status && t.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
+            breakerActive = !!(t.status && t.status.breakerActive);
+            if (breakerActive) statusText += ' · auto-push paused (repeated failures)';
             setGvStatus(statusText);
-            if (headStatus) {
-                headStatus.textContent = 'GameVox ' + (t.enabled ? 'ON' : 'OFF') +
-                    (t.status && t.status.breakerActive ? ' · paused' : '');
-            }
+            setStateText();
         } catch (e) { /* panel stays in default state */ }
     }
 
@@ -544,7 +550,7 @@ function setupBroadcastTools() {
                         gvUrl.value = '';
                         gvUrl.placeholder = 'Paste webhook URL (several URLs = several channels)';
                         setGvStatus('Webhook removed · Not configured');
-                        if (headStatus) headStatus.textContent = 'GameVox OFF';
+                        setStateText();
                         showToast('GameVox webhook removed', 'success', 2500);
                     } else {
                         showToast(result.error || 'Failed to remove webhooks', 'error', 4000);
