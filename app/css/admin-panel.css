@@ -279,6 +279,149 @@
     cursor: not-allowed;
 }
 
+/* ===== PANEL H LAYOUT (2026-08-24 redesign) ===== */
+
+/* Inline setting row (Public Registration): text + tooltip left, toggle right */
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+}
+
+.setting-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+}
+
+/* Accordion sections (Group Management / Broadcast / Data Tools) */
+.admin-tools-section.accordion {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+
+.accordion-head {
+    width: 100%;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    padding: var(--spacing-sm) var(--spacing-sm);
+    text-align: left;
+}
+
+.accordion-head .head-status {
+    margin-left: auto;
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.admin-tools-section.accordion > div {
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+}
+
+/* Tooltip "(i)" — hover or keyboard focus */
+.tip {
+    position: relative;
+    display: inline-flex;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.tip-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.tip:hover::after,
+.tip:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-active);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    padding: 6px 9px;
+    border-radius: var(--radius-sm);
+    white-space: normal;
+    width: 210px;
+    z-index: 30;
+    box-shadow: var(--shadow-card);
+    text-align: left;
+    line-height: 1.45;
+}
+
+.tip:hover::before,
+.tip:focus-visible::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--border-light);
+    z-index: 31;
+}
+
+/* ON/OFF caption beside toggle sliders */
+.toggle-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.toggle-state {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    min-width: 20px;
+}
+
+.toggle-state.on { color: var(--accent-green); }
+.toggle-state.off { color: var(--text-muted); }
+
+/* Full-width Push now under the targets */
+.broadcast-push-btn {
+    width: 100%;
+    margin-top: var(--spacing-xs);
+}
+
+/* Green flash while the autosave confirmation is showing */
+.hint-xs-top.status-saved {
+    color: var(--accent-green);
+}
+
+
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 500px) {
     .admin-tag {

@@ -297,67 +297,64 @@
                 <div class="panel-section collapsible" id="adminToolsPanel" data-role-show="admin,mod" style="display:none;">
                     <h3><i class="fas fa-tools"></i> Admin Tools</h3>
                     
-                    <!-- Group Management (inside Admin Tools) -->
-                    <div class="admin-tools-section mb-md" >
-                        <h4 class="toggle-header"  id="groupManagementToggle">
-                            <i class="fas fa-chevron-down" id="groupManagementIcon"></i>
+                    <!-- 1. Public Registration (always visible, inline toggle) -->
+                    <div class="admin-tools-section setting-row mb-md" >
+                        <span class="setting-label">
+                            Public Registration
+                            <span class="tip" tabindex="0" data-tip="Allow public users to register"><i class="tip-dot">i</i></span>
+                        </span>
+                        <span class="toggle-wrap">
+                            <span class="toggle-state on" id="publicRegState">ON</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="publicRegToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </span>
+                    </div>
+
+                    <!-- 2. Group Management (accordion) -->
+                    <div class="admin-tools-section accordion mb-md" >
+                        <button type="button" class="toggle-header accordion-head" id="groupManagementToggle" aria-expanded="false" aria-controls="groupManagementContent">
+                            <i class="fas fa-chevron-right" id="groupManagementIcon"></i>
                             Group Management
-                        </h4>
-                        <div id="groupManagementContent" style="display:block;">
+                            <span class="head-status" id="groupManagementStatus"></span>
+                        </button>
+                        <div id="groupManagementContent" style="display:none;">
                             <div class="form-group">
-                                <label>ADD NEW GROUP :</label>
+                                <label>ADD NEW GROUP :
+                                    <span class="tip" tabindex="0" data-tip="Adds to the currently viewed day"><i class="tip-dot">i</i></span>
+                                </label>
                                 <div class="flex-btn-row" >
                                     <input class="grow-field" type="text" id="newGroupTitle" placeholder="Group name"  />
                                     <button class="btn btn-sm btn-auto" id="addGroupBtn">
                                         <i class="fas fa-plus"></i> Add
                                     </button>
                                 </div>
-                                <div class="hint-xs-top" >
-                                    <i class="fas fa-info-circle"></i> Adds to the currently viewed day
-                                </div>
-                            </div>
-                            <div class="stat-hint" id="groupCountStats" >
-                                <span id="groupCount">Groups: 4/6</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Public Registration Toggle -->
-                    <div class="admin-tools-section mb-md" >
-                        <div class="flex-row" style="align-items:center; justify-content:space-between; padding:var(--spacing-sm) 0;">
-                            <div>
-                                <strong style="font-size:var(--font-size-sm);">Public Registration</strong>
-                                <div class="hint-xs-top">
-                                    <i class="fas fa-info-circle"></i> Allow public users to register
-                                </div>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="publicRegToggle" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Broadcast (Discord / GameVox) -->
-                    <div class="admin-tools-section mb-md" >
-                        <h4 class="toggle-header" id="broadcastToggle">
-                            <i class="fas fa-chevron-down" id="broadcastIcon"></i>
+                    <!-- 3. Broadcast (Discord / GameVox webhooks) -->
+                    <div class="admin-tools-section accordion mb-md" >
+                        <button type="button" class="toggle-header accordion-head" id="broadcastToggle" aria-expanded="false" aria-controls="broadcastContent">
+                            <i class="fas fa-chevron-right" id="broadcastIcon"></i>
                             Broadcast
-                        </h4>
-                        <div id="broadcastContent" style="display:block;">
+                            <span class="tip" tabindex="0" data-tip="Push now posts one roster message per day (Saturday + Sunday). Manual pushes have a 30s cooldown."><i class="tip-dot">i</i></span>
+                            <span class="head-status" id="broadcastHeadStatus"></span>
+                        </button>
+                        <div id="broadcastContent" style="display:none;">
                             <div class="broadcast-target">
                                 <div class="broadcast-target-head">
                                     <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> GameVox</strong>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="broadcastGamevoxEnabled">
-                                        <span class="toggle-slider"></span>
-                                    </label>
+                                    <span class="toggle-wrap">
+                                        <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="broadcastGamevoxEnabled">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </span>
                                 </div>
                                 <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
-                                <label class="broadcast-mode-row">
-                                    <input type="checkbox" id="broadcastGamevoxManual" checked>
-                                    Manual push only (GameVox webhooks cannot edit messages)
-                                </label>
                                 <div class="hint-xs-top" id="broadcastGamevoxStatus">
                                     <i class="fas fa-info-circle"></i> Not configured
                                 </div>
@@ -370,43 +367,43 @@
                             <div class="broadcast-target broadcast-target-off">
                                 <div class="broadcast-target-head">
                                     <strong style="font-size:var(--font-size-sm);"><i class="fab fa-discord"></i> Discord</strong>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" disabled>
-                                        <span class="toggle-slider"></span>
-                                    </label>
+                                    <span class="toggle-wrap">
+                                        <span class="toggle-state off">OFF</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" disabled>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </span>
                                 </div>
                                 <input type="text" placeholder="Coming in a later release" disabled>
-                                <div class="hint-xs-top">
-                                    <i class="fas fa-clock"></i> Discord broadcasting is planned for a later release.
-                                </div>
                             </div>
-                            <div class="flex-btn-row" >
-                                <button class="btn btn-sm btn-auto" id="broadcastSaveBtn">
-                                    <i class="fas fa-save"></i> Save
-                                </button>
-                                <button class="btn btn-sm btn-auto" id="broadcastPushBtn">
-                                    <i class="fas fa-satellite-dish"></i> Push now
-                                </button>
-                            </div>
-                            <div class="hint-xs-top" >
-                                <i class="fas fa-info-circle"></i> Push now posts one roster message per day (Saturday + Sunday). Manual pushes have a 30s cooldown.
-                            </div>
+                            <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPushBtn">
+                                <i class="fas fa-satellite-dish"></i> Push now
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Admin Tools Buttons -->
-                    <div class="flex-col" >
-                        <button class="btn btn-danger btn-sm" id="clearToGuildBtn" data-role-show="admin" style="display:none; background:var(--accent-red); color:white; font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">
-                            <i class="fas fa-arrow-right"></i> EMPTY NAMES INTO GUILD LISTING (FRESH START)
+                    <!-- 4. Data Tools (accordion; bulk buttons behind a deliberate click) -->
+                    <div class="admin-tools-section accordion mb-md" >
+                        <button type="button" class="toggle-header accordion-head" id="dataToolsToggle" aria-expanded="false" aria-controls="dataToolsContent">
+                            <i class="fas fa-chevron-right" id="dataToolsIcon"></i>
+                            Data Tools
                         </button>
-                        <button class="btn btn-warning btn-sm" id="clearToReserveBtn" data-role-show="mod,admin" style="display:none; background:var(--accent-amber); color:var(--text-inverse); font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">
-                            <i class="fas fa-arrow-right"></i> EMPTY NAMES INTO RESERVE LISTING (FRESH START)
-                        </button>
-                        <button class="btn btn-sm" id="downloadBackupBtn" data-role-show="admin" style="display:none; width:100%; padding:var(--spacing-sm); font-weight:600;">
-                            <i class="fas fa-download"></i> DOWNLOAD BACKUP (JSON)
-                        </button>
-                        <div class="hint-center" >
-                            <i class="fas fa-info-circle"></i> Guild: Admin only | Reserve: Moderators+
+                        <div id="dataToolsContent" style="display:none;">
+                            <div class="flex-col" >
+                                <button class="btn btn-danger btn-sm" id="clearToGuildBtn" data-role-show="admin" style="display:none; background:var(--accent-red); color:white; font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">
+                                    <i class="fas fa-arrow-right"></i> EMPTY NAMES INTO GUILD LISTING (FRESH START)
+                                </button>
+                                <button class="btn btn-warning btn-sm" id="clearToReserveBtn" data-role-show="mod,admin" style="display:none; background:var(--accent-amber); color:var(--text-inverse); font-weight:700; font-size:var(--font-size-sm); padding:var(--spacing-sm); letter-spacing:0.5px; width:100%;">
+                                    <i class="fas fa-arrow-right"></i> EMPTY NAMES INTO RESERVE LISTING (FRESH START)
+                                </button>
+                                <button class="btn btn-sm" id="downloadBackupBtn" data-role-show="admin" style="display:none; width:100%; padding:var(--spacing-sm); font-weight:600;">
+                                    <i class="fas fa-download"></i> DOWNLOAD BACKUP (JSON)
+                                </button>
+                                <div class="hint-center" >
+                                    <i class="fas fa-info-circle"></i> Guild: Admin only | Reserve: Moderators+
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <span class="panel-label">H</span>

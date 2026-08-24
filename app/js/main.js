@@ -360,14 +360,14 @@ async function saveGuildName(name) {
 function setupGroupManagement() {
     const addGroupBtn = document.getElementById('addGroupBtn');
     const newGroupTitle = document.getElementById('newGroupTitle');
-    const groupCount = document.getElementById('groupCount');
-    
+    const groupStatus = document.getElementById('groupManagementStatus');
+
     async function loadGroupStats() {
         try {
             const response = await fetch('/api/groups/config');
             const config = await response.json();
-            if (groupCount) {
-                groupCount.textContent = `Groups — Sat: ${config.currentGroups.sat}/${config.maxGroups} · Sun: ${config.currentGroups.sun}/${config.maxGroups}`;
+            if (groupStatus) {
+                groupStatus.textContent = `Sat: ${config.currentGroups.sat}/${config.maxGroups} · Sun: ${config.currentGroups.sun}/${config.maxGroups}`;
             }
         } catch (error) {
             console.error('Error loading group stats:', error);

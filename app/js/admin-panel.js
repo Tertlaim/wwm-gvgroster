@@ -11,17 +11,26 @@ function setupAdminTools() {
     
     // Public Registration toggle
     if (publicRegToggle) {
-        // Load current setting
+        // ON/OFF caption next to the slider stays in sync with the checkbox
+        function syncPublicRegState() {
+            const el = document.getElementById('publicRegState');
+            if (!el) return;
+            const on = !!publicRegToggle.checked;
+            el.textContent = on ? 'ON' : 'OFF';
+            el.className = 'toggle-state ' + (on ? 'on' : 'off');
+        }
         fetch('/api/auth/settings', { headers: getAuthHeader() })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 publicRegToggle.checked = data.publicRegistration !== false;
+                syncPublicRegState();
             })
             .catch(function() {});
-        
+
         publicRegToggle.addEventListener('change', async function() {
             if (!AuthModule.isMod()) {
                 publicRegToggle.checked = !publicRegToggle.checked;
+                syncPublicRegState();
                 showToast('Only moderators can change this setting.', 'error', 3000);
                 return;
             }
@@ -35,18 +44,39 @@ function setupAdminTools() {
                 const result = await response.json();
                 if (result.success) {
                     showToast(enabled ? 'Public registration enabled' : 'Public registration disabled', 'success', 3000);
+                    syncPublicRegState();
                     // Update Register panel immediately
                     if (typeof checkPublicRegistration === 'function') checkPublicRegistration();
                 } else {
                     publicRegToggle.checked = !publicRegToggle.checked;
+                    syncPublicRegState();
                     showToast(result.error || 'Failed to update setting', 'error', 3000);
                 }
             } catch (error) {
                 publicRegToggle.checked = !publicRegToggle.checked;
+                syncPublicRegState();
                 showToast('Error updating setting', 'error', 3000);
             }
         });
     }
+
+    // Accordion sections: closed by default, chevron + aria-expanded synced.
+    [['groupManagementToggle', 'groupManagementContent', 'groupManagementIcon'],
+     ['broadcastToggle', 'broadcastContent', 'broadcastIcon'],
+     ['dataToolsToggle', 'dataToolsContent', 'dataToolsIcon']].forEach(function(ids) {
+        const head = document.getElementById(ids[0]);
+        const content = document.getElementById(ids[1]);
+        const icon = document.getElementById(ids[2]);
+        if (!head || !content) return;
+        head.addEventListener('click', function(e) {
+            if (e.target.closest('.tip')) return; // tooltip clicks don't toggle
+            const show = content.style.display === 'none';
+            content.style.display = show ? 'block' : 'none';
+            head.setAttribute('aria-expanded', show ? 'true' : 'false');
+            if (icon) icon.className = show ? 'fas fa-chevron-down' : 'fas fa-chevron-right';
+        });
+    }
+    );
     
     if (downloadBackupBtn) {
         downloadBackupBtn.addEventListener('click', function() {
@@ -351,48 +381,35 @@ function setupAdminControls() {
 }
 
 // ---- Broadcast (Discord / GameVox webhooks) ----
+// Config autosaves on change (URL input, enable toggle) — no Save button.
+// GameVox is manual-push by nature (create-only webhooks), so no mode toggle:
+// Push now is the only delivery path until Discord arrives with edit-in-place.
 function setupBroadcastTools() {
-    const toggle = document.getElementById('broadcastToggle');
-    const content = document.getElementById('broadcastContent');
-    const icon = document.getElementById('broadcastIcon');
-    const saveBtn = document.getElementById('broadcastSaveBtn');
     const pushBtn = document.getElementById('broadcastPushBtn');
-    if (!content || !saveBtn || !pushBtn) return;
+    const gvEnabled = document.getElementById('broadcastGamevoxEnabled');
+    const gvUrl = document.getElementById('broadcastGamevoxUrl');
+    const gvState = document.getElementById('broadcastGamevoxState');
+    const gvStatus = document.getElementById('broadcastGamevoxStatus');
+    const headStatus = document.getElementById('broadcastHeadStatus');
+    if (!pushBtn || !gvEnabled || !gvUrl || !gvStatus) return;
 
-    // Targets rendered in the card; Discord is deferred for now, so only
-    // targets whose markup exists become active.
-    const els = {};
-    const targets = [];
-    [['discord', 'Discord'], ['gamevox', 'GameVox']].forEach(function(pair) {
-        const t = pair[0];
-        const cap = pair[1];
-        const e = {
-            enabled: document.getElementById('broadcast' + cap + 'Enabled'),
-            url: document.getElementById('broadcast' + cap + 'Url'),
-            mode: document.getElementById('broadcast' + cap + 'Manual'),
-            status: document.getElementById('broadcast' + cap + 'Status')
-        };
-        els[t] = e;
-        if (e.enabled) targets.push(t);
-    });
+    let saveChain = Promise.resolve();
+    let saveTimer = null;
 
-    // Collapsible header (same visual pattern as Group Management)
-    if (toggle) {
-        toggle.addEventListener('click', function(e) {
-            if (e.target.closest('button, input, label')) return;
-            const show = content.style.display === 'none';
-            content.style.display = show ? 'block' : 'none';
-            if (icon) icon.className = show ? 'fas fa-chevron-down' : 'fas fa-chevron-right';
-        });
+    function setStateText() {
+        if (!gvState) return;
+        const on = !!gvEnabled.checked;
+        gvState.textContent = on ? 'ON' : 'OFF';
+        gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
     }
 
-    function setStatus(t, text) {
-        if (!els[t].status) return;
-        els[t].status.textContent = '';
+    function setGvStatus(text, savedFlash) {
+        gvStatus.textContent = '';
         const i = document.createElement('i');
-        i.className = 'fas fa-info-circle';
-        els[t].status.appendChild(i);
-        els[t].status.appendChild(document.createTextNode(' ' + text));
+        i.className = savedFlash ? 'fas fa-circle-check' : 'fas fa-info-circle';
+        gvStatus.appendChild(i);
+        gvStatus.appendChild(document.createTextNode(' ' + text));
+        gvStatus.classList.toggle('status-saved', !!savedFlash);
     }
 
     async function refreshBroadcastConfig() {
@@ -400,51 +417,44 @@ function setupBroadcastTools() {
             const r = await fetch('/api/broadcast/config', { headers: getAuthHeader() });
             if (!r.ok) return;
             const cfg = await r.json();
-            if (!cfg || !cfg.targets) return;
-            targets.forEach(function(t) {
-                const tgt = cfg.targets[t];
-                if (!tgt || !els[t].enabled) return;
-                els[t].enabled.checked = !!tgt.enabled;
-                els[t].url.value = '';
-                els[t].url.placeholder = tgt.hasWebhook ? 'Saved: ' + tgt.webhookMasked : 'Paste webhook URL';
-                if (els[t].mode) els[t].mode.checked = tgt.mode === 'manual';
-                let statusText = tgt.hasWebhook ? 'Webhook configured' : 'Not configured';
-                if (tgt.hasWebhook && tgt.mode === 'auto' && (tgt.satMessageId || tgt.sunMessageId)) statusText += ' · daily message active';
-                if (tgt.hasWebhook && tgt.mode === 'manual') statusText += ' · manual pushes only';
-                if (tgt.status && tgt.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
-                setStatus(t, statusText);
-            });
+            if (!cfg || !cfg.targets || !cfg.targets.gamevox) return;
+            const t = cfg.targets.gamevox;
+            gvEnabled.checked = !!t.enabled;
+            setStateText();
+            gvUrl.value = '';
+            gvUrl.placeholder = t.hasWebhook ? 'Saved: ' + t.webhookMasked : 'Paste webhook URL';
+            let statusText = t.hasWebhook ? 'Webhook configured' : 'Not configured';
+            if (t.hasWebhook && t.mode === 'manual') statusText += ' · manual pushes only';
+            if (t.hasWebhook && t.mode === 'auto' && (t.satMessageId || t.sunMessageId)) statusText += ' · daily message active';
+            if (t.status && t.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
+            setGvStatus(statusText);
+            if (headStatus) {
+                headStatus.textContent = 'GameVox ' + (t.enabled ? 'ON' : 'OFF') +
+                    (t.status && t.status.breakerActive ? ' · paused' : '');
+            }
         } catch (e) { /* panel stays in default state */ }
     }
 
-    if (saveBtn) {
-        saveBtn.addEventListener('click', async function() {
-            if (!AuthModule.isAdmin()) {
-                showToast('Only admins can change broadcast settings.', 'error', 3000);
+    // Serialized autosave. Non-admins get their control reverted from server
+    // state; failures revert too, so the UI never lies about what is stored.
+    function doSave() {
+        if (!AuthModule.isAdmin()) {
+            showToast('Only admins can change broadcast settings.', 'error', 3000);
+            refreshBroadcastConfig();
+            return;
+        }
+        const enabled = !!gvEnabled.checked;
+        const raw = gvUrl.value.trim();
+        const body = { targets: { gamevox: { enabled } } };
+        if (raw) {
+            if (!/^https:\/\//.test(raw)) {
+                showToast('GameVox webhook URL must start with https://', 'error', 3000);
                 return;
             }
-            const body = { targets: {} };
-            let invalid = null;
-            targets.forEach(function(t) {
-                body.targets[t] = {
-                    enabled: !!els[t].enabled.checked,
-                    mode: els[t].mode && els[t].mode.checked ? 'manual' : 'auto'
-                };
-                const v = els[t].url.value.trim();
-                if (v && !invalid) {
-                    if (/^https:\/\//.test(v)) {
-                        body.targets[t].webhookUrl = v;
-                    } else {
-                        invalid = t;
-                    }
-                }
-            });
-            if (invalid) {
-                showToast(invalid + ' webhook URL must start with https://', 'error', 3000);
-                return;
-            }
+            body.targets.gamevox.webhookUrl = raw;
+        }
+        saveChain = saveChain.then(async function() {
             try {
-                saveBtn.disabled = true;
                 const r = await fetch('/api/broadcast/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
@@ -452,18 +462,30 @@ function setupBroadcastTools() {
                 });
                 const result = await r.json();
                 if (result.success) {
-                    showToast('Broadcast settings saved', 'success', 2500);
-                    refreshBroadcastConfig();
+                    setGvStatus('Saved automatically', true);
+                    setTimeout(refreshBroadcastConfig, 1800);
                 } else {
                     showToast(result.error || 'Failed to save broadcast settings', 'error', 4000);
+                    refreshBroadcastConfig();
                 }
             } catch (e) {
                 showToast('Error saving broadcast settings', 'error', 3000);
-            } finally {
-                saveBtn.disabled = false;
+                refreshBroadcastConfig();
             }
         });
     }
+
+    // Debounced on typing; immediate on blur/paste-commit and toggle changes.
+    function requestSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(doSave, 600);
+    }
+    gvEnabled.addEventListener('change', function() {
+        setStateText();
+        requestSave();
+    });
+    gvUrl.addEventListener('input', requestSave);
+    gvUrl.addEventListener('change', requestSave);
 
     let pushCooldownUntil = 0;
     let pushTimer = null;
@@ -505,15 +527,15 @@ function setupBroadcastTools() {
             }
             const results = result.results || {};
             const lines = Object.keys(results).filter(function(k) {
-                return targets.indexOf(k) !== -1;
+                return k === 'gamevox'; // only rendered target
             }).map(function(k) {
                 const res = results[k];
                 if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
-                if (res && res.ok) return k + ': pushed';
                 if (res && res.skipped) return k + ': not configured';
+                if (res && res.ok) return k + ': pushed';
                 return k + ': failed';
             });
-            const allOk = lines.every(function(l) { return l.indexOf(': pushed') !== -1; });
+            const allOk = lines.length > 0 && lines.every(function(l) { return l.indexOf(': pushed') !== -1; });
             showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 6000);
         } catch (e) {
             startPushCooldown(5);
