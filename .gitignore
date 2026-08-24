@@ -23,3 +23,6 @@ app/js/panel-fix.js
 # sample payloads and webhook URLs/secrets. Local-only scratch - the website
 # code lives in app/; nothing in webhook/ is ever committed or deployed.
 webhook/
+
+# Local-only agent instructions (not for the repo)
+AGENTS.md

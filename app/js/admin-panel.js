@@ -462,8 +462,17 @@ function setupBroadcastTools() {
                 });
                 const result = await r.json();
                 if (result.success) {
-                    setGvStatus('Saved automatically', true);
-                    setTimeout(refreshBroadcastConfig, 1800);
+                    // Summary of what the server now holds (masked URL — the
+                    // full secret never comes back to the browser).
+                    const t = result.targets && result.targets.gamevox;
+                    if (t && t.hasWebhook) {
+                        setGvStatus('Webhook attached: ' + t.webhookMasked +
+                            ' · ' + (t.enabled ? 'ON' : 'OFF') +
+                            ' · manual pushes', true);
+                    } else {
+                        setGvStatus('Saved automatically', true);
+                    }
+                    setTimeout(refreshBroadcastConfig, 2500);
                 } else {
                     showToast(result.error || 'Failed to save broadcast settings', 'error', 4000);
                     refreshBroadcastConfig();
@@ -480,6 +489,15 @@ function setupBroadcastTools() {
         clearTimeout(saveTimer);
         saveTimer = setTimeout(doSave, 600);
     }
+    // Enter = "attach now": skip the debounce so the summary appears at once.
+    gvUrl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(saveTimer);
+            doSave();
+            gvUrl.blur();
+        }
+    });
     gvEnabled.addEventListener('change', function() {
         setStateText();
         requestSave();
@@ -526,6 +544,7 @@ function setupBroadcastTools() {
                 return;
             }
             const results = result.results || {};
+            const DAY_NAMES = { sat: 'Saturday', sun: 'Sunday' };
             const lines = Object.keys(results).filter(function(k) {
                 return k === 'gamevox'; // only rendered target
             }).map(function(k) {
@@ -533,10 +552,14 @@ function setupBroadcastTools() {
                 if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
                 if (res && res.skipped) return k + ': not configured';
                 if (res && res.ok) return k + ': pushed';
-                return k + ': failed';
+                // Surface the real reason GameVox rejected/failed, per day.
+                const errs = ((res && res.days) || [])
+                    .filter(function(d) { return d && d.ok === false && d.error; })
+                    .map(function(d) { return (DAY_NAMES[d.day] || d.day) + ': ' + d.error; });
+                return k + ': failed' + (errs.length ? ' (' + errs.join('; ') + ')' : '');
             });
             const allOk = lines.length > 0 && lines.every(function(l) { return l.indexOf(': pushed') !== -1; });
-            showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 6000);
+            showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 8000);
         } catch (e) {
             startPushCooldown(5);
             showToast('Push failed (network error)', 'error', 3000);
