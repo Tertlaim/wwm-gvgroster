@@ -388,6 +388,7 @@ function setupBroadcastTools() {
     const pushBtn = document.getElementById('broadcastPushBtn');
     const gvEnabled = document.getElementById('broadcastGamevoxEnabled');
     const gvUrl = document.getElementById('broadcastGamevoxUrl');
+    const gvClear = document.getElementById('broadcastGamevoxClear');
     const gvState = document.getElementById('broadcastGamevoxState');
     const gvStatus = document.getElementById('broadcastGamevoxStatus');
     const headStatus = document.getElementById('broadcastHeadStatus');
@@ -395,6 +396,11 @@ function setupBroadcastTools() {
 
     let saveChain = Promise.resolve();
     let saveTimer = null;
+
+    // One field accepts several channel URLs separated by spaces/commas.
+    function parseWebhookInput() {
+        return gvUrl.value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    }
 
     function setStateText() {
         if (!gvState) return;
@@ -422,10 +428,15 @@ function setupBroadcastTools() {
             gvEnabled.checked = !!t.enabled;
             setStateText();
             gvUrl.value = '';
-            gvUrl.placeholder = t.hasWebhook ? 'Saved: ' + t.webhookMasked : 'Paste webhook URL';
-            let statusText = t.hasWebhook ? 'Webhook configured' : 'Not configured';
-            if (t.hasWebhook && t.mode === 'manual') statusText += ' · manual pushes only';
-            if (t.hasWebhook && t.mode === 'auto' && (t.satMessageId || t.sunMessageId)) statusText += ' · daily message active';
+            const masks = t.webhooksMasked && t.webhooksMasked.length ? t.webhooksMasked : (t.hasWebhook ? [t.webhookMasked] : []);
+            gvUrl.placeholder = masks.length
+                ? 'Saved: ' + masks.join('  ·  ') + ' — paste to replace'
+                : 'Paste webhook URL (several URLs = several channels)';
+            let statusText = masks.length
+                ? masks.length + ' channel' + (masks.length > 1 ? 's' : '') + ' attached'
+                : 'Not configured';
+            if (masks.length && t.mode === 'manual') statusText += ' · manual pushes only';
+            if (masks.length && t.mode === 'auto' && (t.satMessageId || t.sunMessageId)) statusText += ' · daily message active';
             if (t.status && t.status.breakerActive) statusText += ' · auto-push paused (repeated failures)';
             setGvStatus(statusText);
             if (headStatus) {
@@ -444,14 +455,20 @@ function setupBroadcastTools() {
             return;
         }
         const enabled = !!gvEnabled.checked;
-        const raw = gvUrl.value.trim();
+        const urls = parseWebhookInput();
+        if (urls.length > 5) {
+            showToast('Max 5 GameVox webhooks per target', 'error', 3000);
+            return;
+        }
         const body = { targets: { gamevox: { enabled } } };
-        if (raw) {
-            if (!/^https:\/\//.test(raw)) {
-                showToast('GameVox webhook URL must start with https://', 'error', 3000);
-                return;
+        if (urls.length) {
+            for (const u of urls) {
+                if (!/^https:\/\//.test(u)) {
+                    showToast('GameVox webhook URLs must start with https://', 'error', 3000);
+                    return;
+                }
             }
-            body.targets.gamevox.webhookUrl = raw;
+            body.targets.gamevox.webhooks = urls;
         }
         saveChain = saveChain.then(async function() {
             try {
@@ -462,17 +479,19 @@ function setupBroadcastTools() {
                 });
                 const result = await r.json();
                 if (result.success) {
-                    // Summary of what the server now holds (masked URL — the
-                    // full secret never comes back to the browser).
+                    // Sticky summary of what the server now holds (masked
+                    // URLs — the full secrets never return to the browser).
                     const t = result.targets && result.targets.gamevox;
-                    if (t && t.hasWebhook) {
-                        setGvStatus('Webhook attached: ' + t.webhookMasked +
-                            ' · ' + (t.enabled ? 'ON' : 'OFF') +
-                            ' · manual pushes', true);
+                    const masks = t && t.webhooksMasked ? t.webhooksMasked : [];
+                    if (masks.length) {
+                        setGvStatus('Attached ' + masks.length + ' channel' + (masks.length > 1 ? 's' : '') +
+                            ': ' + masks.join('  ·  ') +
+                            ' · ' + (t.enabled ? 'ON' : 'OFF') + ' · manual pushes', true);
+                        gvUrl.value = '';
+                        gvUrl.placeholder = 'Saved: ' + masks.join('  ·  ') + ' — paste to replace';
                     } else {
                         setGvStatus('Saved automatically', true);
                     }
-                    setTimeout(refreshBroadcastConfig, 2500);
                 } else {
                     showToast(result.error || 'Failed to save broadcast settings', 'error', 4000);
                     refreshBroadcastConfig();
@@ -504,6 +523,38 @@ function setupBroadcastTools() {
     });
     gvUrl.addEventListener('input', requestSave);
     gvUrl.addEventListener('change', requestSave);
+
+    // ✕ = detach every stored GameVox webhook for this target.
+    if (gvClear) {
+        gvClear.addEventListener('click', function() {
+            if (!AuthModule.isAdmin()) {
+                showToast('Only admins can change broadcast settings.', 'error', 3000);
+                return;
+            }
+            clearTimeout(saveTimer);
+            saveChain = saveChain.then(async function() {
+                try {
+                    const r = await fetch('/api/broadcast/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                        body: JSON.stringify({ targets: { gamevox: { enabled: !!gvEnabled.checked, webhooks: [] } } })
+                    });
+                    const result = await r.json();
+                    if (result.success) {
+                        gvUrl.value = '';
+                        gvUrl.placeholder = 'Paste webhook URL (several URLs = several channels)';
+                        setGvStatus('Webhook removed · Not configured');
+                        if (headStatus) headStatus.textContent = 'GameVox OFF';
+                        showToast('GameVox webhook removed', 'success', 2500);
+                    } else {
+                        showToast(result.error || 'Failed to remove webhooks', 'error', 4000);
+                    }
+                } catch (e) {
+                    showToast('Error removing webhooks', 'error', 3000);
+                }
+            });
+        });
+    }
 
     let pushCooldownUntil = 0;
     let pushTimer = null;

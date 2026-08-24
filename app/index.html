@@ -354,7 +354,10 @@
                                         </label>
                                     </span>
                                 </div>
-                                <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                <div class="flex-btn-row">
+                                    <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                    <button type="button" class="wh-clear-btn" id="broadcastGamevoxClear" title="Remove all saved GameVox webhooks" aria-label="Remove all saved GameVox webhooks"><i class="fas fa-xmark"></i></button>
+                                </div>
                                 <div class="hint-xs-top" id="broadcastGamevoxStatus">
                                     <i class="fas fa-info-circle"></i> Not configured
                                 </div>
@@ -363,6 +366,7 @@
                                 <i class="fas fa-circle-check"></i> Setup checklist:
                                 <strong>1.</strong> install the app bot on your GameVox server (Developer Portal &rarr; Installation link &mdash; it may show as offline, that is fine);
                                 <strong>2.</strong> create the incoming webhook on a channel that was created inside GameVox (channels imported from Discord may not deliver webhook messages).
+                                Paste several URLs separated by spaces to post to multiple channels at once.
                             </div>
                             <div class="broadcast-target broadcast-target-off">
                                 <div class="broadcast-target-head">

@@ -22,6 +22,8 @@ const BREAKER_THRESHOLD = 5;
 const BREAKER_PAUSE_MS = 30 * 60 * 1000;
 const MIN_SPACING_MS = 1000; // <=~1 request/s per webhook
 const MAX_429_WAIT_MS = 60 * 1000;
+const MAX_WEBHOOKS = 5;      // channels a single target fans out to
+const FETCH_TIMEOUT_MS = 15000; // hung platform must not hold the HTTP request
 
 // Embed budget guards (platform limits: field value 1024 chars, 25 fields
 // per embed, 6000 per message). Days go out as separate messages, so a
@@ -109,6 +111,16 @@ function isValidWebhookUrl(platform, url) {
     const re = WEBHOOK_RES[platform];
     if (!re || typeof url !== 'string') return false;
     return re.test(url);
+}
+
+// A target fans out to one or more channels. `webhooks` is the source of
+// truth; legacy configs only have webhookUrl, so derive the list from it.
+function normalizeWebhooks(target) {
+    if (!target) return [];
+    if (Array.isArray(target.webhooks)) {
+        return target.webhooks.filter(u => typeof u === 'string' && u);
+    }
+    return target.webhookUrl ? [target.webhookUrl] : [];
 }
 
 // Markdown-safe text: names/classes/roles come from validated input, but
@@ -353,7 +365,8 @@ function createBroadcaster(deps) {
             return d.fetchImpl(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
             });
         };
 
@@ -361,6 +374,9 @@ function createBroadcaster(deps) {
         try {
             res = await doFetch();
         } catch (err) {
+            if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+                return { ok: false, error: 'timeout after ' + (FETCH_TIMEOUT_MS / 1000) + 's' };
+            }
             return { ok: false, error: 'network error: ' + err.message };
         }
 
@@ -380,6 +396,9 @@ function createBroadcaster(deps) {
             try {
                 res = await doFetch();
             } catch (err) {
+                if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+                    return { ok: false, error: 'timeout after ' + (FETCH_TIMEOUT_MS / 1000) + 's' };
+                }
                 return { ok: false, error: 'network error after 429: ' + err.message };
             }
             parsed = null;
@@ -394,11 +413,12 @@ function createBroadcaster(deps) {
         return { ok: false, status: res.status, error: httpError(res, parsed) };
     }
 
-    // Edit-in-place for one day. Discord-style platforms PATCH the stored
-    // message id (falling back to create on 404); create-only platforms
-    // (GameVox incoming webhooks) always POST a fresh plain-markdown message
-    // - embeds are not wired in GameVox webhooks v1 (docs, 2026-08-23).
-    async function ensureDayMessage(st, target, db, day, actor) {
+    // Edit-in-place for one day on ONE channel. Discord-style platforms
+    // PATCH the stored per-channel message id (falling back to create on
+    // 404); create-only platforms (GameVox incoming webhooks) always POST a
+    // fresh plain-markdown message - embeds are not wired in GameVox
+    // webhooks v1 (docs, 2026-08-23).
+    async function ensureDayMessage(st, target, url, db, day, actor) {
         const canEdit = target.platform !== 'gamevox';
         let message;
         if (canEdit) {
@@ -409,23 +429,29 @@ function createBroadcaster(deps) {
         }
         if (!message) return { ok: true, skipped: true };
 
+        if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
+        if (!target.channelIds[url] || typeof target.channelIds[url] !== 'object') {
+            target.channelIds[url] = {};
+        }
+        const ids = target.channelIds[url];
+
         const idKey = day + 'MessageId';
-        if (canEdit && target[idKey]) {
-            const edited = await send(st, target.webhookUrl + '/messages/' + target[idKey], 'PATCH', message);
+        if (canEdit && ids[idKey]) {
+            const edited = await send(st, url + '/messages/' + ids[idKey], 'PATCH', message);
             if (edited.ok) return { ok: true, updated: true };
-            if (edited.status !== 404) return { ok: false, day, error: edited.error };
-            target[idKey] = null;
+            if (edited.status !== 404) return { ok: false, error: edited.error };
+            ids[idKey] = null;
         }
 
         // Discord needs ?wait=true to echo the created message back; GameVox
         // returns it implicitly (URL-token auth, no extra headers).
-        const url = target.platform === 'discord'
-            ? target.webhookUrl + '?wait=true'
-            : target.webhookUrl;
-        const created = await send(st, url, 'POST', message);
-        if (!created.ok) return { ok: false, day, error: created.error };
-        if (!created.body || !created.body.id) return { ok: false, day, error: 'no message id in response' };
-        if (canEdit) target[idKey] = created.body.id;
+        const postUrl = target.platform === 'discord'
+            ? url + '?wait=true'
+            : url;
+        const created = await send(st, postUrl, 'POST', message);
+        if (!created.ok) return { ok: false, error: created.error };
+        if (!created.body || !created.body.id) return { ok: false, error: 'no message id in response' };
+        if (canEdit) ids[idKey] = created.body.id;
         return { ok: true, created: true };
     }
 
@@ -436,20 +462,57 @@ function createBroadcaster(deps) {
             debounceSecCache = Number(cfg.debounceSec);
         }
         const target = cfg && cfg.targets && cfg.targets[key];
-        if (!target || !target.enabled || !target.webhookUrl) {
+        const urls = normalizeWebhooks(target);
+        if (!target || !target.enabled || urls.length === 0) {
             return { ok: false, skipped: true, error: 'not configured' };
         }
+
+        // Migrate legacy single-channel ids into the per-channel map so an
+        // old config keeps editing its existing Discord messages.
+        let configDirty = !Array.isArray(target.webhooks);
+        if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
+        for (const u of urls) {
+            if (!target.channelIds[u]) {
+                const legacy = u === target.webhookUrl
+                    ? { satMessageId: target.satMessageId || null, sunMessageId: target.sunMessageId || null }
+                    : { satMessageId: null, sunMessageId: null };
+                target.channelIds[u] = legacy.satMessageId || legacy.sunMessageId ? legacy : {};
+                if (target.channelIds[u].satMessageId || target.channelIds[u].sunMessageId) configDirty = true;
+            }
+        }
+        if (!Array.isArray(target.webhooks)) target.webhooks = urls;
 
         const st = stateFor(key);
         const db = opts.db || await d.readData();
         if (!db) return { ok: false, error: 'no data' };
 
+        // Fan out: every enabled channel receives every non-empty day.
         const days = [];
-        let configDirty = false;
+        configDirty = configDirty || false;
         for (const day of DAY_KEYS) {
-            const r = await ensureDayMessage(st, target, db, day, opts.actor || 'system');
-            if (r.created) configDirty = true;
-            days.push({ day, ...r });
+            const perChannel = [];
+            for (let i = 0; i < urls.length; i++) {
+                const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system');
+                if (r.created) configDirty = true;
+                perChannel.push({ n: i + 1, ...r });
+            }
+            const failed = perChannel.filter(x => x.ok === false);
+            days.push({
+                day,
+                ok: failed.length === 0,
+                ...(failed.length ? { error: failed.map(f => '#' + f.n + ': ' + f.error).join('; ') } : {}),
+                ...(perChannel.every(x => x.skipped) ? { skipped: true } : {})
+            });
+        }
+
+        // Mirror the first channel's ids into the legacy fields so configs
+        // saved by older versions keep round-tripping.
+        const firstIds = urls.length ? target.channelIds[urls[0]] : null;
+        if (firstIds) {
+            if (target.satMessageId !== (firstIds.satMessageId || null)) configDirty = true;
+            if (target.sunMessageId !== (firstIds.sunMessageId || null)) configDirty = true;
+            target.satMessageId = firstIds.satMessageId || null;
+            target.sunMessageId = firstIds.sunMessageId || null;
         }
 
         if (configDirty) {
@@ -500,7 +563,7 @@ function createBroadcaster(deps) {
         const hash = computeGroupsHash(db.groups, db.reserves);
         for (const key of TARGET_KEYS) {
             const target = cfg.targets && cfg.targets[key];
-            if (!target || !target.enabled || !target.webhookUrl) continue;
+            if (!target || !target.enabled || normalizeWebhooks(target).length === 0) continue;
             if (target.mode === 'manual') continue; // Push Now button only
             const st = stateFor(key);
             if (d.now() < st.breakerUntil) continue;
@@ -614,6 +677,7 @@ module.exports = {
     BREAKER_PAUSE_MS,
     MIN_SPACING_MS,
     MAX_429_WAIT_MS,
+    MAX_WEBHOOKS,
     MAX_FIELD_CHARS,
     MAX_FIELD_LINES,
     defaultIntegrationsConfig,

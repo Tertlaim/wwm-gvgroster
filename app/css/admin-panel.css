@@ -420,6 +420,24 @@
     color: var(--accent-green);
 }
 
+/* ✕ remove-all button beside the webhook input */
+.wh-clear-btn {
+    flex-shrink: 0;
+    width: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+}
+
+.wh-clear-btn:hover {
+    color: var(--accent-red-soft, #f87171);
+    border-color: var(--accent-red-soft, #f87171);
+}
+
+
 
 
 /* ===== RESPONSIVE ===== */

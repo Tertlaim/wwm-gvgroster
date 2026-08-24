@@ -125,10 +125,12 @@ test('GET config returns the masked shape with live status and never leaks URLs'
 
     const t = r.json.targets.discord;
     assert.deepStrictEqual(Object.keys(t).sort(),
-        ['enabled', 'hasWebhook', 'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked']);
+        ['enabled', 'hasWebhook', 'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked', 'webhooksMasked']);
     assert.strictEqual(t.mode, 'auto');
     assert.strictEqual(t.hasWebhook, true);
     assert.strictEqual(t.webhookMasked, 'discord.com/api/webhooks/123456789012345678/…OKEN');
+    assert.deepStrictEqual(r.json.targets.discord.webhooksMasked,
+        ['discord.com/api/webhooks/123456789012345678/…OKEN']);
     assert.ok(!JSON.stringify(r.json).includes('tokentoken'), 'raw token must never appear');
 
     const g = r.json.targets.gamevox;
@@ -229,6 +231,81 @@ test('POST config clamps timing windows into sane bounds', async () => {
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.json.debounceSec, 10, 'debounce floors at 10s');
     assert.strictEqual(r.json.autoIntervalMin, 180, 'interval caps at 180min');
+});
+
+test('POST config accepts webhooks arrays: multi-channel fan-out, dedupe, clear, per-index errors', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+
+    const second = GAMEVOX_INCOMING.replace('13d34f8c', '22e44f9d');
+    const r1 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { enabled: true, webhooks: [GAMEVOX_INCOMING, second, GAMEVOX_INCOMING] } }
+    }, admin);
+    assert.strictEqual(r1.status, 200);
+    let stored = ctx.data._peek().targets.gamevox;
+    assert.deepStrictEqual(stored.webhooks, [GAMEVOX_INCOMING, second], 'deduped');
+    assert.strictEqual(stored.webhookUrl, GAMEVOX_INCOMING, 'first channel mirrored to legacy field');
+    assert.deepStrictEqual(r1.json.targets.gamevox.webhooksMasked.length, 2);
+
+    // Bad URL reports its position.
+    const bad = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { webhooks: [GAMEVOX_INCOMING, 'https://evil.example/x/y'] } }
+    }, admin);
+    assert.strictEqual(bad.status, 400);
+    assert.match(bad.json.error, /#2/);
+    assert.strictEqual(ctx.data._peek().targets.gamevox.webhooks.length, 2, 'storage untouched on error');
+
+    // Removing a channel keeps the survivor's channelIds entry.
+    const kept = ctx.data._peek().targets.gamevox.channelIds[GAMEVOX_INCOMING];
+    const r2 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { webhooks: [GAMEVOX_INCOMING] } }
+    }, admin);
+    assert.strictEqual(r2.status, 200);
+    stored = ctx.data._peek().targets.gamevox;
+    assert.ok(stored.channelIds[GAMEVOX_INCOMING], 'survivor keeps its id slot');
+    assert.strictEqual(stored.channelIds === kept, false, 'ids object is rebuilt');
+    assert.strictEqual(stored.channelIds[second], undefined, 'removed channel ids dropped');
+
+    // Empty array clears everything.
+    const r3 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { webhooks: [] } }
+    }, admin);
+    assert.strictEqual(r3.status, 200);
+    stored = ctx.data._peek().targets.gamevox;
+    assert.deepStrictEqual(stored.webhooks, []);
+    assert.strictEqual(stored.webhookUrl, '');
+    assert.strictEqual(r3.json.targets.gamevox.hasWebhook, false);
+
+    // Cap enforced.
+    const many = [];
+    for (let i = 0; i < 6; i++) {
+        many.push(GAMEVOX_INCOMING.replace('13d34f8c', '33a' + i + '45f9d'));
+    }
+    const r4 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { webhooks: many } }
+    }, admin);
+    assert.strictEqual(r4.status, 400);
+    assert.match(r4.json.error, /max 5/i);
+});
+
+test('POST push fans out to every configured channel and reports per-channel failures', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const mod = login(ctx.sessions, 'mod1', 'mod');
+
+    const second = GAMEVOX_INCOMING.replace('13d34f8c', '44b55e8c');
+    await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { enabled: true, webhooks: [GAMEVOX_INCOMING, second] } }
+    }, admin);
+
+    // Both channels receive every day: 2 channels x 2 days = 4 POSTs.
+    ctx.requests.length = 0;
+    const r = await request(ctx.app, 'POST', '/api/broadcast/push', { target: 'gamevox' }, mod);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.json.results.gamevox.ok, true);
+    assert.strictEqual(ctx.requests.length, 4, '2 channels x 2 days');
+    assert.ok(ctx.requests.some(u => u.includes('13d34f8c')));
+    assert.ok(ctx.requests.some(u => u.includes('44b55e8c')));
 });
 
 test('POST push validates target names and pushes through the real broadcaster', async () => {

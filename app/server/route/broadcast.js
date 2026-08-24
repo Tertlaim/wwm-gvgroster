@@ -17,11 +17,15 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
         const targets = {};
         for (const key of broadcast.TARGET_KEYS) {
             const t = merged.targets[key] || base.targets[key];
+            const urls = Array.isArray(t.webhooks) && t.webhooks.length
+                ? t.webhooks.filter(u => typeof u === 'string' && u)
+                : (t.webhookUrl ? [t.webhookUrl] : []);
             targets[key] = {
                 enabled: !!t.enabled,
                 mode: broadcast.TARGET_MODES.includes(t.mode) ? t.mode : 'auto',
-                hasWebhook: !!t.webhookUrl,
-                webhookMasked: broadcast.maskWebhookUrl(t.webhookUrl),
+                hasWebhook: urls.length > 0,
+                webhookMasked: broadcast.maskWebhookUrl(urls[0]),
+                webhooksMasked: urls.map(u => broadcast.maskWebhookUrl(u)),
                 satMessageId: t.satMessageId || null,
                 sunMessageId: t.sunMessageId || null,
                 status: status ? status[key] : null
@@ -96,14 +100,69 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                     }
                 }
 
-                if (url !== (cur.webhookUrl || '')) {
-                    t.satMessageId = null;
-                    t.sunMessageId = null;
+                // Channel list: incoming.webhooks (full replacement) wins;
+                // legacy single webhookUrl still accepted. '' / [] clears.
+                let nextUrls = null;
+                if (incoming && Array.isArray(incoming.webhooks)) {
+                    if (incoming.webhooks.length > broadcast.MAX_WEBHOOKS) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Too many ' + key + ' webhooks (max ' + broadcast.MAX_WEBHOOKS + ')'
+                        });
+                    }
+                    nextUrls = [];
+                    for (let i = 0; i < incoming.webhooks.length; i++) {
+                        const v = String(incoming.webhooks[i] == null ? '' : incoming.webhooks[i]).trim();
+                        if (!v) continue;
+                        if (!broadcast.isValidWebhookUrl(key, v)) {
+                            const shape = key === 'discord'
+                                ? 'https://discord.com/api/webhooks/<id>/<token>'
+                                : 'https://api.gamevox.com/webhooks/<id>/<token>';
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Invalid ' + key + ' webhook URL #' + (i + 1) + ' (expected ' + shape + ')'
+                            });
+                        }
+                        if (!nextUrls.includes(v)) nextUrls.push(v);
+                    }
                 } else {
-                    t.satMessageId = cur.satMessageId || null;
-                    t.sunMessageId = cur.sunMessageId || null;
+                    let url = cur.webhookUrl || '';
+                    if (incoming && typeof incoming.webhookUrl === 'string') {
+                        const v = incoming.webhookUrl.trim();
+                        if (v === '') {
+                            url = '';
+                        } else if (broadcast.isValidWebhookUrl(key, v)) {
+                            url = v;
+                        } else {
+                            const shape = key === 'discord'
+                                ? 'https://discord.com/api/webhooks/<id>/<token>'
+                                : 'https://api.gamevox.com/webhooks/<id>/<token>';
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Invalid ' + key + ' webhook URL (expected ' + shape + ')'
+                            });
+                        }
+                    }
+                    nextUrls = url ? [url] : [];
                 }
-                t.webhookUrl = url;
+
+                // Message ids belong to a specific channel URL: keep ids of
+                // surviving URLs and mirror the first channel into the legacy
+                // sat/sunMessageId fields so old configs keep round-tripping.
+                const firstUnchanged = (nextUrls[0] || '') === (cur.webhookUrl || '');
+                t.satMessageId = firstUnchanged ? (cur.satMessageId || null) : null;
+                t.sunMessageId = firstUnchanged ? (cur.sunMessageId || null) : null;
+                const curIds = cur.channelIds && typeof cur.channelIds === 'object' ? cur.channelIds : {};
+                t.channelIds = {};
+                for (const u of nextUrls) {
+                    if (!t.channelIds[u]) {
+                        t.channelIds[u] = u === cur.webhookUrl
+                            ? { satMessageId: t.satMessageId, sunMessageId: t.sunMessageId }
+                            : (curIds[u] || { satMessageId: null, sunMessageId: null });
+                    }
+                }
+                t.webhooks = nextUrls;
+                t.webhookUrl = nextUrls[0] || '';
             }
 
             const saved = await data.writeIntegrations(next);
