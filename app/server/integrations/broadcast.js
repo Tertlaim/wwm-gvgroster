@@ -76,7 +76,8 @@ function defaultIntegrationsConfig() {
             gamevox: {
                 platform: 'gamevox', enabled: false, mode: 'manual',
                 webhookUrl: '', satMessageId: null, sunMessageId: null,
-                botToken: '', botChannels: [], botPostMode: 'fresh'
+                botToken: '', botChannels: [], botPostMode: 'fresh',
+                siteLabel: '', siteUrl: ''
             }
         }
     };
@@ -324,16 +325,25 @@ function buildDayText(db, day, options) {
             lines.push('');
             lines.push(...groupSections[0]);
         } else {
-            lines.push('');
-            lines.push('|  |  |');
-            lines.push('|---|---|');
+            // One mini-table per PAIR of groups: the group titles act as the
+            // header row, so there is no stray empty "| | |" header, and each
+            // table carries its own "---" separator under the titles (user-
+            // approved layout, 2026-08-25). An odd leftover group renders as
+            // a plain section instead of a lopsided one-column table.
             for (let i = 0; i < groupSections.length; i += 2) {
                 const left = groupSections[i];
                 const right = groupSections[i + 1];
-                const maxHeight = Math.max(left.length, right ? right.length : 0);
-                for (let j = 0; j < maxHeight; j++) {
+                lines.push('');
+                if (!right) {
+                    lines.push(...left);
+                    continue;
+                }
+                lines.push('| ' + left[0] + ' | ' + right[0] + ' |');
+                lines.push('|---|---|');
+                const maxHeight = Math.max(left.length, right.length);
+                for (let j = 1; j < maxHeight; j++) {
                     const l = left[j] || '';
-                    const r = right ? (right[j] || '') : '';
+                    const r = right[j] || '';
                     lines.push('| ' + l + ' | ' + r + ' |');
                 }
             }
@@ -355,7 +365,14 @@ function buildDayText(db, day, options) {
         const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
         const timeStr = now.toTimeString().slice(0, 5);  // HH:MM
         lines.push('');
-        lines.push(`Updated by ${by}, ${dateStr}-${timeStr}`);
+        let footerLine = `Updated by ${by}, ${dateStr}-${timeStr}`;
+        // Optional site link riding behind the timestamp: -@Label -> URL.
+        const url = String(opts.siteUrl || '').trim();
+        if (/^https?:\/\//.test(url)) {
+            const label = sanitizeText(opts.siteLabel, 40) || url;
+            footerLine += ` [-@${label}](${url})`;
+        }
+        lines.push(footerLine);
     }
 
     return lines.join('\n');
@@ -505,7 +522,11 @@ function createBroadcaster(deps) {
         if (canEdit) {
             message = buildDayMessage(db, day, { updatedBy: actor });
         } else {
-            const text = buildDayText(db, day, { updatedBy: actor });
+            const text = buildDayText(db, day, {
+                updatedBy: actor,
+                siteLabel: target.siteLabel,
+                siteUrl: target.siteUrl
+            });
             message = text ? { content: text } : null;
         }
         if (!message) return { ok: true, skipped: true };
@@ -542,7 +563,11 @@ function createBroadcaster(deps) {
     // newer chat is never silently updated out of sight). Content is the
     // same plain-markdown day text the webhook path uses (2-column layout).
     async function botEnsureDayMessage(st, target, channelId, db, day, actor) {
-        const text = buildDayText(db, day, { updatedBy: actor });
+        const text = buildDayText(db, day, {
+            updatedBy: actor,
+            siteLabel: target.siteLabel,
+            siteUrl: target.siteUrl
+        });
         if (!text) return { ok: true, skipped: true };
 
         const token = effectiveBotToken(target);

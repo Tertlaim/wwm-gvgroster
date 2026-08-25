@@ -31,6 +31,8 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 botTokenMasked: broadcast.maskBotToken(botToken),
                 botChannels: broadcast.normalizeBotChannels(t),
                 botPostMode: broadcast.BOT_POST_MODES.includes(t.botPostMode) ? t.botPostMode : 'fresh',
+                siteLabel: typeof t.siteLabel === 'string' ? t.siteLabel : '',
+                siteUrl: typeof t.siteUrl === 'string' ? t.siteUrl : '',
                 satMessageId: t.satMessageId || null,
                 sunMessageId: t.sunMessageId || null,
                 status: status ? status[key] : null
@@ -217,6 +219,27 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                         ? incoming.botPostMode
                         : (broadcast.BOT_POST_MODES.includes(cur.botPostMode) ? cur.botPostMode : 'fresh');
 
+                    // Site branding behind the timestamp (-@Label link).
+                    // Omitted -> unchanged; '' -> clear; url must be http(s).
+                    t.siteLabel = incoming && typeof incoming.siteLabel === 'string'
+                        ? incoming.siteLabel.trim().slice(0, 40)
+                        : (typeof cur.siteLabel === 'string' ? cur.siteLabel : '');
+                    if (incoming && typeof incoming.siteUrl === 'string') {
+                        const v = incoming.siteUrl.trim();
+                        if (v === '') {
+                            t.siteUrl = '';
+                        } else if (/^https?:\/\/\S+$/.test(v)) {
+                            t.siteUrl = v;
+                        } else {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Invalid site URL (must start with http:// or https://)'
+                            });
+                        }
+                    } else {
+                        t.siteUrl = typeof cur.siteUrl === 'string' ? cur.siteUrl : '';
+                    }
+
                     // Stored bot message ids belong to (token, channel): drop
                     // ids of removed channels, and everything on token rotate.
                     const tokenChanged = botToken !== (cur.botToken || '');
@@ -249,9 +272,15 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 return res.status(500).json({ success: false, error: 'Roster data unavailable' });
             }
             const actor = (req.session && req.session.username) || 'staff';
+            let site = {};
+            try {
+                const cfg = await data.readIntegrations();
+                const gv = cfg && cfg.targets && cfg.targets.gamevox;
+                if (gv) site = { siteLabel: gv.siteLabel, siteUrl: gv.siteUrl };
+            } catch (e) { /* branding is optional for preview */ }
             const days = {};
             for (const day of broadcast.DAY_KEYS) {
-                days[day] = broadcast.buildDayText(db, day, { updatedBy: actor });
+                days[day] = broadcast.buildDayText(db, day, { updatedBy: actor, ...site });
             }
             res.json({ success: true, days });
         } catch (e) {

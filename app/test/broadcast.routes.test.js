@@ -180,7 +180,8 @@ test('GET config returns the masked shape with live status and never leaks URLs'
     const t = r.json.targets.discord;
     assert.deepStrictEqual(Object.keys(t).sort(),
         ['botChannels', 'botPostMode', 'botTokenMasked', 'enabled', 'hasBotToken', 'hasWebhook',
-         'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked', 'webhooksMasked']);
+         'mode', 'satMessageId', 'siteLabel', 'siteUrl', 'status', 'sunMessageId',
+         'webhookMasked', 'webhooksMasked']);
     assert.strictEqual(t.mode, 'auto');
     assert.strictEqual(t.hasWebhook, true);
     assert.strictEqual(t.webhookMasked, 'discord.com/api/webhooks/123456789012345678/…OKEN');

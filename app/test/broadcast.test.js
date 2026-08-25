@@ -185,12 +185,47 @@ test('buildDayText renders plain markdown for embed-less platforms', () => {
     assert.ok(text.startsWith('**Saturday Roster**'), 'header is the first line');
     assert.ok(text.includes('⚔️ **Offence 1** · 2/30'), 'group title with count');
     assert.ok(text.includes('- **Antony** · 🌿 Heal · Vice Commander'), 'player bullets');
+    assert.ok(!text.includes('|  |  |'), 'no stray empty table header');
+    assert.ok(text.includes('| ⚔️ **Offence 1** · 2/30 | 🛡️ **Defence** · 0/30 |'),
+        'group titles form the table header row');
+    assert.ok(text.includes('|---|---|'), 'separator line under the titles');
     assert.ok(text.includes('🕐 **Reserves** · 1'), 'reserves section');
     assert.match(text, /Updated by moduser, \d{4}-\d{2}-\d{2}-\d{2}:\d{2}$/, 'signature footer last');
     assert.ok(!text.includes('embeds'), 'plain markdown only');
 
     assert.strictEqual(broadcast.buildDayText({ groups: {}, reserves: {} }, 'sun', {}), null);
     assert.strictEqual(broadcast.buildDayText(null, 'sat', {}), null);
+});
+
+test('buildDayText: each group pair is its own table; odd leftover is a plain section', () => {
+    const db = fixtureDb();
+    db.groups.sat.g3 = { title: 'Siege', players: [{ id: 'p9', name: 'Rho', class: 'DPS', role: 'Member' }] };
+    const text = broadcast.buildDayText(db, 'sat', {});
+    const bands = text.split('\n\n');
+    const tables = bands.filter(b => b.includes('|---|---|'));
+    assert.strictEqual(tables.length, 1, 'only the paired groups render as a table');
+    assert.ok(tables[0].includes('⚔️ **Offence 1**') && tables[0].includes('🛡️ **Defence**'),
+        'the table holds the first two groups');
+    assert.ok(/📋 \*\*Siege\*\* · 1\/30/.test(bands.join('\n')), 'odd leftover group is a plain section');
+    assert.ok(!text.includes('| 📋'), 'leftover group never becomes a one-column table row');
+});
+
+test('buildDayText appends the -@site link behind the timestamp when configured', () => {
+    const withSite = broadcast.buildDayText(fixtureDb(), 'sat', {
+        updatedBy: 'moduser',
+        siteLabel: 'WWM Roster',
+        siteUrl: 'https://roster.example.com'
+    });
+    assert.match(withSite, /\[-@WWM Roster\]\(https:\/\/roster\.example\.com\)$/);
+
+    const noLabel = broadcast.buildDayText(fixtureDb(), 'sat', {
+        updatedBy: 'moduser',
+        siteUrl: 'https://roster.example.com'
+    });
+    assert.match(noLabel, /\[-@https:\/\/roster\.example\.com\]\(https:\/\/roster\.example\.com\)$/);
+
+    const without = broadcast.buildDayText(fixtureDb(), 'sat', { updatedBy: 'moduser' });
+    assert.ok(!without.includes('-@'), 'no link when siteUrl is unset');
 });
 
 test('buildDayText never includes the announcement segment', () => {
