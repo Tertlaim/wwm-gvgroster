@@ -67,6 +67,7 @@ function makeCtx() {
     data._writes = () => writes;
 
     const requests = [];
+    const bodies = [];
     const history = [];
     const broadcaster = broadcast.createBroadcaster({
         readConfig: data.readIntegrations,
@@ -75,6 +76,7 @@ function makeCtx() {
         appendHistory: (entry) => history.push(entry),
         fetchImpl: async (url, opts) => {
             requests.push(opts.method + ' ' + url);
+            try { bodies.push(JSON.parse(opts.body)); } catch (e) { bodies.push(null); }
             const payload = JSON.stringify({ id: 'm' + requests.length });
             return { ok: true, status: 200, json: async () => JSON.parse(payload), headers: { get: () => null } };
         },
@@ -83,11 +85,29 @@ function makeCtx() {
 
     const app = express();
     app.use(express.json());
-    registerBroadcastRoutes(app, { auth, data, broadcaster });
-    return { app, sessions, data, history, requests, broadcaster };
+    // Fake bot-API for channel translation: guild + channel list carrying
+    // both snowflakes and gamevox UUIDs.
+    const lookups = [];
+    const botFetch = async (url, opts) => {
+        lookups.push(url);
+        const ok = (data) => ({ ok: true, status: 200, json: async () => data, headers: { get: () => null } });
+        if (url.endsWith('/users/@me/guilds')) {
+            return ok([{ id: '1516070040533311488', name: 'Test Guild' }]);
+        }
+        if (url.includes('/guilds/1516070040533311488/channels')) {
+            return ok([
+                { id: '1540402360065040384', gamevox_id: '7e62c677-2cd9-418d-8cd4-afa2cb5b36fe', name: 'GvG-Plan', type: 0 },
+                { id: '1521079440763363328', gamevox_id: 'bbbbbbbb-1111-2222-3333-444444444444', name: 'GameVox Chat', type: 0 },
+                { id: '1541027880090140673', gamevox_id: 'cccccccc-1111-2222-3333-444444444444', name: 'Second Channel', type: 0 }
+            ]);
+        }
+        return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } };
+    };
+    registerBroadcastRoutes(app, { auth, data, broadcaster, botFetch });
+    return { app, sessions, data, history, requests, bodies, broadcaster, botLookups: lookups };
 }
 
-async function request(app, method, path, body, token) {
+async function request(app, method, path, body, token, extraHeaders) {
     const server = app.listen(0);
     try {
         const port = server.address().port;
@@ -95,7 +115,8 @@ async function request(app, method, path, body, token) {
             method,
             headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { 'x-auth-token': token } : {})
+                ...(token ? { 'x-auth-token': token } : {}),
+                ...(extraHeaders || {})
             },
             body: body === undefined ? undefined : JSON.stringify(body)
         });
@@ -139,19 +160,26 @@ test('POST config validates the GameVox bot fields at the trust boundary', async
     }, admin);
     assert.strictEqual(r2.status, 400);
     assert.match(r2.json.error, /channel id/i);
-
     // Valid save: token + channels + mode stored raw server-side.
     const r3 = await request(ctx.app, 'POST', '/api/broadcast/config', {
         targets: { gamevox: { botToken: TOKEN, botChannels: [CH, ' ' + CH + ' '], botPostMode: 'edit' } }
     }, admin);
-    assert.strictEqual(r3.status, 200);
+    assert.strictEqual(r3.status, 200, 'r3 body: ' + JSON.stringify(r3.json));
     const stored = ctx.data._peek().targets.gamevox;
     assert.strictEqual(stored.botToken, TOKEN);
     assert.deepStrictEqual(stored.botChannels, [CH], 'duplicate ids dedupe');
     assert.strictEqual(stored.botPostMode, 'edit');
     assert.strictEqual(r3.json.targets.gamevox.hasBotToken, true);
     assert.strictEqual(r3.json.targets.gamevox.botTokenMasked, 'GVB.…abcd');
-    assert.ok(!JSON.stringify(r3.json).includes(TOKEN), 'raw token never in responses');
+    // SuperAdmin view carries the raw values so inline forms render them.
+    assert.strictEqual(r3.json.targets.gamevox.botToken, TOKEN);
+    assert.deepStrictEqual(r3.json.targets.gamevox.botChannels, [CH]);
+
+    // Non-superadmin viewers never see raw secrets.
+    const viewer = login(ctx.sessions, 'mod1', 'mod');
+    const maskedView = await request(ctx.app, 'GET', '/api/broadcast/config', undefined, viewer);
+    assert.ok(!JSON.stringify(maskedView.json).includes(TOKEN), 'raw token hidden from non-superadmin');
+    assert.strictEqual(maskedView.json.targets.gamevox.botToken, undefined);
 
     // Omitted token survives a later webhook-only save; [] clears channels.
     await request(ctx.app, 'POST', '/api/broadcast/config', {
@@ -161,6 +189,31 @@ test('POST config validates the GameVox bot fields at the trust boundary', async
     assert.strictEqual(after.botToken, TOKEN, 'omitted field = unchanged');
     assert.deepStrictEqual(after.botChannels, []);
     assert.strictEqual(after.botPostMode, 'edit');
+});
+
+test('POST config translates Channel-Settings UUIDs into bot snowflakes', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const TOKEN = 'GVB.abcdef1234567890abcdef1234567890abcd';
+    const UUID = '7e62c677-2cd9-418d-8cd4-afa2cb5b36fe';
+
+    // Paste the UUID exactly as GameVox shows it in Channel Settings.
+    const r = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botToken: TOKEN, botChannels: [UUID.toUpperCase()] } }
+    }, admin);
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(r.json.targets.gamevox.botChannels, ['1540402360065040384'],
+        'UUID translated to the numeric snowflake the bot API resolves');
+    assert.deepStrictEqual(ctx.data._peek().targets.gamevox.botChannels, ['1540402360065040384']);
+
+    // A UUID the bot cannot see -> actionable 400, storage untouched.
+    const bad = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botChannels: ['deadbeef-0000-1111-2222-333344445555'] } }
+    }, admin);
+    assert.strictEqual(bad.status, 400);
+    assert.match(bad.json.error, /Unknown channel|install the bot/i);
+    assert.deepStrictEqual(ctx.data._peek().targets.gamevox.botChannels, ['1540402360065040384'],
+        'failed save leaves the previous channels untouched');
 });
 
 test('GET config returns the masked shape with live status and never leaks URLs', async () => {    const ctx = makeCtx();
@@ -178,6 +231,7 @@ test('GET config returns the masked shape with live status and never leaks URLs'
     assert.strictEqual(r.json.autoIntervalMin, 15);
 
     const t = r.json.targets.discord;
+    // Mod viewer: masked-only shape - no raw token/webhooks keys.
     assert.deepStrictEqual(Object.keys(t).sort(),
         ['botChannels', 'botPostMode', 'botTokenMasked', 'enabled', 'hasBotToken', 'hasWebhook',
          'mode', 'satMessageId', 'siteLabel', 'siteUrl', 'status', 'sunMessageId',
@@ -220,10 +274,10 @@ test('GET preview renders the exact day markup for mod+ without sending', async 
     const r = await request(ctx.app, 'GET', '/api/broadcast/preview', undefined, mod);
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.json.success, true);
-    assert.ok(r.json.days.sat.includes('**Saturday Roster**'), 'sat header present');
+    assert.ok(r.json.days.sat.includes('## Saturday Roster'), 'sat header present');
     assert.ok(r.json.days.sat.includes('**Antony**'), 'players rendered');
     assert.match(r.json.days.sat, /Updated by mod1, /, 'signature carries the actor');
-    assert.ok(r.json.days.sun && r.json.days.sun.includes('**Sunday Roster**'));
+    assert.ok(r.json.days.sun && r.json.days.sun.includes('## Sunday Roster'));
     assert.strictEqual(ctx.requests.length, 0, 'preview never touches delivery HTTP');
 });
 
@@ -421,4 +475,76 @@ test('POST push validates target names and pushes through the real broadcaster',
     const entry = ctx.history.find(h => h.action === 'broadcast');
     assert.ok(entry, 'push is audit-logged');
     assert.strictEqual(entry.user, 'mod1');
+});
+
+test('POST push auto-generates the -@ site link from the request origin', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const mod = login(ctx.sessions, 'mod1', 'mod');
+    await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { enabled: true, webhooks: [GAMEVOX_INCOMING] } }
+    }, admin);
+
+    // Public origin (behind Render proxy headers) rides along with the push.
+    const r = await request(ctx.app, 'POST', '/api/broadcast/push', { target: 'gamevox' }, mod,
+        { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'wwm-gvgroster.onrender.com' });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.json.results.gamevox.ok, true);
+
+    const contents = ctx.bodies.filter(b => b && typeof b.content === 'string').map(b => b.content);
+    assert.ok(contents.length >= 2, 'sat + sun sent');
+    for (const text of contents) {
+        assert.ok(text.includes('[-@wwm-gvgroster](https://wwm-gvgroster.onrender.com)'),
+            'footer carries the auto-generated origin link');
+    }
+
+    // The public origin is persisted so interval auto-pushes (no request
+    // context) keep linking to it afterwards.
+    const stored = ctx.data._peek().targets.gamevox;
+    assert.strictEqual(stored.siteUrl, 'https://wwm-gvgroster.onrender.com');
+    assert.strictEqual(stored.siteLabel, 'wwm-gvgroster');
+});
+
+test('localhost pushes are tagged Local Test even when a public origin is stored', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const mod = login(ctx.sessions, 'mod1', 'mod');
+    await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { enabled: true, webhooks: [GAMEVOX_INCOMING], siteUrl: 'https://wwm-gvgroster.onrender.com/', siteLabel: 'wwm-gvgroster' } }
+    }, admin);
+
+    // Manual push from a private origin: always the plain local tag - the
+    // stored URL belongs to interval auto-pushes, not to this request.
+    const r = await request(ctx.app, 'POST', '/api/broadcast/push', { target: 'gamevox' }, mod);
+    assert.strictEqual(r.status, 200);
+    const contents = ctx.bodies.filter(b => b && typeof b.content === 'string').map(b => b.content);
+    assert.ok(contents.length >= 2);
+    for (const text of contents) {
+        assert.ok(text.includes('-@Local Test'), 'local pushes tag themselves as Local Test');
+        assert.ok(!text.includes('wwm-gvgroster.onrender.com'), 'stored origin not claimed by a local push');
+        assert.ok(!text.includes('127.0.0.1') && !text.includes('localhost'), 'no dev host in chat');
+    }
+    // The stored auto-push origin survives untouched.
+    assert.strictEqual(ctx.data._peek().targets.gamevox.siteUrl, 'https://wwm-gvgroster.onrender.com/',
+        'private origins never overwrite the stored auto-push origin');
+});
+
+test('pushes with no known origin are tagged -@Local Test as plain text', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const mod = login(ctx.sessions, 'mod1', 'mod');
+    await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { enabled: true, webhooks: [GAMEVOX_INCOMING] } }
+    }, admin);
+
+    // Local push, nothing stored: plain-text tag instead of a hyperlink.
+    const r = await request(ctx.app, 'POST', '/api/broadcast/push', { target: 'gamevox' }, mod);
+    assert.strictEqual(r.status, 200);
+    const contents = ctx.bodies.filter(b => b && typeof b.content === 'string').map(b => b.content);
+    assert.ok(contents.length >= 2);
+    for (const text of contents) {
+        assert.ok(text.includes('-@Local Test'), 'source tag present');
+        assert.ok(!text.includes(']('), 'no hyperlink for local pushes');
+        assert.ok(!text.includes('127.0.0.1') && !text.includes('localhost'), 'no dev host in chat');
+    }
 });

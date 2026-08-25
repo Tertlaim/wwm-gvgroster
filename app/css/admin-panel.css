@@ -263,11 +263,38 @@
 .broadcast-target input[type="text"] {
     width: 100%;
     font-size: var(--font-size-xs);
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    letter-spacing: 0.2px;
     padding: var(--spacing-xs) var(--spacing-sm);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background: transparent;
     color: inherit;
+}
+
+/* Multi-line inline-commit fields (bot token / channel IDs): rows attr sets
+   the height so a full token or all five IDs stay visible while editing. */
+.broadcast-target textarea {
+    width: 100%;
+    font-size: var(--font-size-xs);
+    font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+    letter-spacing: 0.2px;
+    line-height: 1.5;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    resize: none;
+    overflow-y: auto;
+    word-break: break-all;
+}
+
+/* Microcopy under inline-commit fields (Enter to save / clear+Enter removes) */
+.field-hint {
+    margin-top: 3px;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 /* Greyed-out placeholder target (e.g. Discord, deferred) */
@@ -279,8 +306,110 @@
     cursor: not-allowed;
 }
 
-/* ===== BROADCAST PUBLISH PREVIEW ===== */
-.broadcast-preview-bubble {
+/* Broadcast config form rhythm: labeled fields with consistent breathing
+   room, so each ✕ sits visually inside the field it clears. */
+.broadcast-target .form-group {
+    margin-bottom: var(--spacing-sm);
+}
+
+.broadcast-target .form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.broadcast-target .form-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.bot-pair-note {
+    border-left: 2px solid var(--border-light);
+    padding-left: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ===== BROADCAST ACTION BUTTONS ===== */
+/* Preview + Publish always share one row, even in the narrow side panel. */
+.broadcast-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--spacing-sm);
+}
+
+.broadcast-actions .btn {
+    flex: 1;
+    white-space: nowrap;
+    padding-left: var(--spacing-xs);
+    padding-right: var(--spacing-xs);
+}
+
+/* Secondary: outline style so Publish owns the accent color. */
+.broadcast-preview-btn {
+    background: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+}
+
+.broadcast-preview-btn:hover,
+.broadcast-preview-btn:focus-visible {
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+.broadcast-preview-btn:disabled {
+    opacity: 0.5;
+}
+
+/* Primary action: green = go live. */
+.broadcast-publish-btn {
+    background: var(--accent-green);
+    border: 1px solid transparent;
+    color: var(--bg-card);
+    font-weight: 700;
+}
+
+.broadcast-publish-btn:hover,
+.broadcast-publish-btn:focus-visible {
+    filter: brightness(1.08);
+}
+
+.broadcast-publish-btn:disabled {
+    opacity: 0.55;
+}
+
+/* ===== BROADCAST BOT SETUP GUIDE MODAL ===== */
+.setup-steps {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.setup-steps li {
+    font-size: var(--font-size-sm);
+    line-height: 1.55;
+}
+
+.setup-steps li strong {
+    color: var(--text-primary);
+}
+
+.setup-steps img {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    margin-top: var(--spacing-xs);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+/* ===== BROADCAST PUBLISH PREVIEW ===== */.broadcast-preview-bubble {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: var(--spacing-sm);
@@ -326,12 +455,13 @@
     font-weight: 600;
 }
 
-/* Accordion sections (Group Management / Broadcast / Data Tools) */
+/* Accordion sections (Group Management / Broadcast / Data Tools).
+   NOTE: no overflow:hidden here — it clipped the header tooltips. Rounded
+   corners are carried by the head (top) and content (bottom) instead. */
 .admin-tools-section.accordion {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
-    overflow: hidden;
 }
 
 .accordion-head {
@@ -344,6 +474,12 @@
     color: var(--text-primary);
     padding: var(--spacing-sm) var(--spacing-sm);
     text-align: left;
+    border-radius: var(--radius-sm);
+}
+
+.admin-tools-section.accordion .accordion-head:not([aria-expanded="true"]):hover,
+.admin-tools-section.accordion .accordion-head:focus-visible {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .accordion-head .head-status {
@@ -357,6 +493,7 @@
 .admin-tools-section.accordion > div {
     border-top: 1px solid var(--border-color);
     padding: var(--spacing-sm);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 /* Tooltip "(i)" — hover or keyboard focus */
@@ -397,7 +534,8 @@
     padding: 6px 9px;
     border-radius: var(--radius-sm);
     white-space: normal;
-    width: 210px;
+    width: 230px;
+    max-width: min(320px, calc(100vw - 32px));
     z-index: 30;
     box-shadow: var(--shadow-card);
     text-align: left;
@@ -414,6 +552,22 @@
     border: 5px solid transparent;
     border-top-color: var(--border-light);
     z-index: 31;
+}
+
+/* Downward variant: for tips inside overflow-clipped containers
+   (e.g. accordion heads), where an upward bubble would be cut off. */
+.tip.tip-down:hover::after,
+.tip.tip-down:focus-visible::after {
+    bottom: auto;
+    top: calc(100% + 7px);
+}
+
+.tip.tip-down:hover::before,
+.tip.tip-down:focus-visible::before {
+    bottom: auto;
+    top: calc(100% + 2px);
+    border-top-color: transparent;
+    border-bottom-color: var(--border-light);
 }
 
 /* ON/OFF caption beside toggle sliders */
@@ -433,12 +587,6 @@
 
 .toggle-state.on { color: var(--accent-green); }
 .toggle-state.off { color: var(--text-muted); }
-
-/* Full-width Push now under the targets */
-.broadcast-push-btn {
-    width: 100%;
-    margin-top: var(--spacing-xs);
-}
 
 /* Green flash while the autosave confirmation is showing */
 .hint-xs-top.status-saved {

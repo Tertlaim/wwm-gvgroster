@@ -181,8 +181,7 @@ test('player lines strip markdown control characters from names/roles', () => {
 
 test('buildDayText renders plain markdown for embed-less platforms', () => {
     const text = broadcast.buildDayText(fixtureDb(), 'sat', { updatedBy: 'moduser' });
-    assert.ok(text.includes('**Saturday Roster**'), 'day-only header');
-    assert.ok(text.startsWith('**Saturday Roster**'), 'header is the first line');
+    assert.ok(text.startsWith('## Saturday Roster'), 'heading-style day header');
     assert.ok(text.includes('⚔️ **Offence 1** · 2/30'), 'group title with count');
     assert.ok(text.includes('- **Antony** · 🌿 Heal · Vice Commander'), 'player bullets');
     assert.ok(!text.includes('|  |  |'), 'no stray empty table header');
@@ -190,24 +189,28 @@ test('buildDayText renders plain markdown for embed-less platforms', () => {
         'group titles form the table header row');
     assert.ok(text.includes('|---|---|'), 'separator line under the titles');
     assert.ok(text.includes('🕐 **Reserves** · 1'), 'reserves section');
-    assert.match(text, /Updated by moduser, \d{4}-\d{2}-\d{2}-\d{2}:\d{2}$/, 'signature footer last');
+    const lines = text.split('\n');
+    assert.match(lines[lines.length - 2], /Updated by moduser, \d{4}-\d{2}-\d{2}-\d{2}:\d{2} -@Local Test$/,
+        'no origin -> plain Local Test tag');
+    assert.strictEqual(lines[lines.length - 1], broadcast.FOOTER_RULE, 'closing rule line last');
     assert.ok(!text.includes('embeds'), 'plain markdown only');
 
     assert.strictEqual(broadcast.buildDayText({ groups: {}, reserves: {} }, 'sun', {}), null);
     assert.strictEqual(broadcast.buildDayText(null, 'sat', {}), null);
 });
 
-test('buildDayText: each group pair is its own table; odd leftover is a plain section', () => {
+test('buildDayText: each group pair is its own table; odd leftover is a single-column table', () => {
     const db = fixtureDb();
     db.groups.sat.g3 = { title: 'Siege', players: [{ id: 'p9', name: 'Rho', class: 'DPS', role: 'Member' }] };
     const text = broadcast.buildDayText(db, 'sat', {});
-    const bands = text.split('\n\n');
-    const tables = bands.filter(b => b.includes('|---|---|'));
-    assert.strictEqual(tables.length, 1, 'only the paired groups render as a table');
+    const bands = text.split('\n\n').filter(b => b.includes('\n|---|') || b.startsWith('|'));
+    const tables = bands.filter(b => b.includes('\n|---|'));
+    assert.strictEqual(tables.length, 2, 'paired band + leftover band both render as tables');
     assert.ok(tables[0].includes('⚔️ **Offence 1**') && tables[0].includes('🛡️ **Defence**'),
-        'the table holds the first two groups');
-    assert.ok(/📋 \*\*Siege\*\* · 1\/30/.test(bands.join('\n')), 'odd leftover group is a plain section');
-    assert.ok(!text.includes('| 📋'), 'leftover group never becomes a one-column table row');
+        'the first table holds the first two groups');
+    assert.ok(tables[1].startsWith('| 📋 **Siege** · 1/30 |'), 'leftover group: single-column title row');
+    assert.ok(tables[1].includes('|---|'), 'leftover table carries its own separator');
+    assert.ok(tables[1].includes('| - **Rho**'), 'leftover players stay inside the table');
 });
 
 test('buildDayText appends the -@site link behind the timestamp when configured', () => {
@@ -216,16 +219,19 @@ test('buildDayText appends the -@site link behind the timestamp when configured'
         siteLabel: 'WWM Roster',
         siteUrl: 'https://roster.example.com'
     });
-    assert.match(withSite, /\[-@WWM Roster\]\(https:\/\/roster\.example\.com\)$/);
+    assert.ok(withSite.includes('[-@WWM Roster](https://roster.example.com)'), 'labelled link present');
+    assert.ok(withSite.trimEnd().endsWith('\n' + broadcast.FOOTER_RULE), 'closing rule line last');
 
     const noLabel = broadcast.buildDayText(fixtureDb(), 'sat', {
         updatedBy: 'moduser',
         siteUrl: 'https://roster.example.com'
     });
-    assert.match(noLabel, /\[-@https:\/\/roster\.example\.com\]\(https:\/\/roster\.example\.com\)$/);
+    assert.ok(noLabel.includes('[-@https://roster.example.com](https://roster.example.com)'),
+        'url doubles as label when no label set');
 
     const without = broadcast.buildDayText(fixtureDb(), 'sat', { updatedBy: 'moduser' });
-    assert.ok(!without.includes('-@'), 'no link when siteUrl is unset');
+    assert.ok(without.includes('-@Local Test'), 'no origin -> plain Local Test tag');
+    assert.ok(!without.includes(']('), 'Local Test is not a hyperlink');
 });
 
 test('buildDayText never includes the announcement segment', () => {
@@ -234,7 +240,7 @@ test('buildDayText never includes the announcement segment', () => {
     const text = broadcast.buildDayText(db, 'sat', { updatedBy: 'moduser' });
     assert.ok(!text.includes('Announcement'), 'no announcement segment');
     assert.ok(!text.includes('Signups close Friday.'), 'announcement text stays on the web');
-    assert.ok(text.startsWith('**Saturday Roster**'), 'message opens with the roster header');
+    assert.ok(text.startsWith('## Saturday Roster'), 'message opens with the roster header');
 });
 
 // ---- broadcaster queue behavior ----
@@ -418,7 +424,7 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
         assert.strictEqual(c.body.embeds, undefined,
             'embeds are not wired in gamevox webhooks v1 - markdown text only');
     });
-    assert.ok(gv[0].body.content.includes('**Saturday Roster**'), 'content is the markdown roster');
+    assert.ok(gv[0].body.content.includes('## Saturday Roster'), 'content is the markdown roster');
     assert.ok(gv[0].body.content.includes('**Antony**'), 'players render as markdown bullets');
 
     calls.filter(c => c.url.includes('discord')).forEach(c =>
@@ -459,6 +465,12 @@ test('bot helpers validate, normalize and mask without leaking secrets', () => {
     assert.deepStrictEqual(
         broadcast.normalizeBotChannels({ botChannels: [BOT_CHANNEL, '  ', 'nope', '12345'] }),
         [BOT_CHANNEL, '12345']);
+    // Bot API addresses channels by numeric snowflake only - UUIDs 404.
+    const uuid = '7e62c677-2cd9-418d-8cd4-afa2cb5b36fe';
+    assert.strictEqual(broadcast.isValidChannelId(uuid), false);
+    assert.strictEqual(broadcast.isValidChannelId(uuid.toUpperCase()), false);
+    assert.strictEqual(broadcast.isValidChannelId('1541027880090140673'), true);
+    assert.strictEqual(broadcast.isValidChannelId('7e62c677'), false);
     assert.deepStrictEqual(broadcast.normalizeBotChannels({}), []);
     const target = botConfig().targets.gamevox;
     assert.strictEqual(broadcast.hasDeliveryChannel(target), true);
@@ -484,7 +496,7 @@ test('bot fresh mode: every push POSTs a new message with the Bot header', async
         assert.strictEqual(c.method, 'POST', 'fresh mode never PATCHes');
         assert.strictEqual(c.url, broadcast.GAMEVOX_BOT_API + '/channels/' + BOT_CHANNEL + '/messages');
         assert.strictEqual(c.headers.Authorization, 'Bot ' + BOT_TOKEN);
-        assert.ok(c.body.content.includes('Roster**'), 'content is the markdown day roster');
+        assert.ok(c.body.content.includes('## ') && c.body.content.includes(' Roster'), 'content opens with the day heading');
     });
     assert.ok(calls[0].body.content.includes('|'), '2-column group layout on multi-group days (sat)');
     // Fresh mode stores no message ids: nothing to edit later.

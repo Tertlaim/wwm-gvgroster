@@ -6,11 +6,52 @@
 
 const broadcast = require('../integrations/broadcast');
 
-module.exports = function registerBroadcastRoutes(app, ctx) {
-    const { auth, data, broadcaster } = ctx;
+// ---- Auto-generated site link ----
+// The -@label behind the timestamp points at wherever the publish request
+// came from. Behind proxies (Render) the forwarded headers carry the real
+// public origin; direct local calls resolve to localhost and are ignored so
+// dev pushes never stamp a useless link into chat.
 
-    // Masked view shared by GET and POST responses.
-    function publicConfig(cfg, status) {
+function originFromReq(req) {
+    const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() || req.protocol;
+    const host = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim() || (req.get ? req.get('host') : '');
+    if (!host) return '';
+    return proto + '://' + host;
+}
+
+function isPublicOrigin(origin) {
+    let hostname;
+    try {
+        hostname = new URL(origin).hostname.toLowerCase();
+    } catch (e) {
+        return false;
+    }
+    if (hostname === 'localhost' || hostname.endsWith('.local')) return false;
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) return false; // any IPv4 literal
+    if (hostname.startsWith('[')) return false;                 // IPv6 literal
+    return true;
+}
+
+// Readable link label from the host: wwm-gvgroster.onrender.com -> wwm-gvgroster
+function labelFromOrigin(origin) {
+    try {
+        return new URL(origin).hostname.replace(/^www\./i, '').split('.')[0];
+    } catch (e) {
+        return '';
+    }
+}
+
+// Plain-text tag for pushes with no public origin: manual local pushes and
+// origin-less auto-pushes before the first public one is learned.
+const LOCAL_SITE = { siteUrl: '', siteLabel: 'Local Test' };
+
+module.exports = function registerBroadcastRoutes(app, ctx) {
+    const { auth, data, broadcaster, botFetch } = ctx;
+
+    // Masked view shared by GET and POST responses. The SuperAdmin also gets
+    // the raw values back so the inline forms can show what is saved; other
+    // roles keep masked-only output.
+    function publicConfig(cfg, status, viewerRole) {
         const base = broadcast.defaultIntegrationsConfig();
         const merged = { ...base, ...(cfg || {}) };
         merged.targets = { ...base.targets, ...((cfg && cfg.targets) || {}) };
@@ -21,7 +62,7 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 ? t.webhooks.filter(u => typeof u === 'string' && u)
                 : (t.webhookUrl ? [t.webhookUrl] : []);
             const botToken = broadcast.effectiveBotToken(t);
-            targets[key] = {
+            const view = {
                 enabled: !!t.enabled,
                 mode: broadcast.TARGET_MODES.includes(t.mode) ? t.mode : 'auto',
                 hasWebhook: urls.length > 0,
@@ -37,6 +78,12 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 sunMessageId: t.sunMessageId || null,
                 status: status ? status[key] : null
             };
+            if (viewerRole === 'superadmin') {
+                // Inline-edit forms render these directly.
+                view.botToken = botToken;
+                view.webhooks = urls;
+            }
+            targets[key] = view;
         }
         return {
             success: true,
@@ -50,7 +97,7 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
     app.get('/api/broadcast/config', auth.requireAuth, async (req, res) => {
         try {
             const cfg = await data.readIntegrations();
-            res.json(publicConfig(cfg, broadcaster ? broadcaster.getStatus() : null));
+            res.json(publicConfig(cfg, broadcaster ? broadcaster.getStatus() : null, req.session.role));
         } catch (e) {
             res.status(500).json({ success: false, error: 'Failed to load broadcast config' });
         }
@@ -191,7 +238,10 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                     }
                     t.botToken = botToken;
 
-                    // Channels: full replacement; '' / [] clears; snowflakes only.
+                    // Channels: full replacement; '' / [] clears. Accepts the
+                    // numeric snowflake OR the UUID from Channel Settings -
+                    // UUIDs are translated to snowflakes via the bot API so
+                    // stored config is always in the resolvable format.
                     let botChannels = broadcast.normalizeBotChannels(cur);
                     if (incoming && Array.isArray(incoming.botChannels)) {
                         if (incoming.botChannels.length > broadcast.MAX_WEBHOOKS) {
@@ -201,16 +251,41 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                             });
                         }
                         botChannels = [];
+                        const pending = [];
                         for (const raw of incoming.botChannels) {
                             const v = String(raw == null ? '' : raw).trim();
                             if (!v) continue;
-                            if (!/^\d{5,}$/.test(v)) {
+                            if (!broadcast.isValidChannelId(v) && !broadcast.UUID_RE.test(v)) {
                                 return res.status(400).json({
                                     success: false,
-                                    error: 'Invalid GameVox bot channel id "' + v.slice(0, 24) + '" (expected the numeric channel snowflake)'
+                                    error: 'Invalid GameVox bot channel id "' + v.slice(0, 24) + '" (numeric ID or the UUID from Channel Settings)'
                                 });
                             }
-                            if (!botChannels.includes(v)) botChannels.push(v);
+                            if (!pending.includes(v)) pending.push(v);
+                        }
+                        if (pending.length) {
+                            const lookupToken = (typeof botToken === 'string' && botToken) || process.env.GAMEVOX_BOT_TOKEN || '';
+                            if (!lookupToken) {
+                                botChannels = pending.filter(v => broadcast.isValidChannelId(v));
+                            } else {
+                                let resolved;
+                                try {
+                                    resolved = await broadcast.resolveChannelIds(lookupToken, pending, botFetch);
+                                } catch (e) {
+                                    return res.status(400).json({
+                                        success: false,
+                                        error: 'Could not look up channels: ' + e.message
+                                    });
+                                }
+                                if (resolved.unknown.length) {
+                                    return res.status(400).json({
+                                        success: false,
+                                        error: 'Unknown channel(s): ' + resolved.unknown.join(', ') +
+                                            ' - install the bot on that server first (Setup guide, step 4)'
+                                    });
+                                }
+                                botChannels = resolved.ids;
+                            }
                         }
                     }
                     t.botChannels = botChannels;
@@ -256,7 +331,7 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
             if (!saved) {
                 return res.status(500).json({ success: false, error: 'Failed to save broadcast config' });
             }
-            res.json(publicConfig(next, broadcaster ? broadcaster.getStatus() : null));
+            res.json(publicConfig(next, broadcaster ? broadcaster.getStatus() : null, req.session.role));
         } catch (e) {
             res.status(500).json({ success: false, error: 'Failed to save broadcast config' });
         }
@@ -272,12 +347,13 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 return res.status(500).json({ success: false, error: 'Roster data unavailable' });
             }
             const actor = (req.session && req.session.username) || 'staff';
-            let site = {};
-            try {
-                const cfg = await data.readIntegrations();
-                const gv = cfg && cfg.targets && cfg.targets.gamevox;
-                if (gv) site = { siteLabel: gv.siteLabel, siteUrl: gv.siteUrl };
-            } catch (e) { /* branding is optional for preview */ }
+            // Preview mirrors a manual publish: public request origin when
+            // available, otherwise the Local Test tag. The stored origin is
+            // only consumed by interval auto-pushes.
+            const origin = originFromReq(req);
+            const site = isPublicOrigin(origin)
+                ? { siteUrl: origin, siteLabel: labelFromOrigin(origin) }
+                : LOCAL_SITE;
             const days = {};
             for (const day of broadcast.DAY_KEYS) {
                 days[day] = broadcast.buildDayText(db, day, { updatedBy: actor, ...site });
@@ -298,8 +374,27 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
         if (target && !broadcast.TARGET_KEYS.includes(target)) {
             return res.status(400).json({ success: false, error: 'Unknown target' });
         }
+        // Site link reflects where THIS push came from. A public origin rides
+        // along with the push AND is persisted so the interval auto-push (no
+        // request context) keeps using it later. Local pushes are tagged
+        // "Local Test" and never touch storage.
+        const origin = originFromReq(req);
+        const site = isPublicOrigin(origin)
+            ? { siteUrl: origin, siteLabel: labelFromOrigin(origin) }
+            : LOCAL_SITE;
+        if (isPublicOrigin(origin)) {
+            try {
+                const cfg = await data.readIntegrations();
+                const gv = cfg && cfg.targets && cfg.targets.gamevox;
+                if (gv && (gv.siteUrl !== site.siteUrl || gv.siteLabel !== site.siteLabel)) {
+                    gv.siteUrl = site.siteUrl;
+                    gv.siteLabel = site.siteLabel;
+                    await data.writeIntegrations(cfg);
+                }
+            } catch (e) { /* persistence is best-effort */ }
+        }
         try {
-            const results = await broadcaster.pushNow(req.session.username, target || null);
+            const results = await broadcaster.pushNow(req.session.username, target || null, { site });
             res.json({ success: true, results });
         } catch (e) {
             res.status(500).json({ success: false, error: 'Push failed' });

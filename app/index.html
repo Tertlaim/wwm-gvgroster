@@ -302,31 +302,46 @@
                         <button type="button" class="toggle-header accordion-head" id="broadcastToggle" aria-expanded="false" aria-controls="broadcastContent">
                             <i class="fas fa-chevron-right" id="broadcastIcon"></i>
                             Broadcast
-                            <span class="tip" tabindex="0" data-tip="Push now posts one roster message per day (Saturday + Sunday). Manual pushes have a 30s cooldown."><i class="tip-dot">i</i></span>
+                            <span class="tip tip-down" tabindex="0" data-tip="Publish posts one roster message per day (Saturday + Sunday) to the guild&rsquo;s GameVox channel &mdash; instantly, like a normal chat message. Preview shows exactly what will be sent. 30s cooldown between publishes."><i class="tip-dot">i</i></span>
                             <span class="head-status" id="broadcastHeadStatus"></span>
                         </button>
                         <div id="broadcastContent" style="display:none;">
-                            <!-- What Publish does: every staff role (config lives below, SuperAdmin-only) -->
-                            <div class="hint-xs-top" data-role-show="mod,admin" style="display:none; margin-bottom:var(--spacing-md);">
-                                <i class="fas fa-circle-info"></i>
-                                <strong>Publish</strong> posts the current roster as one message per day (Saturday + Sunday) to the guild&rsquo;s GameVox channel &mdash; instantly, like a normal chat message. Use <strong>Preview</strong> to see exactly what will be sent.
-                                There is a short cooldown between publishes.
-                            </div>
-
-                            <!-- Configuration: SuperAdmin only -->
+                            <!-- Configuration: SuperAdmin only. Full setup steps
+                                 (incl. OAuth2 permissions) live in the guide modal. -->
                             <div data-role-show="superadmin" style="display:none;">
                                 <div class="broadcast-target">
                                     <div class="broadcast-target-head">
                                         <strong style="font-size:var(--font-size-sm);"><i class="fas fa-robot"></i> Bot &middot; live updates</strong>
+                                        <span style="display:inline-flex; align-items:center; gap:8px;">
+                                            <span class="tip" tabindex="0" data-tip="Master switch for GameVox publishing &mdash; gates the bot above and the legacy webhook below."><i class="tip-dot">i</i></span>
+                                            <span class="toggle-wrap">
+                                                <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
+                                                <label class="toggle-switch">
+                                                    <input type="checkbox" id="broadcastGamevoxEnabled">
+                                                    <span class="toggle-slider"></span>
+                                                </label>
+                                            </span>
+                                        </span>
                                     </div>
-                                    <div class="flex-btn-row">
-                                        <input type="text" id="broadcastBotToken" placeholder="Paste bot token (GVB.&hellip;)" autocomplete="off" spellcheck="false">
-                                        <button type="button" class="wh-clear-btn" id="broadcastBotClear" title="Remove saved bot token and channels" aria-label="Remove saved bot token and channels"><i class="fas fa-xmark"></i></button>
+                                    <button type="button" class="btn btn-sm btn-auto" id="broadcastSetupGuideBtn" style="width:100%; margin:var(--spacing-xs) 0 var(--spacing-sm);">
+                                        <i class="fas fa-book-open"></i> Setup guide
+                                    </button>
+                                    <div class="form-group">
+                                        <label>BOT TOKEN :
+                                            <span class="tip" tabindex="0" data-tip="From developers.gamevox.com &mdash; shown only once, when you create the application. Paste + Enter swaps the connected bot; clear + Enter removes it."><i class="tip-dot">i</i></span>
+                                        </label>
+                                        <textarea id="broadcastBotToken" rows="2" placeholder="Paste bot token (GVB.&hellip;)" autocomplete="off" spellcheck="false"></textarea>
+                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes</div>
                                     </div>
-                                    <div class="flex-btn-row">
-                                        <input type="text" id="broadcastBotChannels" placeholder="Channel IDs (space/comma separated)" autocomplete="off" spellcheck="false">
+                                    <div class="form-group">
+                                        <label>CHANNELS :
+                                            <span class="tip" tabindex="0" data-tip="Numeric channel ID or the UUID from Channel Settings (right-click channel &rarr; Edit) &mdash; UUIDs are translated automatically. Space/comma/newline separated, max 5."><i class="tip-dot">i</i></span>
+                                        </label>
+                                        <textarea id="broadcastBotChannels" rows="5" placeholder="Channel IDs (space/comma/newline separated)" autocomplete="off" spellcheck="false"></textarea>
+                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes all channels</div>
                                     </div>
-                                    <div class="flex-btn-row">
+                                    <div class="form-group">
+                                        <label>ON PUBLISH :</label>
                                         <select id="broadcastBotMode" class="select-field" style="width:100%;">
                                             <option value="fresh">Post a new message each publish</option>
                                             <option value="edit">Edit the existing message</option>
@@ -336,38 +351,28 @@
                                         <i class="fas fa-info-circle"></i> Bot not configured &mdash; roster falls back to the webhook below
                                     </div>
                                 </div>
-                                <div class="broadcast-target broadcast-target-off" id="broadcastWebhookBlock">
+                                <div class="broadcast-target" id="broadcastWebhookBlock">
                                     <div class="broadcast-target-head">
                                         <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> Webhook &middot; legacy fallback</strong>
-                                        <span class="toggle-wrap">
-                                            <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" id="broadcastGamevoxEnabled">
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </span>
                                     </div>
-                                    <div class="flex-btn-row">
-                                        <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
-                                        <button type="button" class="wh-clear-btn" id="broadcastGamevoxClear" title="Remove all saved GameVox webhooks" aria-label="Remove all saved GameVox webhooks"><i class="fas fa-xmark"></i></button>
+                                    <div class="form-group">
+                                        <label>WEBHOOK URL :
+                                            <span class="tip tip-down" tabindex="0" data-tip="Legacy path, kept for back-testing only: webhook messages may need a GameVox client restart to show. The bot above is the live path."><i class="tip-dot">i</i></span>
+                                        </label>
+                                        <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL (several = several channels)" autocomplete="off" spellcheck="false">
+                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes all webhooks</div>
                                     </div>
                                     <div class="hint-xs-top" id="broadcastGamevoxStatus">
                                         <i class="fas fa-info-circle"></i> Not configured
                                     </div>
                                 </div>
-                                <div class="hint-xs-top" style="margin-bottom:var(--spacing-md);">
-                                    <i class="fas fa-circle-check"></i> Setup checklist:
-                                    <strong>1.</strong> create an application at developers.gamevox.com and install its bot on your server (OAuth2 scopes: <em>bot</em>; permissions: View Channels, Send Messages, Embed Links, Read Message History);
-                                    <strong>2.</strong> paste the bot token (<em>GVB.&hellip;</em>) above and the target channel IDs (right-click channel &rarr; Copy Channel ID);
-                                    <strong>3.</strong> Publish now delivers live to chat. The webhook below is kept only for back-testing &mdash; its messages may need a client restart to show.
-                                </div>
                             </div>
 
-                            <div class="flex-btn-row">
-                                <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPreviewBtn">
+                            <div class="broadcast-actions">
+                                <button class="btn btn-sm btn-auto broadcast-preview-btn" id="broadcastPreviewBtn">
                                     <i class="fas fa-eye"></i> Preview
                                 </button>
-                                <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPushBtn">
+                                <button class="btn btn-sm btn-auto broadcast-publish-btn" id="broadcastPushBtn">
                                     <i class="fas fa-satellite-dish"></i> Publish
                                 </button>
                             </div>
@@ -527,6 +532,52 @@
             <div id="broadcastPreviewBody" style="max-height:60vh; overflow-y:auto;"></div>
             <div class="flex-btn-center" >
                 <button type="button" class="btn btn-outline btn-xl" id="broadcastPreviewCloseBtn"><i class="fas fa-times"></i> Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BROADCAST BOT SETUP GUIDE MODAL -->
+    <div class="modal-overlay" id="broadcastSetupModal" role="dialog" aria-modal="true" aria-labelledby="broadcastSetupTitle">
+        <div class="modal-box">
+            <h2 id="broadcastSetupTitle"><i class="fas fa-book-open"></i> Bot setup guide</h2>
+            <p class="modal-hint" style="font-size:var(--font-size-xs); color:var(--text-muted); margin-bottom:var(--spacing-sm);">
+                One bot per guild &mdash; the OAuth2 app on GameVox and the config in this panel are two halves of one connection. Removing either half breaks delivery.
+            </p>
+            <div id="broadcastSetupBody" style="max-height:60vh; overflow-y:auto;">
+                <ol class="setup-steps">
+                    <li>
+                        <strong>Create the application.</strong> Open <em>developers.gamevox.com</em> and sign in with your GameVox account (the same one you use in the app).
+                        Scroll to <em>Your applications</em> &rarr; <strong>+ New application</strong>.
+                        The bot token (<em>GVB.&hellip;</em>) is created here and shown only once &mdash; copy and keep it for step 5.
+                        <img src="/img/setup/oauth-portal.png" alt="GameVox Developer Portal landing page: sign in with your GameVox account to manage bot applications" loading="lazy">
+                        <img src="/img/setup/oauth-apps-list.png" alt="Your applications list with the WWM GvG Roster app card and the + New application button" loading="lazy">
+                    </li>
+                    <li>
+                        <strong>Open the OAuth2 tab.</strong> In your application, open the <em>OAuth2</em> tab &rarr; URL generator.
+                        The <em>bot</em> and <em>applications.commands</em> scopes are ticked by default &mdash; leave them exactly as they are.
+                    </li>
+                    <li>
+                        <strong>Pick permissions.</strong> Still on the OAuth2 tab, tick in the permissions grid:
+                        <strong>View Channels, Send Messages, Embed Links, Read Message History</strong>
+                        (&ldquo;Administrator&rdquo; also works but grants far more than needed).
+                        <img src="/img/setup/oauth-permissions.png" alt="Permissions grid with View Channels, Send Messages, Manage Messages, Embed Links and Read Message History ticked" loading="lazy">
+                    </li>
+                    <li>
+                        <strong>Install the bot.</strong> Scroll to the <em>bottom</em> of the OAuth2 tab to reach the link form.
+                        Either pick your server and press <strong>Install Application</strong>, or press <strong>Copy</strong> on the Generated URL and open it in a browser to install.
+                        Do this after the permissions in step 3 are ticked, so the bot installs with them.
+                        <img src="/img/setup/oauth-install.png" alt="Bottom of the OAuth2 tab: redirect None, Generated URL with Copy button, and the Install directly to a server section" loading="lazy">
+                    </li>
+                    <li>
+                        <strong>Connect it here.</strong> Use the bot token from step 1: paste it into <strong>BOT TOKEN</strong> and press Enter.
+                        Right-click each target channel in GameVox &rarr; <em>Copy Channel ID</em>, paste into <strong>CHANNELS</strong> (space/comma separated) and press Enter.
+                        Pick the <strong>ON PUBLISH</strong> behaviour: a fresh message per publish keeps rosters visible at the bottom of chat;
+                        edit-mode rewrites one message (pair it with pinning). Publish then delivers instantly, like normal chat.
+                    </li>
+                </ol>
+            </div>
+            <div class="flex-btn-center" >
+                <button type="button" class="btn btn-outline btn-xl" id="broadcastSetupCloseBtn"><i class="fas fa-times"></i> Close</button>
             </div>
         </div>
     </div>

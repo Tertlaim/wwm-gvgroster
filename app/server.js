@@ -20,6 +20,7 @@ const registerAuthRoutes = require('./server/route/auth');
 const registerDataRoutes = require('./server/route/data');
 const registerHistoryRoutes = require('./server/route/history');
 const registerBroadcastRoutes = require('./server/route/broadcast');
+const registerGamevoxInteractions = require('./server/route/gamevox-interactions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,11 +55,15 @@ if (allowedOrigins) {
     app.use(cors({ origin: allowedOrigins }));
 }
 
-// Middleware
-app.use(express.json({ limit: '1mb' }));
+// Middleware. verify captures the raw body so the GameVox interactions
+// endpoint can check its Ed25519 signature over the exact bytes sent.
+app.use(express.json({
+    limit: '1mb',
+    verify: (req, res, buf) => { req.rawBody = buf; }
+}));
 
 // Serve ONLY client assets - never the server source tree.
-['css', 'js', 'vendor'].forEach(dir => {
+['css', 'js', 'vendor', 'img'].forEach(dir => {
     app.use('/' + dir, express.static(path.join(__dirname, dir)));
 });
 
@@ -77,6 +82,7 @@ registerAuthRoutes(app, ctx);
 registerDataRoutes(app, ctx);
 registerHistoryRoutes(app, ctx);
 registerBroadcastRoutes(app, ctx);
+registerGamevoxInteractions(app, ctx);
 
 // Serve the main HTML file
 app.get('/', (req, res) => {

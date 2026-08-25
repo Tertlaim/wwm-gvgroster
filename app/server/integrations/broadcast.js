@@ -37,6 +37,9 @@ const DAY_KEYS = ['sat', 'sun'];
 const DAY_LABELS = { sat: 'Saturday', sun: 'Sunday' };
 const DAY_COLORS = { sat: 0xF1C40F, sun: 0x3498DB }; // gold=Sat, blue=Sun
 const CLASS_EMOJI = { Tank: '🛡️', DPS: '⚔️', Heal: '🌿' };
+// Full-width rule closing each day message - visually separates it from the
+// next message in busy chat.
+const FOOTER_RULE = '─'.repeat(28);
 
 // Discord-compatible bot REST base (developers.gamevox.com/docs/migrating).
 // Messages sent under a bot token are normal channel messages: they reach
@@ -153,10 +156,96 @@ function maskBotToken(token) {
     return t.slice(0, 4) + '…' + t.slice(-4);
 }
 
-// Channel snowflakes for the bot path (client "Copy Channel ID").
+// Channel identifiers for the bot path: numeric snowflakes only. The bot
+// REST surface rejects GameVox internal UUIDs with 10003 Unknown Channel
+// (live-tested 2026-08-25).
+const CHANNEL_ID_RE = /^\d{5,}$/;
+
+function isValidChannelId(id) {
+    return typeof id === 'string' && CHANNEL_ID_RE.test(id.trim());
+}
+
+// GameVox's own UI (Channel Settings -> Channel ID) shows the internal UUID
+// (gamevox_id), while the bot REST surface only resolves numeric snowflakes.
+// The guild channel list carries both, so pasted UUIDs are translated here.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CHANNEL_MAP_TTL_MS = 5 * 60 * 1000;
+const channelMapCache = new Map(); // token -> { map: uuid|snowflake -> snowflake, at }
+
+async function fetchChannelMap(token, fetchImpl) {
+    const cached = channelMapCache.get(token);
+    if (cached && Date.now() - cached.at < CHANNEL_MAP_TTL_MS) return cached.map;
+    const map = new Map();
+    const headers = { Authorization: 'Bot ' + token };
+    const gRes = await fetchImpl(GAMEVOX_BOT_API + '/users/@me/guilds', {
+        headers, signal: AbortSignal.timeout(15000)
+    });
+    if (!gRes.ok) throw new Error('channel lookup failed (' + gRes.status + ')');
+    for (const g of await gRes.json()) {
+        const cRes = await fetchImpl(GAMEVOX_BOT_API + '/guilds/' + g.id + '/channels', {
+            headers, signal: AbortSignal.timeout(15000)
+        });
+        if (!cRes.ok) continue;
+        for (const c of await cRes.json()) {
+            if (!c.id) continue;
+            map.set(c.id, c.id);
+            if (c.gamevox_id) map.set(String(c.gamevox_id).toLowerCase(), c.id);
+        }
+    }
+    channelMapCache.set(token, { map, at: Date.now() });
+    return map;
+}
+
+// Translate a mixed list of snowflakes/UUIDs into stored snowflakes.
+// Returns { ids, unknown } - unknown entries could not be matched to any
+// channel the bot can see (typo, or bot not installed on that server).
+async function resolveChannelIds(token, rawList, fetchImpl) {
+    const map = await fetchChannelMap(token, fetchImpl || globalThis.fetch);
+    const ids = [];
+    const unknown = [];
+    for (const raw of rawList) {
+        const v = String(raw == null ? '' : raw).trim();
+        if (!v) continue;
+        const hit = map.get(UUID_RE.test(v) ? v.toLowerCase() : v);
+        if (hit) {
+            if (!ids.includes(hit)) ids.push(hit);
+        } else {
+            unknown.push(v);
+        }
+    }
+    return { ids, unknown };
+}
+
+// Split long plain-markdown text into chat-sized chunks (<=max chars),
+// breaking at line boundaries so tables/headings stay intact per chunk.
+function splitForChat(text, max) {
+    const limit = Math.max(200, Number(max) || 1900);
+    const input = String(text == null ? '' : text);
+    if (input.length <= limit) return [input];
+    const out = [];
+    let current = '';
+    for (const rawLine of input.split('\n')) {
+        let line = rawLine;
+        if (current && current.length + 1 + line.length <= limit) {
+            current += '\n' + line;
+            continue;
+        }
+        if (current) out.push(current);
+        // Pathological single line longer than the limit: hard-cut it.
+        while (line.length > limit) {
+            out.push(line.slice(0, limit));
+            line = line.slice(limit);
+        }
+        current = line;
+    }
+    if (current) out.push(current);
+    return out;
+}
+
+// Channel IDs for the bot path (client "Copy Channel ID").
 function normalizeBotChannels(target) {
     if (!target || !Array.isArray(target.botChannels)) return [];
-    return target.botChannels.filter(c => typeof c === 'string' && /^\d{5,}$/.test(c));
+    return target.botChannels.filter(c => isValidChannelId(c));
 }
 
 // Config wins; .env is the deployment fallback so the secret can be managed
@@ -301,7 +390,7 @@ function buildDayText(db, day, options) {
 
     const lines = [];
 
-    lines.push('**' + DAY_LABELS[day] + ' Roster**');
+    lines.push('## ' + DAY_LABELS[day] + ' Roster');
 
     if (groupKeys.length > 0) {
         const groupSections = groupKeys.map(k => {
@@ -327,24 +416,24 @@ function buildDayText(db, day, options) {
         } else {
             // One mini-table per PAIR of groups: the group titles act as the
             // header row, so there is no stray empty "| | |" header, and each
-            // table carries its own "---" separator under the titles (user-
-            // approved layout, 2026-08-25). An odd leftover group renders as
-            // a plain section instead of a lopsided one-column table.
+            // table carries its own "---" separator under the titles. An
+            // unpaired trailing group (e.g. a 3rd group with no 4th) renders
+            // as a single-column table of its own, same structure.
             for (let i = 0; i < groupSections.length; i += 2) {
                 const left = groupSections[i];
                 const right = groupSections[i + 1];
                 lines.push('');
-                if (!right) {
-                    lines.push(...left);
-                    continue;
-                }
-                lines.push('| ' + left[0] + ' | ' + right[0] + ' |');
-                lines.push('|---|---|');
-                const maxHeight = Math.max(left.length, right.length);
+                lines.push(right
+                    ? '| ' + left[0] + ' | ' + right[0] + ' |'
+                    : '| ' + left[0] + ' |');
+                lines.push(right ? '|---|---|' : '|---|');
+                const maxHeight = right ? Math.max(left.length, right.length) : left.length;
                 for (let j = 1; j < maxHeight; j++) {
                     const l = left[j] || '';
-                    const r = right[j] || '';
-                    lines.push('| ' + l + ' | ' + r + ' |');
+                    const r = right ? (right[j] || '') : '';
+                    lines.push(right
+                        ? '| ' + l + ' | ' + r + ' |'
+                        : '| ' + l + ' |');
                 }
             }
         }
@@ -366,13 +455,19 @@ function buildDayText(db, day, options) {
         const timeStr = now.toTimeString().slice(0, 5);  // HH:MM
         lines.push('');
         let footerLine = `Updated by ${by}, ${dateStr}-${timeStr}`;
-        // Optional site link riding behind the timestamp: -@Label -> URL.
+        // Origin marker behind the timestamp: a public origin renders as a
+        // real hyperlink; anything else (local/dev push, no stored origin)
+        // falls back to a plain "-@Local Test" tag so readers can tell where
+        // the message was published from.
         const url = String(opts.siteUrl || '').trim();
+        const label = sanitizeText(opts.siteLabel, 40);
         if (/^https?:\/\//.test(url)) {
-            const label = sanitizeText(opts.siteLabel, 40) || url;
-            footerLine += ` [-@${label}](${url})`;
+            footerLine += ` [-@${label || url}](${url})`;
+        } else {
+            footerLine += ' -@' + (label || 'Local Test');
         }
         lines.push(footerLine);
+        lines.push(FOOTER_RULE);
     }
 
     return lines.join('\n');
@@ -516,7 +611,7 @@ function createBroadcaster(deps) {
     // 404); create-only platforms (GameVox incoming webhooks) always POST a
     // fresh plain-markdown message - embeds are not wired in GameVox
     // webhooks v1 (docs, 2026-08-23).
-    async function ensureDayMessage(st, target, url, db, day, actor) {
+    async function ensureDayMessage(st, target, url, db, day, actor, siteOverride) {
         const canEdit = target.platform !== 'gamevox';
         let message;
         if (canEdit) {
@@ -524,8 +619,7 @@ function createBroadcaster(deps) {
         } else {
             const text = buildDayText(db, day, {
                 updatedBy: actor,
-                siteLabel: target.siteLabel,
-                siteUrl: target.siteUrl
+                ...resolveSite(target, siteOverride)
             });
             message = text ? { content: text } : null;
         }
@@ -557,16 +651,27 @@ function createBroadcaster(deps) {
         return { ok: true, created: true };
     }
 
+    // Site branding for a push: config values (used by interval auto-pushes,
+    // which have no request context), overridden whenever the route passes an
+    // explicit per-request decision (public origin, or the Local Test tag).
+    function resolveSite(target, siteOverride) {
+        const site = { siteLabel: target.siteLabel, siteUrl: target.siteUrl };
+        if (siteOverride && typeof siteOverride === 'object') {
+            if (typeof siteOverride.siteLabel === 'string') site.siteLabel = siteOverride.siteLabel;
+            if (typeof siteOverride.siteUrl === 'string') site.siteUrl = siteOverride.siteUrl;
+        }
+        return site;
+    }
+
     // One day on ONE channel via the GameVox bot REST API. Bot messages are
     // normal chat: online clients see them live, and edit mode can PATCH a
     // stored message id (fresh mode always posts, so a roster buried under
     // newer chat is never silently updated out of sight). Content is the
     // same plain-markdown day text the webhook path uses (2-column layout).
-    async function botEnsureDayMessage(st, target, channelId, db, day, actor) {
+    async function botEnsureDayMessage(st, target, channelId, db, day, actor, siteOverride) {
         const text = buildDayText(db, day, {
             updatedBy: actor,
-            siteLabel: target.siteLabel,
-            siteUrl: target.siteUrl
+            ...resolveSite(target, siteOverride)
         });
         if (!text) return { ok: true, skipped: true };
 
@@ -645,13 +750,13 @@ function createBroadcaster(deps) {
         for (const day of DAY_KEYS) {
             const perChannel = [];
             for (let i = 0; i < urls.length; i++) {
-                const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system');
+                const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system', opts.site);
                 if (r.created) configDirty = true;
                 perChannel.push({ n: i + 1, ...r });
             }
             if (botOn) {
                 for (let i = 0; i < botChannels.length; i++) {
-                    const r = await botEnsureDayMessage(st, target, botChannels[i], db, day, opts.actor || 'system');
+                    const r = await botEnsureDayMessage(st, target, botChannels[i], db, day, opts.actor || 'system', opts.site);
                     if (r.created) configDirty = true;
                     perChannel.push({ n: urls.length + i + 1, ...r });
                 }
@@ -774,7 +879,8 @@ function createBroadcaster(deps) {
 
     // Manual push (Mod+ button): bypasses the auto floor, honors its own
     // 30s cooldown per target, still subject to platform 429s.
-    async function pushNow(actor, onlyKey) {
+    async function pushNow(actor, onlyKey, options) {
+        const opts = options || {};
         const keys = (onlyKey && TARGET_KEYS.includes(onlyKey)) ? [onlyKey] : TARGET_KEYS;
         const results = {};
         for (const key of keys) {
@@ -785,7 +891,7 @@ function createBroadcaster(deps) {
                     return { ok: false, cooldown: true, retryAfterSec: Math.ceil(remaining / 1000) };
                 }
                 st.lastManualPushAt = d.now();
-                return pushTarget(key, { actor: actor || 'mod', manual: true });
+                return pushTarget(key, { actor: actor || 'mod', manual: true, site: opts.site });
             });
         }
         return results;
@@ -833,6 +939,7 @@ module.exports = {
     CLASS_EMOJI,
     GROUP_CAP,
     MANUAL_COOLDOWN_MS,
+    FOOTER_RULE,
     BREAKER_THRESHOLD,
     BREAKER_PAUSE_MS,
     MIN_SPACING_MS,
@@ -849,6 +956,10 @@ module.exports = {
     isValidWebhookUrl,
     isValidBotToken,
     maskBotToken,
+    isValidChannelId,
+    UUID_RE,
+    resolveChannelIds,
+    splitForChat,
     normalizeBotChannels,
     effectiveBotToken,
     hasDeliveryChannel,
