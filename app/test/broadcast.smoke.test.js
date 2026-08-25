@@ -106,7 +106,10 @@ test('boot smoke: real server serves authed broadcast endpoints end to end', asy
         const postBody = await post.json();
         assert.strictEqual(postBody.targets.gamevox.hasWebhook, true);
         assert.match(postBody.targets.gamevox.webhookMasked, /…cdef$/);
-        assert.ok(!JSON.stringify(postBody).includes('smoke_token_value'), 'response masks the token');
+        // The poster here is the SuperAdmin: raw values round-trip so the
+        // inline forms can show what is saved (masking for other roles is
+        // covered by broadcast.routes.test.js).
+        assert.deepStrictEqual(postBody.targets.gamevox.webhooks, [url]);
 
         // Persisted to the isolated integrations file (write path works).
         const stored = JSON.parse(fs.readFileSync(path.join(tmp.dataDir, 'integrations.json'), 'utf8'));
