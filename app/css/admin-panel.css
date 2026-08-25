@@ -297,17 +297,8 @@
     color: var(--text-muted);
 }
 
-/* Greyed-out placeholder target (e.g. Discord, deferred) */
-.broadcast-target-off {
-    opacity: 0.55;
-}
-
-.broadcast-target-off input[type="text"] {
-    cursor: not-allowed;
-}
-
 /* Broadcast config form rhythm: labeled fields with consistent breathing
-   room, so each ✕ sits visually inside the field it clears. */
+   room, so inline-edit fields read as one connected block. */
 .broadcast-target .form-group {
     margin-bottom: var(--spacing-sm);
 }
@@ -592,24 +583,6 @@
 .hint-xs-top.status-saved {
     color: var(--accent-green);
 }
-
-/* ✕ remove-all button beside the webhook input */
-.wh-clear-btn {
-    flex-shrink: 0;
-    width: 30px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-}
-
-.wh-clear-btn:hover {
-    color: var(--accent-red-soft, #f87171);
-    border-color: var(--accent-red-soft, #f87171);
-}
-
 
 
 

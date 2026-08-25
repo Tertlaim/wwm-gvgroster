@@ -78,7 +78,6 @@ function defaultIntegrationsConfig() {
             discord: { platform: 'discord', enabled: false, mode: 'auto', webhookUrl: '', satMessageId: null, sunMessageId: null },
             gamevox: {
                 platform: 'gamevox', enabled: false, mode: 'manual',
-                webhookUrl: '', satMessageId: null, sunMessageId: null,
                 botToken: '', botChannels: [], botPostMode: 'fresh',
                 siteLabel: '', siteUrl: ''
             }
@@ -131,7 +130,8 @@ function isValidWebhookUrl(platform, url) {
 }
 
 // A target fans out to one or more channels. `webhooks` is the source of
-// truth; legacy configs only have webhookUrl, so derive the list from it.
+// truth for the discord target; legacy configs only have webhookUrl, so
+// derive the list from it. (GameVox ignores webhooks entirely - bot-only.)
 function normalizeWebhooks(target) {
     if (!target) return [];
     if (Array.isArray(target.webhooks)) {
@@ -716,7 +716,9 @@ function createBroadcaster(deps) {
             debounceSecCache = Number(cfg.debounceSec);
         }
         const target = cfg && cfg.targets && cfg.targets[key];
-        const urls = normalizeWebhooks(target);
+        // Webhooks drive the discord target only; the GameVox path is
+        // bot-exclusive since the legacy webhook removal (2026-08-26).
+        const urls = key === 'discord' ? normalizeWebhooks(target) : [];
         const botChannels = key === 'gamevox' ? normalizeBotChannels(target) : [];
         const botOn = botChannels.length > 0 && Boolean(effectiveBotToken(target));
         if (!target || !target.enabled || (urls.length === 0 && !botOn)) {
@@ -724,19 +726,25 @@ function createBroadcaster(deps) {
         }
 
         // Migrate legacy single-channel ids into the per-channel map so an
-        // old config keeps editing its existing Discord messages.
-        let configDirty = !Array.isArray(target.webhooks);
-        if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
-        for (const u of urls) {
-            if (!target.channelIds[u]) {
-                const legacy = u === target.webhookUrl
-                    ? { satMessageId: target.satMessageId || null, sunMessageId: target.sunMessageId || null }
-                    : { satMessageId: null, sunMessageId: null };
-                target.channelIds[u] = legacy.satMessageId || legacy.sunMessageId ? legacy : {};
-                if (target.channelIds[u].satMessageId || target.channelIds[u].sunMessageId) configDirty = true;
+        // old config keeps editing its existing Discord messages. Discord
+        // only - GameVox is bot-exclusive and stores ids under 'bot:*' keys.
+        let configDirty = false;
+        if (key === 'discord') {
+            configDirty = !Array.isArray(target.webhooks);
+            if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
+            for (const u of urls) {
+                if (!target.channelIds[u]) {
+                    const legacy = u === target.webhookUrl
+                        ? { satMessageId: target.satMessageId || null, sunMessageId: target.sunMessageId || null }
+                        : { satMessageId: null, sunMessageId: null };
+                    target.channelIds[u] = legacy.satMessageId || legacy.sunMessageId ? legacy : {};
+                    if (target.channelIds[u].satMessageId || target.channelIds[u].sunMessageId) configDirty = true;
+                }
             }
+            if (!Array.isArray(target.webhooks)) target.webhooks = urls;
+        } else if (!target.channelIds || typeof target.channelIds !== 'object') {
+            target.channelIds = {};
         }
-        if (!Array.isArray(target.webhooks)) target.webhooks = urls;
 
         const st = stateFor(key);
         const db = opts.db || await d.readData();

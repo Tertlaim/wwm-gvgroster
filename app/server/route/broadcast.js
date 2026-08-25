@@ -137,50 +137,9 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                         ? cur.mode
                         : next.targets[key].mode); // platform default for legacy configs
 
-                let url = cur.webhookUrl || '';
-                if (incoming && typeof incoming.webhookUrl === 'string') {
-                    const v = incoming.webhookUrl.trim();
-                    if (v === '') {
-                        url = '';
-                    } else if (broadcast.isValidWebhookUrl(key, v)) {
-                        url = v;
-                    } else {
-                        const shape = key === 'discord'
-                            ? 'https://discord.com/api/webhooks/<id>/<token>'
-                            : 'https://api.gamevox.com/webhooks/<id>/<token>';
-                        return res.status(400).json({
-                            success: false,
-                            error: 'Invalid ' + key + ' webhook URL (expected ' + shape + ')'
-                        });
-                    }
-                }
-
-                // Channel list: incoming.webhooks (full replacement) wins;
-                // legacy single webhookUrl still accepted. '' / [] clears.
-                let nextUrls = null;
-                if (incoming && Array.isArray(incoming.webhooks)) {
-                    if (incoming.webhooks.length > broadcast.MAX_WEBHOOKS) {
-                        return res.status(400).json({
-                            success: false,
-                            error: 'Too many ' + key + ' webhooks (max ' + broadcast.MAX_WEBHOOKS + ')'
-                        });
-                    }
-                    nextUrls = [];
-                    for (let i = 0; i < incoming.webhooks.length; i++) {
-                        const v = String(incoming.webhooks[i] == null ? '' : incoming.webhooks[i]).trim();
-                        if (!v) continue;
-                        if (!broadcast.isValidWebhookUrl(key, v)) {
-                            const shape = key === 'discord'
-                                ? 'https://discord.com/api/webhooks/<id>/<token>'
-                                : 'https://api.gamevox.com/webhooks/<id>/<token>';
-                            return res.status(400).json({
-                                success: false,
-                                error: 'Invalid ' + key + ' webhook URL #' + (i + 1) + ' (expected ' + shape + ')'
-                            });
-                        }
-                        if (!nextUrls.includes(v)) nextUrls.push(v);
-                    }
-                } else {
+                if (key === 'discord') {
+                    // Discord target: classic incoming-webhook configuration
+                    // (dormant feature, kept for the future Discord rollout).
                     let url = cur.webhookUrl || '';
                     if (incoming && typeof incoming.webhookUrl === 'string') {
                         const v = incoming.webhookUrl.trim();
@@ -189,35 +148,74 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                         } else if (broadcast.isValidWebhookUrl(key, v)) {
                             url = v;
                         } else {
-                            const shape = key === 'discord'
-                                ? 'https://discord.com/api/webhooks/<id>/<token>'
-                                : 'https://api.gamevox.com/webhooks/<id>/<token>';
                             return res.status(400).json({
                                 success: false,
-                                error: 'Invalid ' + key + ' webhook URL (expected ' + shape + ')'
+                                error: 'Invalid discord webhook URL (expected https://discord.com/api/webhooks/<id>/<token>)'
                             });
                         }
                     }
-                    nextUrls = url ? [url] : [];
-                }
 
-                // Message ids belong to a specific channel URL: keep ids of
-                // surviving URLs and mirror the first channel into the legacy
-                // sat/sunMessageId fields so old configs keep round-tripping.
-                const firstUnchanged = (nextUrls[0] || '') === (cur.webhookUrl || '');
-                t.satMessageId = firstUnchanged ? (cur.satMessageId || null) : null;
-                t.sunMessageId = firstUnchanged ? (cur.sunMessageId || null) : null;
-                const curIds = cur.channelIds && typeof cur.channelIds === 'object' ? cur.channelIds : {};
-                t.channelIds = {};
-                for (const u of nextUrls) {
-                    if (!t.channelIds[u]) {
-                        t.channelIds[u] = u === cur.webhookUrl
-                            ? { satMessageId: t.satMessageId, sunMessageId: t.sunMessageId }
-                            : (curIds[u] || { satMessageId: null, sunMessageId: null });
+                    let nextUrls = null;
+                    if (incoming && Array.isArray(incoming.webhooks)) {
+                        if (incoming.webhooks.length > broadcast.MAX_WEBHOOKS) {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Too many discord webhooks (max ' + broadcast.MAX_WEBHOOKS + ')'
+                            });
+                        }
+                        nextUrls = [];
+                        for (let i = 0; i < incoming.webhooks.length; i++) {
+                            const v = String(incoming.webhooks[i] == null ? '' : incoming.webhooks[i]).trim();
+                            if (!v) continue;
+                            if (!broadcast.isValidWebhookUrl(key, v)) {
+                                return res.status(400).json({
+                                    success: false,
+                                    error: 'Invalid discord webhook URL #' + (i + 1) + ' (expected https://discord.com/api/webhooks/<id>/<token>)'
+                                });
+                            }
+                            if (!nextUrls.includes(v)) nextUrls.push(v);
+                        }
+                    } else {
+                        nextUrls = url ? [url] : [];
+                    }
+
+                    // Message ids belong to a specific channel URL: keep ids of
+                    // surviving URLs and mirror the first channel into the legacy
+                    // sat/sunMessageId fields so old configs keep round-tripping.
+                    const firstUnchanged = (nextUrls[0] || '') === (cur.webhookUrl || '');
+                    t.satMessageId = firstUnchanged ? (cur.satMessageId || null) : null;
+                    t.sunMessageId = firstUnchanged ? (cur.sunMessageId || null) : null;
+                    const curIds = cur.channelIds && typeof cur.channelIds === 'object' ? cur.channelIds : {};
+                    t.channelIds = {};
+                    for (const u of nextUrls) {
+                        if (!t.channelIds[u]) {
+                            t.channelIds[u] = u === cur.webhookUrl
+                                ? { satMessageId: t.satMessageId, sunMessageId: t.sunMessageId }
+                                : (curIds[u] || { satMessageId: null, sunMessageId: null });
+                        }
+                    }
+                    t.webhooks = nextUrls;
+                    t.webhookUrl = nextUrls[0] || '';
+                } else {
+                    // GameVox webhooks were removed entirely - the bot path
+                    // replaced them. Reject configuration attempts and scrub
+                    // any legacy values still lingering in storage.
+                    if (incoming && (incoming.webhookUrl !== undefined || incoming.webhooks !== undefined)) {
+                        return res.status(400).json({
+                            success: false,
+                            error: 'GameVox webhooks were removed - configure bot channels instead'
+                        });
+                    }
+                    t.webhooks = [];
+                    t.webhookUrl = '';
+                    t.satMessageId = null;
+                    t.sunMessageId = null;
+                    const curIdsAll = cur.channelIds && typeof cur.channelIds === 'object' ? cur.channelIds : {};
+                    t.channelIds = {};
+                    for (const [k, v] of Object.entries(curIdsAll)) {
+                        if (k.startsWith('bot:')) t.channelIds[k] = v;
                     }
                 }
-                t.webhooks = nextUrls;
-                t.webhookUrl = nextUrls[0] || '';
 
                 // ---- GameVox bot (live) path ----
                 // botToken: omitted -> unchanged; '' -> clear; else GVB.… shape.

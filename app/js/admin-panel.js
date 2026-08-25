@@ -380,24 +380,22 @@ function setupAdminControls() {
     }
 }
 
-// ---- Broadcast (Discord / GameVox webhooks) ----
-// Config autosaves on change (URL input, enable toggle) — no Save button.
-// GameVox is manual-push by nature (create-only webhooks), so no mode toggle:
-// Push now is the only delivery path until Discord arrives with edit-in-place.
+// ---- Broadcast (GameVox bot) ----
+// Config autosaves on change (enable toggle, publish mode) — no Save button.
+// Text fields (token/channels) use explicit Enter/blur commits so half-typed
+// secrets are never POSTed mid-edit.
 function setupBroadcastTools() {
     const pushBtn = document.getElementById('broadcastPushBtn');
     const previewBtn = document.getElementById('broadcastPreviewBtn');
     const gvEnabled = document.getElementById('broadcastGamevoxEnabled');
-    const gvUrl = document.getElementById('broadcastGamevoxUrl');
     const gvState = document.getElementById('broadcastGamevoxState');
-    const gvStatus = document.getElementById('broadcastGamevoxStatus');
     const headStatus = document.getElementById('broadcastHeadStatus');
     const botToken = document.getElementById('broadcastBotToken');
     const botChannels = document.getElementById('broadcastBotChannels');
     const botMode = document.getElementById('broadcastBotMode');
     const botStatus = document.getElementById('broadcastBotStatus');
     const setupGuideBtn = document.getElementById('broadcastSetupGuideBtn');
-    if (!pushBtn || !gvEnabled || !gvUrl || !gvStatus) return;
+    if (!pushBtn || !gvEnabled || !botToken || !botChannels || !botStatus) return;
 
     let saveChain = Promise.resolve();
     let saveTimer = null;
@@ -419,15 +417,6 @@ function setupBroadcastTools() {
         }
     }
 
-    function setGvStatus(text, savedFlash) {
-        gvStatus.textContent = '';
-        const i = document.createElement('i');
-        i.className = savedFlash ? 'fas fa-circle-check' : 'fas fa-info-circle';
-        gvStatus.appendChild(i);
-        gvStatus.appendChild(document.createTextNode(' ' + text));
-        gvStatus.classList.toggle('status-saved', !!savedFlash);
-    }
-
     function setBotStatus(text, savedFlash) {
         botStatus.textContent = '';
         const i = document.createElement('i');
@@ -445,25 +434,13 @@ function setupBroadcastTools() {
             if (!cfg || !cfg.targets || !cfg.targets.gamevox) return;
             const t = cfg.targets.gamevox;
             gvEnabled.checked = !!t.enabled;
-            setStateText();
-            // SuperAdmin gets raw values back and the inline forms render
-            // exactly what is saved; admins/mods keep masked placeholders.
-            const masks = t.webhooksMasked && t.webhooksMasked.length ? t.webhooksMasked : (t.hasWebhook ? [t.webhookMasked] : []);
-            let statusText = masks.length
-                ? masks.length + ' channel' + (masks.length > 1 ? 's' : '') + ' attached'
-                : 'Not configured';
-            if (masks.length && t.mode === 'manual') statusText += ' · manual pushes only';
-            if (masks.length && t.mode === 'auto' && (t.satMessageId || t.sunMessageId)) statusText += ' · daily message active';
-            breakerActive = !!(t.status && t.status.breakerActive);
-            if (breakerActive) statusText += ' · auto-push paused (repeated failures)';
-            setGvStatus(statusText);
 
             const botMask = t.botTokenMasked || '';
             const chans = Array.isArray(t.botChannels) ? t.botChannels : [];
             botMode.value = t.botPostMode === 'edit' ? 'edit' : 'fresh';
             let botText;
             if (!t.hasBotToken && chans.length === 0) {
-                botText = 'Bot not configured — roster falls back to the webhook below';
+                botText = 'Bot not configured — paste the token above to enable publishing';
             } else if (!t.hasBotToken) {
                 botText = chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' set — paste the bot token (GVB.…)';
             } else if (chans.length === 0) {
@@ -472,6 +449,8 @@ function setupBroadcastTools() {
                 botText = 'Bot: ' + chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' · ' +
                     (t.botPostMode === 'edit' ? 'edits existing message' : 'new message each publish');
             }
+            breakerActive = !!(t.status && t.status.breakerActive);
+            if (breakerActive) botText += ' · auto-publish paused (repeated failures)';
             setBotStatus(botText);
             botReady = !!t.hasBotToken && chans.length > 0;
             setStateText();
@@ -479,7 +458,6 @@ function setupBroadcastTools() {
             // field never re-posts on blur.
             tokenField.setBaseline(typeof t.botToken === 'string' ? t.botToken : '');
             channelsField.setBaseline(chans.join(', '));
-            webhookField.setBaseline(Array.isArray(t.webhooks) ? t.webhooks.join(', ') : '');
         } catch (e) { /* panel stays in default state */ }
     }
 
@@ -594,18 +572,6 @@ function setupBroadcastTools() {
             }
         }
         return { payload: { botChannels: list }, canonical: list.join(', ') };
-    });
-
-    const webhookField = makeCommitField(gvUrl, function(raw) {
-        if (raw === '') return { payload: { webhooks: [] }, canonical: '' };
-        const urls = raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
-        if (urls.length > 5) throw new Error('Max 5 GameVox webhooks per target');
-        for (const u of urls) {
-            if (!/^https:\/\//.test(u)) {
-                throw new Error('GameVox webhook URLs must start with https://');
-            }
-        }
-        return { payload: { webhooks: urls }, canonical: urls.join(', ') };
     });
 
     // Debounced autosave only for the toggle + mode select; text fields are

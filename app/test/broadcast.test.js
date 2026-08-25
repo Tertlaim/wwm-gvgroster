@@ -7,6 +7,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const DISCORD_URL = 'https://discord.com/api/webhooks/123456789012345678/tokentokenTOKENTOKENTOKEN';
 const GAMEVOX_URL = 'https://api.gamevox.com/webhooks/13d34f8c-bf80-44f8-84a4-d16d2d0bd335/WH.fake_token_value_0123456789abcdef';
+const BOT_TOKEN = 'GVB.abcdef1234567890abcdef1234567890abcd';
+const BOT_CHANNEL = '1541027880090140673';
 
 function fixtureDb() {
     return {
@@ -55,8 +57,9 @@ function makeBroadcaster(overrides = {}) {
         config.targets.discord.webhookUrl = DISCORD_URL;
         config.targets.discord.enabled = true;
     }
-    if (overrides.enableGamevox) {
-        config.targets.gamevox.webhookUrl = GAMEVOX_URL;
+    if (overrides.enableGamevoxBot) {
+        config.targets.gamevox.botToken = BOT_TOKEN;
+        config.targets.gamevox.botChannels = [BOT_CHANNEL];
         config.targets.gamevox.enabled = true;
     }
     const calls = { history: [], requests: [], configs: [] };
@@ -398,12 +401,12 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
 
     const calls = [];
     const fetchImpl = async (url, opts) => {
-        calls.push({ method: opts.method, url, body: JSON.parse(opts.body) });
+        calls.push({ method: opts.method, url, headers: opts.headers, body: JSON.parse(opts.body) });
         return okResponse({ id: 'gv' + calls.length });
     };
     const { b } = makeBroadcaster({
         config: { debounceSec: 0.05 },
-        enableGamevox: true,
+        enableGamevoxBot: true,
         deps: { fetchImpl }
     });
 
@@ -413,16 +416,16 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
         'auto-push never touches manual-mode targets');
     assert.strictEqual(calls.length, 2, 'discord still auto-pushes sat+sun');
 
-    await b.pushNow('moduser', 'gamevox'); // the Push Now button path
-    const gv = calls.filter(c => c.url.includes('gamevox'));
+    await b.pushNow('moduser', 'gamevox'); // the Publish button / /gvg path
+    const gv = calls.filter(c => c.url.includes('/channels/' + BOT_CHANNEL + '/messages'));
     assert.strictEqual(gv.length, 2, 'manual push covers both days');
     gv.forEach(c => {
-        assert.strictEqual(c.method, 'POST', 'create-only platform never PATCHes');
-        assert.ok(!c.url.includes('/messages/'), 'no edit endpoints used');
+        assert.strictEqual(c.method, 'POST', 'fresh mode never PATCHes');
+        assert.strictEqual(c.headers.Authorization, 'Bot ' + BOT_TOKEN);
         assert.ok(typeof c.body.content === 'string' && c.body.content.length > 0,
             'gamevox payloads carry the required plain-text content');
         assert.strictEqual(c.body.embeds, undefined,
-            'embeds are not wired in gamevox webhooks v1 - markdown text only');
+            'markdown text only - no embeds');
     });
     assert.ok(gv[0].body.content.includes('## Saturday Roster'), 'content is the markdown roster');
     assert.ok(gv[0].body.content.includes('**Antony**'), 'players render as markdown bullets');
@@ -434,9 +437,6 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
 });
 
 // ---- GameVox bot (live) path ----
-
-const BOT_TOKEN = 'GVB.abcdef1234567890abcdef1234567890abcd';
-const BOT_CHANNEL = '1541027880090140673';
 
 function botConfig(overrides = {}) {
     const config = broadcast.defaultIntegrationsConfig();

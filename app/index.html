@@ -297,7 +297,7 @@
                         </div>
                     </div>
 
-                    <!-- 3. Broadcast (Discord / GameVox webhooks) -->
+                    <!-- 3. Broadcast (GameVox bot) -->
                     <div class="admin-tools-section accordion mb-md" >
                         <button type="button" class="toggle-header accordion-head" id="broadcastToggle" aria-expanded="false" aria-controls="broadcastContent">
                             <i class="fas fa-chevron-right" id="broadcastIcon"></i>
@@ -313,7 +313,7 @@
                                     <div class="broadcast-target-head">
                                         <strong style="font-size:var(--font-size-sm);"><i class="fas fa-robot"></i> Bot &middot; live updates</strong>
                                         <span style="display:inline-flex; align-items:center; gap:8px;">
-                                            <span class="tip" tabindex="0" data-tip="Master switch for GameVox publishing &mdash; gates the bot above and the legacy webhook below."><i class="tip-dot">i</i></span>
+                                            <span class="tip" tabindex="0" data-tip="Master switch for GameVox publishing."><i class="tip-dot">i</i></span>
                                             <span class="toggle-wrap">
                                                 <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
                                                 <label class="toggle-switch">
@@ -348,22 +348,7 @@
                                         </select>
                                     </div>
                                     <div class="hint-xs-top" id="broadcastBotStatus">
-                                        <i class="fas fa-info-circle"></i> Bot not configured &mdash; roster falls back to the webhook below
-                                    </div>
-                                </div>
-                                <div class="broadcast-target" id="broadcastWebhookBlock">
-                                    <div class="broadcast-target-head">
-                                        <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> Webhook &middot; legacy fallback</strong>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>WEBHOOK URL :
-                                            <span class="tip tip-down" tabindex="0" data-tip="Legacy path, kept for back-testing only: webhook messages may need a GameVox client restart to show. The bot above is the live path."><i class="tip-dot">i</i></span>
-                                        </label>
-                                        <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL (several = several channels)" autocomplete="off" spellcheck="false">
-                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes all webhooks</div>
-                                    </div>
-                                    <div class="hint-xs-top" id="broadcastGamevoxStatus">
-                                        <i class="fas fa-info-circle"></i> Not configured
+                                        <i class="fas fa-info-circle"></i> Bot not configured &mdash; paste the token above to enable publishing
                                     </div>
                                 </div>
                             </div>

@@ -13,6 +13,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const ADMIN_USER = 'SmokeAdmin';
 const ADMIN_PASS = 'SmokePass123!';
+const SMOKE_BOT_TOKEN = 'GVB.smoke_token_value_0123456789abcdef';
 
 function makeTempEnv() {
     const base = fs.mkdtempSync(path.join(os.tmpdir(), 'gvg-smoke-'));
@@ -32,6 +33,24 @@ function makeTempEnv() {
         },
         moderators: [],
         settings: { maxGroups: 6, historyLimit: 100 }
+    }, null, 2));
+    // Pre-seed bot configuration so the smoke run never performs a live
+    // channel lookup (zero outbound traffic to the real platform).
+    fs.writeFileSync(path.join(dataDir, 'integrations.json'), JSON.stringify({
+        version: 1,
+        debounceSec: 75,
+        autoIntervalMin: 15,
+        targets: {
+            discord: { platform: 'discord', enabled: false, mode: 'auto', webhookUrl: '', satMessageId: null, sunMessageId: null },
+            gamevox: {
+                platform: 'gamevox', enabled: true, mode: 'manual',
+                botToken: SMOKE_BOT_TOKEN,
+                botChannels: ['1540402360065040384'],
+                botPostMode: 'fresh',
+                siteLabel: '', siteUrl: '',
+                channelIds: {}
+            }
+        }
     }, null, 2));
     return { base, dataDir, configFile };
 }
@@ -86,35 +105,35 @@ test('boot smoke: real server serves authed broadcast endpoints end to end', asy
             authorization: 'Bearer ' + loginBody.token
         };
 
-        // Default masked config view.
+        // Default masked config view (bot is pre-seeded as enabled).
         const cfg1 = await fetch(base + '/api/broadcast/config', { headers: authHeaders });
         assert.strictEqual(cfg1.status, 200);
         const cfg1Body = await cfg1.json();
         assert.strictEqual(cfg1Body.success, true);
         assert.strictEqual(cfg1Body.targets.discord.hasWebhook, false);
+        assert.strictEqual(cfg1Body.targets.gamevox.enabled, true);
+        assert.strictEqual(cfg1Body.targets.gamevox.hasBotToken, true);
 
-        // Admin write of a host-pinned GameVox incoming webhook URL.
-        const url = 'https://api.gamevox.com/webhooks/13d34f8c-bf80-44f8-84a4-d16d2d0bd335/WH.smoke_token_value_0123456789abcdef';
+        // SuperAdmin write round-trips raw bot values (inline-form support);
+        // masking for other roles is covered by broadcast.routes.test.js.
         const post = await fetch(base + '/api/broadcast/config', {
             method: 'POST',
             headers: authHeaders,
             body: JSON.stringify({
-                targets: { gamevox: { enabled: true, webhookUrl: url } }
+                targets: { gamevox: { enabled: true, botPostMode: 'edit' } }
             })
         });
         assert.strictEqual(post.status, 200);
         const postBody = await post.json();
-        assert.strictEqual(postBody.targets.gamevox.hasWebhook, true);
-        assert.match(postBody.targets.gamevox.webhookMasked, /…cdef$/);
-        // The poster here is the SuperAdmin: raw values round-trip so the
-        // inline forms can show what is saved (masking for other roles is
-        // covered by broadcast.routes.test.js).
-        assert.deepStrictEqual(postBody.targets.gamevox.webhooks, [url]);
+        assert.strictEqual(postBody.targets.gamevox.hasBotToken, true);
+        assert.match(postBody.targets.gamevox.botTokenMasked, /…cdef$/);
+        assert.deepStrictEqual(postBody.targets.gamevox.botChannels, ['1540402360065040384']);
 
         // Persisted to the isolated integrations file (write path works).
         const stored = JSON.parse(fs.readFileSync(path.join(tmp.dataDir, 'integrations.json'), 'utf8'));
-        assert.strictEqual(stored.targets.gamevox.webhookUrl, url);
+        assert.strictEqual(stored.targets.gamevox.botToken, SMOKE_BOT_TOKEN);
         assert.strictEqual(stored.targets.gamevox.enabled, true);
+        assert.strictEqual(stored.targets.gamevox.botPostMode, 'edit');
 
         // Manual push endpoint answers through the real broadcaster. The
         // fresh default database has no roster content, so both days render
