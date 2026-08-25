@@ -76,6 +76,70 @@ async function requestJson(app, payload, opts) {
     }
 }
 
+// Cold start simulation: sign with a timestamp 40s in the past (inside the
+// 10-min replay guard, outside the 3s callback window).
+async function lateRequest(app, payload) {
+    const server = app.listen(0);
+    const stale = Math.floor(Date.now() / 1000) - 40;
+    const rawBody = JSON.stringify(payload);
+    const sig = crypto.sign(null, Buffer.from(stale + rawBody), privateKey).toString('hex');
+    try {
+        const port = server.address().port;
+        const res = await fetch('http://127.0.0.1:' + port + '/api/gamevox/interactions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Signature-Ed25519': sig,
+                'X-Signature-Timestamp': String(stale)
+            },
+            body: rawBody
+        });
+        let json = null;
+        try { json = await res.json(); } catch (e) { /* empty body */ }
+        return { status: res.status, json };
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+}
+
+test('interactions: late (cold-start) publish delivers via followups with wake notice + site link', async () => {
+    const ctx = makeCtx();
+    const r = await lateRequest(ctx.app, {
+        type: 2,
+        token: 'late-token',
+        data: { name: 'gvg', options: [] },
+        member: { user: { username: 'Kaste' }, permissions: '8192' }
+    });
+    assert.strictEqual(r.status, 200);
+    assert.deepStrictEqual(r.json, {}, 'no callback payload - window long gone');
+    // Give the async followup chain a moment.
+    await new Promise(resolve => setTimeout(resolve, 30));
+
+    const contents = ctx.followups.map(f => f.body.content);
+    assert.ok(contents[0].includes('Interaction failed, wait 60s to wake server'), 'cold-start notice leads');
+    assert.ok(contents[0].includes('https://wwm-gvgroster.onrender.com'),
+        'notice links to the Render website for the instant path');
+    assert.ok(contents.some(c => c.includes('## Saturday Roster')), 'saturday still delivered');
+    assert.ok(contents.some(c => c.includes('## Sunday Roster')), 'sunday still delivered');
+    assert.ok(ctx.followups.every(f => f.url.includes('/webhooks/1541027880090140673/late-token')),
+        'all delivered through the interaction webhook token');
+});
+
+test('interactions: late denial arrives as ephemeral followup instead of vanishing', async () => {
+    const ctx = makeCtx();
+    const r = await lateRequest(ctx.app, {
+        type: 2,
+        token: 'late-denied',
+        data: { name: 'gvg', options: [] },
+        member: { user: { username: 'RandomGuy' }, permissions: '0' }
+    });
+    assert.strictEqual(r.status, 200);
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.strictEqual(ctx.followups.length, 1);
+    assert.strictEqual(ctx.followups[0].body.flags, 64, 'denial stays ephemeral');
+    assert.match(ctx.followups[0].body.content, /Only moderators and admins/);
+});
+
 test('interactions: unsigned and forged requests are rejected with 401', async () => {
     const ctx = makeCtx();
 
@@ -131,12 +195,12 @@ test('interactions: stale timestamps are rejected (replay guard)', async () => {
     }
 });
 
-test('interactions: /publish defers then delivers both days as followups', async () => {
+test('interactions: /gvg defers then delivers both days as followups', async () => {
     const ctx = makeCtx();
     const r = await requestJson(ctx.app, {
         type: 2,
         token: 'interaction-token-abc',
-        data: { name: 'publish', options: [] },
+        data: { name: 'gvg', options: [] },
         member: {
             nick: 'Kaste',
             permissions: '8192', // Manage Messages (0x2000)
@@ -160,7 +224,7 @@ test('interactions: members without Manage Messages get an ephemeral denial', as
     const r = await requestJson(ctx.app, {
         type: 2,
         token: 'tok',
-        data: { name: 'publish', options: [] },
+        data: { name: 'gvg', options: [] },
         member: { user: { username: 'RandomGuy' }, permissions: '0' }
     });
     assert.strictEqual(r.status, 200);
@@ -177,7 +241,7 @@ test('interactions: empty rosters answer ephemerally without posting', async () 
     const r = await requestJson(ctx.app, {
         type: 2,
         token: 'tok',
-        data: { name: 'publish', options: [{ name: 'days', value: 'sat' }] },
+        data: { name: 'gvg', options: [{ name: 'days', value: 'sat' }] },
         member: { user: { username: 'Mod' }, permissions: '8192' } // Manage Messages
     });
     assert.strictEqual(r.status, 200);
