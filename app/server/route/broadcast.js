@@ -20,12 +20,17 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
             const urls = Array.isArray(t.webhooks) && t.webhooks.length
                 ? t.webhooks.filter(u => typeof u === 'string' && u)
                 : (t.webhookUrl ? [t.webhookUrl] : []);
+            const botToken = broadcast.effectiveBotToken(t);
             targets[key] = {
                 enabled: !!t.enabled,
                 mode: broadcast.TARGET_MODES.includes(t.mode) ? t.mode : 'auto',
                 hasWebhook: urls.length > 0,
                 webhookMasked: broadcast.maskWebhookUrl(urls[0]),
                 webhooksMasked: urls.map(u => broadcast.maskWebhookUrl(u)),
+                hasBotToken: Boolean(botToken),
+                botTokenMasked: broadcast.maskBotToken(botToken),
+                botChannels: broadcast.normalizeBotChannels(t),
+                botPostMode: broadcast.BOT_POST_MODES.includes(t.botPostMode) ? t.botPostMode : 'fresh',
                 satMessageId: t.satMessageId || null,
                 sunMessageId: t.sunMessageId || null,
                 status: status ? status[key] : null
@@ -49,11 +54,12 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
         }
     });
 
-    // POST /api/broadcast/config - update targets/timings (admin only).
+    // POST /api/broadcast/config - update targets/timings (SuperAdmin only;
+    // admins/moderators get the Publish button, never the setup surface).
     // webhookUrl semantics: omitted -> unchanged; '' -> clear; otherwise a
     // host-pinned https URL. Changing or clearing the URL invalidates any
     // stored message ids (they belong to the old webhook's message).
-    app.post('/api/broadcast/config', auth.requireAuth, auth.requireAdmin, async (req, res) => {
+    app.post('/api/broadcast/config', auth.requireAuth, auth.requireSuperAdmin, async (req, res) => {
         try {
             const body = req.body || {};
             const current = (await data.readIntegrations()) || broadcast.defaultIntegrationsConfig();
@@ -163,6 +169,64 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
                 }
                 t.webhooks = nextUrls;
                 t.webhookUrl = nextUrls[0] || '';
+
+                // ---- GameVox bot (live) path ----
+                // botToken: omitted -> unchanged; '' -> clear; else GVB.… shape.
+                if (key === 'gamevox') {
+                    let botToken = cur.botToken || '';
+                    if (incoming && typeof incoming.botToken === 'string') {
+                        const v = incoming.botToken.trim();
+                        if (v === '') {
+                            botToken = '';
+                        } else if (broadcast.isValidBotToken(v)) {
+                            botToken = v;
+                        } else {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Invalid GameVox bot token (expected GVB.… from developers.gamevox.com)'
+                            });
+                        }
+                    }
+                    t.botToken = botToken;
+
+                    // Channels: full replacement; '' / [] clears; snowflakes only.
+                    let botChannels = broadcast.normalizeBotChannels(cur);
+                    if (incoming && Array.isArray(incoming.botChannels)) {
+                        if (incoming.botChannels.length > broadcast.MAX_WEBHOOKS) {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Too many GameVox bot channels (max ' + broadcast.MAX_WEBHOOKS + ')'
+                            });
+                        }
+                        botChannels = [];
+                        for (const raw of incoming.botChannels) {
+                            const v = String(raw == null ? '' : raw).trim();
+                            if (!v) continue;
+                            if (!/^\d{5,}$/.test(v)) {
+                                return res.status(400).json({
+                                    success: false,
+                                    error: 'Invalid GameVox bot channel id "' + v.slice(0, 24) + '" (expected the numeric channel snowflake)'
+                                });
+                            }
+                            if (!botChannels.includes(v)) botChannels.push(v);
+                        }
+                    }
+                    t.botChannels = botChannels;
+
+                    t.botPostMode = incoming && broadcast.BOT_POST_MODES.includes(incoming.botPostMode)
+                        ? incoming.botPostMode
+                        : (broadcast.BOT_POST_MODES.includes(cur.botPostMode) ? cur.botPostMode : 'fresh');
+
+                    // Stored bot message ids belong to (token, channel): drop
+                    // ids of removed channels, and everything on token rotate.
+                    const tokenChanged = botToken !== (cur.botToken || '');
+                    for (const k of Object.keys(t.channelIds)) {
+                        if (!k.startsWith('bot:')) continue;
+                        if (tokenChanged || !botChannels.includes(k.slice(4))) {
+                            delete t.channelIds[k];
+                        }
+                    }
+                }
             }
 
             const saved = await data.writeIntegrations(next);
@@ -172,6 +236,26 @@ module.exports = function registerBroadcastRoutes(app, ctx) {
             res.json(publicConfig(next, broadcaster ? broadcaster.getStatus() : null));
         } catch (e) {
             res.status(500).json({ success: false, error: 'Failed to save broadcast config' });
+        }
+    });
+
+    // GET /api/broadcast/preview - build-only dry run (mod+). Renders the
+    // exact plain-markdown day texts the bot/webhook would send, without any
+    // cooldown or HTTP delivery. Null day = empty roster = nothing to send.
+    app.get('/api/broadcast/preview', auth.requireAuth, async (req, res) => {
+        try {
+            const db = await data.readDatabase();
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Roster data unavailable' });
+            }
+            const actor = (req.session && req.session.username) || 'staff';
+            const days = {};
+            for (const day of broadcast.DAY_KEYS) {
+                days[day] = broadcast.buildDayText(db, day, { updatedBy: actor });
+            }
+            res.json({ success: true, days });
+        } catch (e) {
+            res.status(500).json({ success: false, error: 'Preview failed' });
         }
     });
 

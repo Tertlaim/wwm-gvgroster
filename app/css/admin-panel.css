@@ -279,6 +279,31 @@
     cursor: not-allowed;
 }
 
+/* ===== BROADCAST PUBLISH PREVIEW ===== */
+.broadcast-preview-bubble {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.broadcast-preview-day {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-xs);
+}
+
+.broadcast-preview-content {
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 /* ===== PANEL H LAYOUT (2026-08-24 redesign) ===== */
 
 /* Inline setting row (Public Registration): text + tooltip left, toggle right */

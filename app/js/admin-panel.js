@@ -386,12 +386,18 @@ function setupAdminControls() {
 // Push now is the only delivery path until Discord arrives with edit-in-place.
 function setupBroadcastTools() {
     const pushBtn = document.getElementById('broadcastPushBtn');
+    const previewBtn = document.getElementById('broadcastPreviewBtn');
     const gvEnabled = document.getElementById('broadcastGamevoxEnabled');
     const gvUrl = document.getElementById('broadcastGamevoxUrl');
     const gvClear = document.getElementById('broadcastGamevoxClear');
     const gvState = document.getElementById('broadcastGamevoxState');
     const gvStatus = document.getElementById('broadcastGamevoxStatus');
     const headStatus = document.getElementById('broadcastHeadStatus');
+    const botToken = document.getElementById('broadcastBotToken');
+    const botChannels = document.getElementById('broadcastBotChannels');
+    const botMode = document.getElementById('broadcastBotMode');
+    const botClear = document.getElementById('broadcastBotClear');
+    const botStatus = document.getElementById('broadcastBotStatus');
     if (!pushBtn || !gvEnabled || !gvUrl || !gvStatus) return;
 
     let saveChain = Promise.resolve();
@@ -403,6 +409,11 @@ function setupBroadcastTools() {
         return gvUrl.value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
     }
 
+    // Bot channel snowflakes accept the same separators as webhook URLs.
+    function parseBotChannelsInput() {
+        return botChannels.value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    }
+
     // Single source of truth for both the ON/OFF caption and the collapsed
     // header chip, so they can never drift apart.
     function setStateText() {
@@ -412,7 +423,10 @@ function setupBroadcastTools() {
             gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
         }
         if (headStatus) {
+            const botOn = botToken && botChannels &&
+                botChannels.placeholder && botChannels.placeholder.indexOf('Saved:') === 0;
             headStatus.textContent = 'GameVox ' + (on ? 'ON' : 'OFF') +
+                (botOn ? ' · bot' : '') +
                 (breakerActive ? ' · paused' : '');
         }
     }
@@ -424,6 +438,15 @@ function setupBroadcastTools() {
         gvStatus.appendChild(i);
         gvStatus.appendChild(document.createTextNode(' ' + text));
         gvStatus.classList.toggle('status-saved', !!savedFlash);
+    }
+
+    function setBotStatus(text, savedFlash) {
+        botStatus.textContent = '';
+        const i = document.createElement('i');
+        i.className = savedFlash ? 'fas fa-circle-check' : 'fas fa-info-circle';
+        botStatus.appendChild(i);
+        botStatus.appendChild(document.createTextNode(' ' + text));
+        botStatus.classList.toggle('status-saved', !!savedFlash);
     }
 
     async function refreshBroadcastConfig() {
@@ -448,15 +471,42 @@ function setupBroadcastTools() {
             breakerActive = !!(t.status && t.status.breakerActive);
             if (breakerActive) statusText += ' · auto-push paused (repeated failures)';
             setGvStatus(statusText);
+
+            // Bot sub-panel: the token itself never returns to the browser,
+            // only its mask; inputs stay empty and show "Saved: …" instead.
+            const botMask = t.botTokenMasked || '';
+            const chans = Array.isArray(t.botChannels) ? t.botChannels : [];
+            botToken.value = '';
+            botToken.placeholder = botMask
+                ? 'Saved: ' + botMask + ' — paste to replace'
+                : 'Paste bot token (GVB.…)';
+            botChannels.value = '';
+            botChannels.placeholder = chans.length
+                ? 'Saved: ' + chans.join(' ') + ' — paste to replace'
+                : 'Channel IDs (space/comma separated)';
+            botMode.value = t.botPostMode === 'edit' ? 'edit' : 'fresh';
+            let botText;
+            if (!t.hasBotToken && chans.length === 0) {
+                botText = 'Bot not configured — roster falls back to the webhook below';
+            } else if (!t.hasBotToken) {
+                botText = chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' set — paste the bot token (GVB.…)';
+            } else if (chans.length === 0) {
+                botText = 'Bot token saved (' + botMask + ') — add channel IDs';
+            } else {
+                botText = 'Bot: ' + chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' · ' +
+                    (t.botPostMode === 'edit' ? 'edits existing message' : 'new message each push');
+            }
+            setBotStatus(botText);
             setStateText();
         } catch (e) { /* panel stays in default state */ }
     }
 
-    // Serialized autosave. Non-admins get their control reverted from server
-    // state; failures revert too, so the UI never lies about what is stored.
+    // Serialized autosave. Non-SuperAdmins get their control reverted from
+    // server state; failures revert too, so the UI never lies about what is
+    // stored. Config is a SuperAdmin concern; admins/mods only Publish.
     function doSave() {
-        if (!AuthModule.isAdmin()) {
-            showToast('Only admins can change broadcast settings.', 'error', 3000);
+        if (!AuthModule.isSuperAdmin()) {
+            showToast('Only the SuperAdmin can change broadcast settings.', 'error', 3000);
             refreshBroadcastConfig();
             return;
         }
@@ -465,6 +515,26 @@ function setupBroadcastTools() {
         if (urls.length > 5) {
             showToast('Max 5 GameVox webhooks per target', 'error', 3000);
             return;
+        }
+        // Bot fields ride along on every save. The token is only sent when
+        // the user typed one (omitted = unchanged server-side); channels and
+        // mode are only sent when non-default so a webhook-only edit never
+        // wipes bot config.
+        const botTokenRaw = botToken.value.trim();
+        if (botTokenRaw && !/^GVB\.[\w.-]{16,}$/.test(botTokenRaw)) {
+            showToast('Bot token must look like GVB.… (from developers.gamevox.com)', 'error', 4000);
+            return;
+        }
+        const botChans = parseBotChannelsInput();
+        if (botChans.length > 5) {
+            showToast('Max 5 GameVox bot channels per target', 'error', 3000);
+            return;
+        }
+        for (const c of botChans) {
+            if (!/^\d{5,}$/.test(c)) {
+                showToast('Bot channel IDs must be numeric (Copy Channel ID)', 'error', 4000);
+                return;
+            }
         }
         const body = { targets: { gamevox: { enabled } } };
         if (urls.length) {
@@ -476,6 +546,11 @@ function setupBroadcastTools() {
             }
             body.targets.gamevox.webhooks = urls;
         }
+        if (botTokenRaw) body.targets.gamevox.botToken = botTokenRaw;
+        if (botChans.length) body.targets.gamevox.botChannels = botChans;
+        if (botMode.value === 'edit' || botMode.value === 'fresh') {
+            body.targets.gamevox.botPostMode = botMode.value;
+        }
         saveChain = saveChain.then(async function() {
             try {
                 const r = await fetch('/api/broadcast/config', {
@@ -486,7 +561,7 @@ function setupBroadcastTools() {
                 const result = await r.json();
                 if (result.success) {
                     // Sticky summary of what the server now holds (masked
-                    // URLs — the full secrets never return to the browser).
+                    // secrets — full URLs/tokens never return to the browser).
                     const t = result.targets && result.targets.gamevox;
                     const masks = t && t.webhooksMasked ? t.webhooksMasked : [];
                     if (masks.length) {
@@ -497,6 +572,20 @@ function setupBroadcastTools() {
                         gvUrl.placeholder = 'Saved: ' + masks.join('  ·  ') + ' — paste to replace';
                     } else {
                         setGvStatus('Saved automatically', true);
+                    }
+                    if (t && (t.hasBotToken || (t.botChannels && t.botChannels.length))) {
+                        const botMask = t.botTokenMasked || '';
+                        if (botTokenRaw) {
+                            botToken.value = '';
+                            botToken.placeholder = 'Saved: ' + botMask + ' — paste to replace';
+                        }
+                        if (botChans.length) {
+                            botChannels.value = '';
+                            botChannels.placeholder = 'Saved: ' + botChans.join(' ') + ' — paste to replace';
+                        }
+                        setBotStatus('Bot: ' + (t.botChannels || []).length + ' channel(s) · ' +
+                            (t.botPostMode === 'edit' ? 'edits existing message' : 'new message each push'), true);
+                        setStateText();
                     }
                 } else {
                     showToast(result.error || 'Failed to save broadcast settings', 'error', 4000);
@@ -530,11 +619,68 @@ function setupBroadcastTools() {
     gvUrl.addEventListener('input', requestSave);
     gvUrl.addEventListener('change', requestSave);
 
+    // Bot inputs share the same autosave pipeline as the webhook field.
+    botToken.addEventListener('input', requestSave);
+    botToken.addEventListener('change', requestSave);
+    botToken.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(saveTimer);
+            doSave();
+            botToken.blur();
+        }
+    });
+    botChannels.addEventListener('input', requestSave);
+    botChannels.addEventListener('change', requestSave);
+    botChannels.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(saveTimer);
+            doSave();
+            botChannels.blur();
+        }
+    });
+    botMode.addEventListener('change', requestSave);
+
+    // ✕ = clear the bot configuration (token + channels + ids).
+    if (botClear) {
+        botClear.addEventListener('click', function() {
+            if (!AuthModule.isSuperAdmin()) {
+                showToast('Only the SuperAdmin can change broadcast settings.', 'error', 3000);
+                return;
+            }
+            clearTimeout(saveTimer);
+            saveChain = saveChain.then(async function() {
+                try {
+                    const r = await fetch('/api/broadcast/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                        body: JSON.stringify({ targets: { gamevox: { enabled: !!gvEnabled.checked, botToken: '', botChannels: [] } } })
+                    });
+                    const result = await r.json();
+                    if (result.success) {
+                        botToken.value = '';
+                        botToken.placeholder = 'Paste bot token (GVB.…)';
+                        botChannels.value = '';
+                        botChannels.placeholder = 'Channel IDs (space/comma separated)';
+                        setBotStatus('Bot removed — roster falls back to the webhook below');
+                        setStateText();
+                        showToast('GameVox bot configuration removed', 'success', 2500);
+                    } else {
+                        showToast(result.error || 'Failed to remove bot config', 'error', 4000);
+                    }
+                } catch (e) {
+                    showToast('Error removing bot config', 'error', 3000);
+                }
+            });
+        });
+    }
+
     // ✕ = detach every stored GameVox webhook for this target.
     if (gvClear) {
         gvClear.addEventListener('click', function() {
-            if (!AuthModule.isAdmin()) {
-                showToast('Only admins can change broadcast settings.', 'error', 3000);
+            if (!AuthModule.isSuperAdmin()) {
+                showToast('Only the SuperAdmin can change broadcast settings.', 'error', 3000);
                 return;
             }
             clearTimeout(saveTimer);
@@ -583,7 +729,7 @@ function setupBroadcastTools() {
 
     pushBtn.addEventListener('click', async function() {
         if (!AuthModule.isMod()) {
-            showToast('Only moderators and admins can push.', 'error', 3000);
+            showToast('Only moderators and admins can publish.', 'error', 3000);
             return;
         }
         if (Date.now() < pushCooldownUntil) return;
@@ -597,7 +743,7 @@ function setupBroadcastTools() {
             const result = await r.json();
             startPushCooldown(30);
             if (!result.success) {
-                showToast(result.error || 'Push failed', 'error', 3000);
+                showToast(result.error || 'Publish failed', 'error', 3000);
                 return;
             }
             const results = result.results || {};
@@ -608,20 +754,84 @@ function setupBroadcastTools() {
                 const res = results[k];
                 if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
                 if (res && res.skipped) return k + ': not configured';
-                if (res && res.ok) return k + ': pushed';
+                if (res && res.ok) return k + ': published';
                 // Surface the real reason GameVox rejected/failed, per day.
                 const errs = ((res && res.days) || [])
                     .filter(function(d) { return d && d.ok === false && d.error; })
                     .map(function(d) { return (DAY_NAMES[d.day] || d.day) + ': ' + d.error; });
                 return k + ': failed' + (errs.length ? ' (' + errs.join('; ') + ')' : '');
             });
-            const allOk = lines.length > 0 && lines.every(function(l) { return l.indexOf(': pushed') !== -1; });
+            const allOk = lines.length > 0 && lines.every(function(l) { return l.indexOf(': published') !== -1; });
             showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 8000);
         } catch (e) {
             startPushCooldown(5);
-            showToast('Push failed (network error)', 'error', 3000);
+            showToast('Publish failed (network error)', 'error', 3000);
         }
     });
+
+    // ---- Publish preview (moderator+): dry-run render of the exact markup
+    // the bot would send, shown in a chat-like modal. No cooldown, no HTTP
+    // delivery - it reads the same buildDayText() output from the server.
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    // Chat-style approximation: **bold** -> <strong>, newlines kept. Table
+    // pipes stay literal, exactly as plain-markdown chat renders them.
+    function markupToHtml(text) {
+        return escHtml(text).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    }
+    function openBroadcastPreview(days) {
+        const body = document.getElementById('broadcastPreviewBody');
+        body.innerHTML = '';
+        for (const day of ['sat', 'sun']) {
+            const bubble = document.createElement('div');
+            bubble.className = 'broadcast-preview-bubble';
+            const label = document.createElement('div');
+            label.className = 'broadcast-preview-day';
+            label.textContent = days[day] === null || days[day] === undefined
+                ? DAY_LABELS_LOCAL[day] + ' — nothing to publish'
+                : DAY_LABELS_LOCAL[day];
+            bubble.appendChild(label);
+            if (days[day]) {
+                const content = document.createElement('div');
+                content.className = 'broadcast-preview-content';
+                content.innerHTML = markupToHtml(days[day]);
+                bubble.appendChild(content);
+            }
+            body.appendChild(bubble);
+        }
+        document.getElementById('broadcastPreviewModal').classList.add('active');
+    }
+    const DAY_LABELS_LOCAL = { sat: 'Saturday', sun: 'Sunday' };
+    if (previewBtn) {
+        previewBtn.addEventListener('click', async function() {
+            if (!AuthModule.isMod()) {
+                showToast('Only moderators and admins can preview.', 'error', 3000);
+                return;
+            }
+            try {
+                previewBtn.disabled = true;
+                const r = await fetch('/api/broadcast/preview', { headers: getAuthHeader() });
+                const result = await r.json();
+                if (result.success) {
+                    openBroadcastPreview(result.days || {});
+                } else {
+                    showToast(result.error || 'Preview failed', 'error', 3000);
+                }
+            } catch (e) {
+                showToast('Preview failed (network error)', 'error', 3000);
+            } finally {
+                previewBtn.disabled = false;
+            }
+        });
+    }
+    const previewCloseBtn = document.getElementById('broadcastPreviewCloseBtn');
+    if (previewCloseBtn) {
+        previewCloseBtn.addEventListener('click', function() {
+            document.getElementById('broadcastPreviewModal').classList.remove('active');
+        });
+    }
 
     refreshBroadcastConfig();
 }

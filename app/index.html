@@ -254,7 +254,7 @@
 
                     <!-- Public Registration switch: mods/admins only, lives next
                          to the form it controls -->
-                    <div class="admin-tools-section setting-row" data-role-show="mod,admin" style="display:none;">
+                    <div class="admin-tools-section setting-row" data-role-show="mod,admin" style="display:none; margin-top:var(--spacing-md);">
                         <span class="setting-label">
                             Public Registration
                             <span class="tip" tabindex="0" data-tip="Allow public users to register"><i class="tip-dot">i</i></span>
@@ -306,47 +306,71 @@
                             <span class="head-status" id="broadcastHeadStatus"></span>
                         </button>
                         <div id="broadcastContent" style="display:none;">
-                            <div class="broadcast-target">
-                                <div class="broadcast-target-head">
-                                    <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> GameVox</strong>
-                                    <span class="toggle-wrap">
-                                        <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="broadcastGamevoxEnabled">
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </span>
+                            <!-- What Publish does: every staff role (config lives below, SuperAdmin-only) -->
+                            <div class="hint-xs-top" data-role-show="mod,admin" style="display:none; margin-bottom:var(--spacing-md);">
+                                <i class="fas fa-circle-info"></i>
+                                <strong>Publish</strong> posts the current roster as one message per day (Saturday + Sunday) to the guild&rsquo;s GameVox channel &mdash; instantly, like a normal chat message. Use <strong>Preview</strong> to see exactly what will be sent.
+                                There is a short cooldown between publishes.
+                            </div>
+
+                            <!-- Configuration: SuperAdmin only -->
+                            <div data-role-show="superadmin" style="display:none;">
+                                <div class="broadcast-target">
+                                    <div class="broadcast-target-head">
+                                        <strong style="font-size:var(--font-size-sm);"><i class="fas fa-robot"></i> Bot &middot; live updates</strong>
+                                    </div>
+                                    <div class="flex-btn-row">
+                                        <input type="text" id="broadcastBotToken" placeholder="Paste bot token (GVB.&hellip;)" autocomplete="off" spellcheck="false">
+                                        <button type="button" class="wh-clear-btn" id="broadcastBotClear" title="Remove saved bot token and channels" aria-label="Remove saved bot token and channels"><i class="fas fa-xmark"></i></button>
+                                    </div>
+                                    <div class="flex-btn-row">
+                                        <input type="text" id="broadcastBotChannels" placeholder="Channel IDs (space/comma separated)" autocomplete="off" spellcheck="false">
+                                    </div>
+                                    <div class="flex-btn-row">
+                                        <select id="broadcastBotMode" class="select-field" style="width:100%;">
+                                            <option value="fresh">Post a new message each publish</option>
+                                            <option value="edit">Edit the existing message</option>
+                                        </select>
+                                    </div>
+                                    <div class="hint-xs-top" id="broadcastBotStatus">
+                                        <i class="fas fa-info-circle"></i> Bot not configured &mdash; roster falls back to the webhook below
+                                    </div>
                                 </div>
-                                <div class="flex-btn-row">
-                                    <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
-                                    <button type="button" class="wh-clear-btn" id="broadcastGamevoxClear" title="Remove all saved GameVox webhooks" aria-label="Remove all saved GameVox webhooks"><i class="fas fa-xmark"></i></button>
+                                <div class="broadcast-target broadcast-target-off" id="broadcastWebhookBlock">
+                                    <div class="broadcast-target-head">
+                                        <strong style="font-size:var(--font-size-sm);"><i class="fas fa-headset"></i> Webhook &middot; legacy fallback</strong>
+                                        <span class="toggle-wrap">
+                                            <span class="toggle-state off" id="broadcastGamevoxState">OFF</span>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="broadcastGamevoxEnabled">
+                                                <span class="toggle-slider"></span>
+                                            </label>
+                                        </span>
+                                    </div>
+                                    <div class="flex-btn-row">
+                                        <input type="text" id="broadcastGamevoxUrl" placeholder="Paste webhook URL" autocomplete="off" spellcheck="false">
+                                        <button type="button" class="wh-clear-btn" id="broadcastGamevoxClear" title="Remove all saved GameVox webhooks" aria-label="Remove all saved GameVox webhooks"><i class="fas fa-xmark"></i></button>
+                                    </div>
+                                    <div class="hint-xs-top" id="broadcastGamevoxStatus">
+                                        <i class="fas fa-info-circle"></i> Not configured
+                                    </div>
                                 </div>
-                                <div class="hint-xs-top" id="broadcastGamevoxStatus">
-                                    <i class="fas fa-info-circle"></i> Not configured
+                                <div class="hint-xs-top" style="margin-bottom:var(--spacing-md);">
+                                    <i class="fas fa-circle-check"></i> Setup checklist:
+                                    <strong>1.</strong> create an application at developers.gamevox.com and install its bot on your server (OAuth2 scopes: <em>bot</em>; permissions: View Channels, Send Messages, Embed Links, Read Message History);
+                                    <strong>2.</strong> paste the bot token (<em>GVB.&hellip;</em>) above and the target channel IDs (right-click channel &rarr; Copy Channel ID);
+                                    <strong>3.</strong> Publish now delivers live to chat. The webhook below is kept only for back-testing &mdash; its messages may need a client restart to show.
                                 </div>
                             </div>
-                            <div class="hint-xs-top">
-                                <i class="fas fa-circle-check"></i> Setup checklist:
-                                <strong>1.</strong> install the app bot on your GameVox server (Developer Portal &rarr; Installation link &mdash; it may show as offline, that is fine);
-                                <strong>2.</strong> create the incoming webhook on a channel that was created inside GameVox (channels imported from Discord may not deliver webhook messages).
-                                Paste several URLs separated by spaces to post to multiple channels at once.
+
+                            <div class="flex-btn-row">
+                                <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPreviewBtn">
+                                    <i class="fas fa-eye"></i> Preview
+                                </button>
+                                <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPushBtn">
+                                    <i class="fas fa-satellite-dish"></i> Publish
+                                </button>
                             </div>
-                            <div class="broadcast-target broadcast-target-off">
-                                <div class="broadcast-target-head">
-                                    <strong style="font-size:var(--font-size-sm);"><i class="fab fa-discord"></i> Discord</strong>
-                                    <span class="toggle-wrap">
-                                        <span class="toggle-state off">OFF</span>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" disabled>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </span>
-                                </div>
-                                <input type="text" placeholder="Coming in a later release" disabled>
-                            </div>
-                            <button class="btn btn-sm btn-auto broadcast-push-btn" id="broadcastPushBtn">
-                                <i class="fas fa-satellite-dish"></i> Push now
-                            </button>
                         </div>
                     </div>
 
@@ -489,6 +513,20 @@
             <div class="flex-btn-center" >
                 <button class="btn btn-xl" id="confirmActionBtn"><i class="fas fa-check"></i> Confirm</button>
                 <button class="btn btn-outline btn-xl" id="cancelActionBtn"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BROADCAST PUBLISH PREVIEW MODAL -->
+    <div class="modal-overlay" id="broadcastPreviewModal" role="dialog" aria-modal="true" aria-labelledby="broadcastPreviewTitle">
+        <div class="modal-box">
+            <h2 id="broadcastPreviewTitle"><i class="fas fa-eye"></i> Publish Preview</h2>
+            <p class="modal-hint" style="font-size:var(--font-size-xs); color:var(--text-muted); margin-bottom:var(--spacing-sm);">
+                <i class="fas fa-info-circle"></i> Approximation of the GameVox chat message &mdash; one per day.
+            </p>
+            <div id="broadcastPreviewBody" style="max-height:60vh; overflow-y:auto;"></div>
+            <div class="flex-btn-center" >
+                <button type="button" class="btn btn-outline btn-xl" id="broadcastPreviewCloseBtn"><i class="fas fa-times"></i> Close</button>
             </div>
         </div>
     </div>

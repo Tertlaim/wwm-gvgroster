@@ -31,12 +31,29 @@ function makeCtx() {
                 return res.status(403).json({ success: false, error: 'Admin access required.' });
             }
             next();
+        },
+        requireSuperAdmin(req, res, next) {
+            if (!req.session || req.session.role !== 'superadmin') {
+                return res.status(403).json({ success: false, error: 'SuperAdmin access required.' });
+            }
+            next();
         }
     };
 
     let integrations = null;
     let writes = 0;
+    // Shared roster fixture: feeds both the broadcaster and the preview route.
+    const ROSTER = {
+        groups: {
+            sat: { g1: { title: 'Offence', players: [{ id: 'p1', name: 'Antony', class: 'Heal' }] } },
+            sun: { g1: { title: 'Offence', players: [{ id: 'p2', name: 'Kaste', class: 'DPS' }] } }
+        },
+        reserves: { sat: [], sun: [] }
+    };
     const data = {
+        // Mirrors the real storage interface (readDatabase), which the
+        // preview route consumes via ctx.data.
+        async readDatabase() { return JSON.parse(JSON.stringify(ROSTER)); },
         async readIntegrations() {
             return integrations ? JSON.parse(JSON.stringify(integrations)) : null;
         },
@@ -54,13 +71,7 @@ function makeCtx() {
     const broadcaster = broadcast.createBroadcaster({
         readConfig: data.readIntegrations,
         writeConfig: data.writeIntegrations,
-        readData: async () => ({
-            groups: {
-                sat: { g1: { title: 'Offence', players: [{ id: 'p1', name: 'Antony', class: 'Heal' }] } },
-                sun: { g1: { title: 'Offence', players: [{ id: 'p2', name: 'Kaste', class: 'DPS' }] } }
-            },
-            reserves: { sat: [], sun: [] }
-        }),
+        readData: data.readDatabase,
         appendHistory: (entry) => history.push(entry),
         fetchImpl: async (url, opts) => {
             requests.push(opts.method + ' ' + url);
@@ -108,8 +119,51 @@ test('GET config requires auth', async () => {
     assert.strictEqual(r.status, 401);
 });
 
-test('GET config returns the masked shape with live status and never leaks URLs', async () => {
+test('POST config validates the GameVox bot fields at the trust boundary', async () => {
     const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'root', 'superadmin');
+    const CH = '1541027880090140673';
+    const TOKEN = 'GVB.abcdef1234567890abcdef1234567890abcd';
+
+    // Invalid token shape -> 400, storage untouched.
+    const r1 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botToken: 'not-a-token' } }
+    }, admin);
+    assert.strictEqual(r1.status, 400);
+    assert.match(r1.json.error, /bot token/i);
+    assert.strictEqual(ctx.data._writes(), 0);
+
+    // Non-numeric channel id -> 400.
+    const r2 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botChannels: [CH, 'abc123'] } }
+    }, admin);
+    assert.strictEqual(r2.status, 400);
+    assert.match(r2.json.error, /channel id/i);
+
+    // Valid save: token + channels + mode stored raw server-side.
+    const r3 = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botToken: TOKEN, botChannels: [CH, ' ' + CH + ' '], botPostMode: 'edit' } }
+    }, admin);
+    assert.strictEqual(r3.status, 200);
+    const stored = ctx.data._peek().targets.gamevox;
+    assert.strictEqual(stored.botToken, TOKEN);
+    assert.deepStrictEqual(stored.botChannels, [CH], 'duplicate ids dedupe');
+    assert.strictEqual(stored.botPostMode, 'edit');
+    assert.strictEqual(r3.json.targets.gamevox.hasBotToken, true);
+    assert.strictEqual(r3.json.targets.gamevox.botTokenMasked, 'GVB.…abcd');
+    assert.ok(!JSON.stringify(r3.json).includes(TOKEN), 'raw token never in responses');
+
+    // Omitted token survives a later webhook-only save; [] clears channels.
+    await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botChannels: [] } }
+    }, admin);
+    const after = ctx.data._peek().targets.gamevox;
+    assert.strictEqual(after.botToken, TOKEN, 'omitted field = unchanged');
+    assert.deepStrictEqual(after.botChannels, []);
+    assert.strictEqual(after.botPostMode, 'edit');
+});
+
+test('GET config returns the masked shape with live status and never leaks URLs', async () => {    const ctx = makeCtx();
     ctx.data._seed = null;
     // Seed a configured+enabled discord target directly through storage.
     const cfg = broadcast.defaultIntegrationsConfig();
@@ -125,7 +179,8 @@ test('GET config returns the masked shape with live status and never leaks URLs'
 
     const t = r.json.targets.discord;
     assert.deepStrictEqual(Object.keys(t).sort(),
-        ['enabled', 'hasWebhook', 'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked', 'webhooksMasked']);
+        ['botChannels', 'botPostMode', 'botTokenMasked', 'enabled', 'hasBotToken', 'hasWebhook',
+         'mode', 'satMessageId', 'status', 'sunMessageId', 'webhookMasked', 'webhooksMasked']);
     assert.strictEqual(t.mode, 'auto');
     assert.strictEqual(t.hasWebhook, true);
     assert.strictEqual(t.webhookMasked, 'discord.com/api/webhooks/123456789012345678/…OKEN');
@@ -146,6 +201,35 @@ test('POST config is admin-only', async () => {
     const r = await request(ctx.app, 'POST', '/api/broadcast/config', {}, mod);
     assert.strictEqual(r.status, 403);
     assert.strictEqual(ctx.data._writes(), 0);
+});
+
+test('POST config is SuperAdmin-only: a plain admin gets 403', async () => {
+    const ctx = makeCtx();
+    const admin = login(ctx.sessions, 'admin1', 'admin');
+    const r = await request(ctx.app, 'POST', '/api/broadcast/config', {
+        targets: { gamevox: { botChannels: ['1541027880090140673'] } }
+    }, admin);
+    assert.strictEqual(r.status, 403);
+    assert.strictEqual(ctx.data._writes(), 0);
+});
+
+test('GET preview renders the exact day markup for mod+ without sending', async () => {
+    const ctx = makeCtx();
+    const mod = login(ctx.sessions, 'mod1', 'mod');
+    const r = await request(ctx.app, 'GET', '/api/broadcast/preview', undefined, mod);
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.json.success, true);
+    assert.ok(r.json.days.sat.includes('**Saturday Roster**'), 'sat header present');
+    assert.ok(r.json.days.sat.includes('**Antony**'), 'players rendered');
+    assert.match(r.json.days.sat, /Updated by mod1, /, 'signature carries the actor');
+    assert.ok(r.json.days.sun && r.json.days.sun.includes('**Sunday Roster**'));
+    assert.strictEqual(ctx.requests.length, 0, 'preview never touches delivery HTTP');
+});
+
+test('GET preview requires auth', async () => {
+    const ctx = makeCtx();
+    const r = await request(ctx.app, 'GET', '/api/broadcast/preview');
+    assert.strictEqual(r.status, 401);
 });
 
 test('POST config accepts pinned URLs, rejects foreign hosts, preserves message ids', async () => {

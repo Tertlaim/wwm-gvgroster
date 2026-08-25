@@ -38,6 +38,15 @@ const DAY_LABELS = { sat: 'Saturday', sun: 'Sunday' };
 const DAY_COLORS = { sat: 0xF1C40F, sun: 0x3498DB }; // gold=Sat, blue=Sun
 const CLASS_EMOJI = { Tank: '🛡️', DPS: '⚔️', Heal: '🌿' };
 
+// Discord-compatible bot REST base (developers.gamevox.com/docs/migrating).
+// Messages sent under a bot token are normal channel messages: they reach
+// online clients live (no restart needed) and support edit-in-place, which
+// incoming webhooks never will (D0: PATCH/DELETE 405).
+const GAMEVOX_BOT_API = 'https://bot-api.gamevox.com/api/v10';
+// fresh = new message per push (survives burial under newer chat);
+// edit  = PATCH the stored per-channel message (pairs well with pinning).
+const BOT_POST_MODES = ['fresh', 'edit'];
+
 // Host-pinned URL shapes double as an SSRF guard. They are enforced at the
 // trust boundary (the admin-only config route) where untrusted input enters;
 // the push path itself accepts whatever is stored so tests can inject mock
@@ -64,7 +73,11 @@ function defaultIntegrationsConfig() {
         autoIntervalMin: 15,
         targets: {
             discord: { platform: 'discord', enabled: false, mode: 'auto', webhookUrl: '', satMessageId: null, sunMessageId: null },
-            gamevox: { platform: 'gamevox', enabled: false, mode: 'manual', webhookUrl: '', satMessageId: null, sunMessageId: null }
+            gamevox: {
+                platform: 'gamevox', enabled: false, mode: 'manual',
+                webhookUrl: '', satMessageId: null, sunMessageId: null,
+                botToken: '', botChannels: [], botPostMode: 'fresh'
+            }
         }
     };
 }
@@ -121,6 +134,43 @@ function normalizeWebhooks(target) {
         return target.webhooks.filter(u => typeof u === 'string' && u);
     }
     return target.webhookUrl ? [target.webhookUrl] : [];
+}
+
+// ---- GameVox bot (live) path ----
+
+// Tokens look like GVB.xxxx (56 chars, D0 portal sample). Kept loose on the
+// tail so a provider-side format tweak never bricks config saves; length and
+// prefix are the security-relevant parts at this trust boundary.
+function isValidBotToken(token) {
+    return typeof token === 'string' && /^GVB\.[\w.-]{16,}$/.test(token.trim());
+}
+
+// Public display: prefix + last 4. The full token never leaves the server.
+function maskBotToken(token) {
+    const t = String(token == null ? '' : token).trim();
+    if (!t) return '';
+    return t.slice(0, 4) + '…' + t.slice(-4);
+}
+
+// Channel snowflakes for the bot path (client "Copy Channel ID").
+function normalizeBotChannels(target) {
+    if (!target || !Array.isArray(target.botChannels)) return [];
+    return target.botChannels.filter(c => typeof c === 'string' && /^\d{5,}$/.test(c));
+}
+
+// Config wins; .env is the deployment fallback so the secret can be managed
+// outside the database when preferred.
+function effectiveBotToken(target) {
+    const fromConfig = target && typeof target.botToken === 'string' ? target.botToken.trim() : '';
+    if (fromConfig) return fromConfig;
+    return String(process.env.GAMEVOX_BOT_TOKEN || '').trim();
+}
+
+// A target can deliver if it has webhooks OR a usable bot configuration.
+function hasDeliveryChannel(target) {
+    if (!target) return false;
+    if (normalizeWebhooks(target).length > 0) return true;
+    return Boolean(effectiveBotToken(target)) && normalizeBotChannels(target).length > 0;
 }
 
 // Markdown-safe text: names/classes/roles come from validated input, but
@@ -252,19 +302,41 @@ function buildDayText(db, day, options) {
 
     lines.push('**' + DAY_LABELS[day] + ' Roster**');
 
-    for (const key of groupKeys) {
-        const group = groups[key] || {};
-        const players = Array.isArray(group.players) ? group.players : [];
-        const title = sanitizeText(group.title, 40) || key;
-        lines.push('');
-        lines.push(groupIcon(title) + ' **' + title + '** · ' + players.length + '/' + GROUP_CAP);
-        if (players.length === 0) {
-            lines.push('- —');
-            continue;
-        }
-        for (const p of players) {
-            const l = playerLine(p);
-            if (l) lines.push('- ' + l);
+    if (groupKeys.length > 0) {
+        const groupSections = groupKeys.map(k => {
+            const g = groups[k] || {};
+            const players = Array.isArray(g.players) ? g.players : [];
+            const title = sanitizeText(g.title, 40) || k;
+            const part = [];
+            part.push(groupIcon(title) + ' **' + title + '** · ' + players.length + '/' + GROUP_CAP);
+            if (players.length === 0) {
+                part.push('- —');
+            } else {
+                for (const p of players) {
+                    const l = playerLine(p);
+                    if (l) part.push('- ' + l);
+                }
+            }
+            return part;
+        });
+
+        if (groupSections.length === 1) {
+            lines.push('');
+            lines.push(...groupSections[0]);
+        } else {
+            lines.push('');
+            lines.push('|  |  |');
+            lines.push('|---|---|');
+            for (let i = 0; i < groupSections.length; i += 2) {
+                const left = groupSections[i];
+                const right = groupSections[i + 1];
+                const maxHeight = Math.max(left.length, right ? right.length : 0);
+                for (let j = 0; j < maxHeight; j++) {
+                    const l = left[j] || '';
+                    const r = right ? (right[j] || '') : '';
+                    lines.push('| ' + l + ' | ' + r + ' |');
+                }
+            }
         }
     }
 
@@ -279,8 +351,11 @@ function buildDayText(db, day, options) {
 
     const by = sanitizeText(opts.updatedBy || '', 30);
     if (by) {
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const timeStr = now.toTimeString().slice(0, 5);  // HH:MM
         lines.push('');
-        lines.push('_updated by ' + by + '_');
+        lines.push(`Updated by ${by}, ${dateStr}-${timeStr}`);
     }
 
     return lines.join('\n');
@@ -359,12 +434,18 @@ function createBroadcaster(deps) {
     // One logical request with 429 discipline: honor Retry-After (header in
     // seconds or body retry_after in ms), wait, retry exactly once. Anything
     // beyond that is a failure for this round; the breaker handles repeats.
-    async function send(st, url, method, body) {
+    // extraHeaders lets the bot path attach its Authorization header without
+    // webhook calls ever carrying one.
+    async function send(st, url, method, body, extraHeaders) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (extraHeaders && typeof extraHeaders === 'object') {
+            for (const k of Object.keys(extraHeaders)) headers[k] = extraHeaders[k];
+        }
         const doFetch = async () => {
             await pace(st);
             return d.fetchImpl(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(body),
                 signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
             });
@@ -455,6 +536,49 @@ function createBroadcaster(deps) {
         return { ok: true, created: true };
     }
 
+    // One day on ONE channel via the GameVox bot REST API. Bot messages are
+    // normal chat: online clients see them live, and edit mode can PATCH a
+    // stored message id (fresh mode always posts, so a roster buried under
+    // newer chat is never silently updated out of sight). Content is the
+    // same plain-markdown day text the webhook path uses (2-column layout).
+    async function botEnsureDayMessage(st, target, channelId, db, day, actor) {
+        const text = buildDayText(db, day, { updatedBy: actor });
+        if (!text) return { ok: true, skipped: true };
+
+        const token = effectiveBotToken(target);
+        if (!token) return { ok: false, error: 'bot token missing' };
+        const auth = { Authorization: 'Bot ' + token };
+        const mode = BOT_POST_MODES.includes(target.botPostMode) ? target.botPostMode : 'fresh';
+        const idKey = day + 'MessageId';
+        const idsRoot = (target.channelIds && typeof target.channelIds === 'object')
+            ? target.channelIds['bot:' + channelId]
+            : null;
+        const storedId = mode === 'edit' && idsRoot ? idsRoot[idKey] : null;
+
+        if (storedId) {
+            const edited = await send(st,
+                GAMEVOX_BOT_API + '/channels/' + channelId + '/messages/' + storedId,
+                'PATCH', { content: text }, auth);
+            if (edited.ok) return { ok: true, updated: true };
+            if (edited.status !== 404) return { ok: false, error: edited.error };
+            idsRoot[idKey] = null; // message deleted server-side -> recreate
+        }
+
+        const created = await send(st,
+            GAMEVOX_BOT_API + '/channels/' + channelId + '/messages',
+            'POST', { content: text }, auth);
+        if (!created.ok) return { ok: false, error: created.error };
+        if (!created.body || !created.body.id) return { ok: false, error: 'no message id in response' };
+        if (mode === 'edit') {
+            if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
+            if (!target.channelIds['bot:' + channelId] || typeof target.channelIds['bot:' + channelId] !== 'object') {
+                target.channelIds['bot:' + channelId] = {};
+            }
+            target.channelIds['bot:' + channelId][idKey] = created.body.id;
+        }
+        return { ok: true, created: true };
+    }
+
     async function pushTarget(key, options) {
         const opts = options || {};
         const cfg = opts.config || await d.readConfig();
@@ -463,7 +587,9 @@ function createBroadcaster(deps) {
         }
         const target = cfg && cfg.targets && cfg.targets[key];
         const urls = normalizeWebhooks(target);
-        if (!target || !target.enabled || urls.length === 0) {
+        const botChannels = key === 'gamevox' ? normalizeBotChannels(target) : [];
+        const botOn = botChannels.length > 0 && Boolean(effectiveBotToken(target));
+        if (!target || !target.enabled || (urls.length === 0 && !botOn)) {
             return { ok: false, skipped: true, error: 'not configured' };
         }
 
@@ -486,7 +612,9 @@ function createBroadcaster(deps) {
         const db = opts.db || await d.readData();
         if (!db) return { ok: false, error: 'no data' };
 
-        // Fan out: every enabled channel receives every non-empty day.
+        // Fan out: every enabled channel (webhook or bot) receives every
+        // non-empty day. Bot channels are numbered after webhooks so error
+        // labels stay stable per delivery kind.
         const days = [];
         configDirty = configDirty || false;
         for (const day of DAY_KEYS) {
@@ -495,6 +623,13 @@ function createBroadcaster(deps) {
                 const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system');
                 if (r.created) configDirty = true;
                 perChannel.push({ n: i + 1, ...r });
+            }
+            if (botOn) {
+                for (let i = 0; i < botChannels.length; i++) {
+                    const r = await botEnsureDayMessage(st, target, botChannels[i], db, day, opts.actor || 'system');
+                    if (r.created) configDirty = true;
+                    perChannel.push({ n: urls.length + i + 1, ...r });
+                }
             }
             const failed = perChannel.filter(x => x.ok === false);
             days.push({
@@ -563,7 +698,7 @@ function createBroadcaster(deps) {
         const hash = computeGroupsHash(db.groups, db.reserves);
         for (const key of TARGET_KEYS) {
             const target = cfg.targets && cfg.targets[key];
-            if (!target || !target.enabled || normalizeWebhooks(target).length === 0) continue;
+            if (!target || !target.enabled || !hasDeliveryChannel(target)) continue;
             if (target.mode === 'manual') continue; // Push Now button only
             const st = stateFor(key);
             if (d.now() < st.breakerUntil) continue;
@@ -680,11 +815,18 @@ module.exports = {
     MAX_WEBHOOKS,
     MAX_FIELD_CHARS,
     MAX_FIELD_LINES,
+    GAMEVOX_BOT_API,
+    BOT_POST_MODES,
     defaultIntegrationsConfig,
     canonicalize,
     computeGroupsHash,
     maskWebhookUrl,
     isValidWebhookUrl,
+    isValidBotToken,
+    maskBotToken,
+    normalizeBotChannels,
+    effectiveBotToken,
+    hasDeliveryChannel,
     buildDayMessage,
     buildDayText,
     createBroadcaster

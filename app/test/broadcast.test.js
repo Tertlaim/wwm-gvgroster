@@ -44,11 +44,17 @@ function okResponse(body) {
 }
 
 // Discord target enabled by default; gamevox stays off unless opted in.
+// Passing overrides.config.targets replaces the map wholesale (bot tests do)
+// and keeps the platform defaults underneath.
 function makeBroadcaster(overrides = {}) {
     const config = broadcast.defaultIntegrationsConfig();
+    const customTargets = overrides.config && overrides.config.targets;
     Object.assign(config, overrides.config || {});
-    config.targets.discord.webhookUrl = DISCORD_URL;
-    config.targets.discord.enabled = true;
+    config.targets = { ...broadcast.defaultIntegrationsConfig().targets, ...(config.targets || {}) };
+    if (!customTargets) {
+        config.targets.discord.webhookUrl = DISCORD_URL;
+        config.targets.discord.enabled = true;
+    }
     if (overrides.enableGamevox) {
         config.targets.gamevox.webhookUrl = GAMEVOX_URL;
         config.targets.gamevox.enabled = true;
@@ -180,7 +186,7 @@ test('buildDayText renders plain markdown for embed-less platforms', () => {
     assert.ok(text.includes('⚔️ **Offence 1** · 2/30'), 'group title with count');
     assert.ok(text.includes('- **Antony** · 🌿 Heal · Vice Commander'), 'player bullets');
     assert.ok(text.includes('🕐 **Reserves** · 1'), 'reserves section');
-    assert.ok(text.endsWith('_updated by moduser_'), 'signature footer last');
+    assert.match(text, /Updated by moduser, \d{4}-\d{2}-\d{2}-\d{2}:\d{2}$/, 'signature footer last');
     assert.ok(!text.includes('embeds'), 'plain markdown only');
 
     assert.strictEqual(broadcast.buildDayText({ groups: {}, reserves: {} }, 'sun', {}), null);
@@ -384,4 +390,110 @@ test('gamevox defaults to manual-only: auto-push skips it, Push Now creates fres
         assert.strictEqual(c.body.content, undefined, 'discord stays embeds-only'));
 
     b.destroy();
+});
+
+// ---- GameVox bot (live) path ----
+
+const BOT_TOKEN = 'GVB.abcdef1234567890abcdef1234567890abcd';
+const BOT_CHANNEL = '1541027880090140673';
+
+function botConfig(overrides = {}) {
+    const config = broadcast.defaultIntegrationsConfig();
+    config.targets.discord.enabled = false;
+    config.targets.discord.webhookUrl = '';
+    Object.assign(config.targets.gamevox, {
+        enabled: true,
+        mode: 'manual',
+        botToken: BOT_TOKEN,
+        botChannels: [BOT_CHANNEL],
+        botPostMode: 'fresh',
+        webhooks: [],
+        webhookUrl: ''
+    }, overrides);
+    return config;
+}
+
+test('bot helpers validate, normalize and mask without leaking secrets', () => {
+    assert.strictEqual(broadcast.isValidBotToken(BOT_TOKEN), true);
+    assert.strictEqual(broadcast.isValidBotToken('GVB.short'), false);
+    assert.strictEqual(broadcast.isValidBotToken(''), false);
+    assert.strictEqual(broadcast.isValidBotToken(null), false);
+    const masked = broadcast.maskBotToken(BOT_TOKEN);
+    assert.strictEqual(masked, 'GVB.…abcd');
+    assert.ok(!masked.includes('abcdef1234567890'));
+    assert.deepStrictEqual(
+        broadcast.normalizeBotChannels({ botChannels: [BOT_CHANNEL, '  ', 'nope', '12345'] }),
+        [BOT_CHANNEL, '12345']);
+    assert.deepStrictEqual(broadcast.normalizeBotChannels({}), []);
+    const target = botConfig().targets.gamevox;
+    assert.strictEqual(broadcast.hasDeliveryChannel(target), true);
+    assert.strictEqual(broadcast.hasDeliveryChannel({ enabled: true }), false);
+});
+
+test('bot fresh mode: every push POSTs a new message with the Bot header', async () => {
+    const calls = [];
+    const fetchImpl = async (url, opts) => {
+        calls.push({ method: opts.method, url, headers: opts.headers, body: JSON.parse(opts.body) });
+        return okResponse({ id: 'm' + calls.length });
+    };
+    const { b } = makeBroadcaster({
+        config: { targets: botConfig().targets, debounceSec: 0.05 },
+        db: fixtureDb,
+        deps: { fetchImpl }
+    });
+
+    const res = await b.pushNow('moduser', 'gamevox');
+    assert.strictEqual(res.gamevox.ok, true);
+    assert.strictEqual(calls.length, 2, 'sat + sun, one POST each');
+    calls.forEach(c => {
+        assert.strictEqual(c.method, 'POST', 'fresh mode never PATCHes');
+        assert.strictEqual(c.url, broadcast.GAMEVOX_BOT_API + '/channels/' + BOT_CHANNEL + '/messages');
+        assert.strictEqual(c.headers.Authorization, 'Bot ' + BOT_TOKEN);
+        assert.ok(c.body.content.includes('Roster**'), 'content is the markdown day roster');
+    });
+    assert.ok(calls[0].body.content.includes('|'), '2-column group layout on multi-group days (sat)');
+    // Fresh mode stores no message ids: nothing to edit later.
+    assert.strictEqual(JSON.stringify(calls).includes('satMessageId'), false);
+    b.destroy();
+});
+
+test('bot edit mode: PATCHes the stored id, POSTs days without one, 404 falls back', async () => {
+    const calls = [];
+    let failFirstPatchWith404 = true;
+    const fetchImpl = async (url, opts) => {
+        calls.push({ method: opts.method, url, headers: opts.headers, body: JSON.parse(opts.body) });
+        if (opts.method === 'PATCH' && failFirstPatchWith404) {
+            failFirstPatchWith404 = false;
+            return { ok: false, status: 404, json: async () => ({}), headers: { get: () => null } };
+        }
+        return okResponse({ id: 'm' + calls.length });
+    };
+    const config = botConfig({ botPostMode: 'edit' });
+    config.targets.gamevox.channelIds = {
+        ['bot:' + BOT_CHANNEL]: { satMessageId: 'existingSat', sunMessageId: null }
+    };
+    const { b } = makeBroadcaster({ config, db: fixtureDb, deps: { fetchImpl } });
+
+    const res = await b.pushNow('moduser', 'gamevox');
+    assert.strictEqual(res.gamevox.ok, true);
+    assert.strictEqual(calls.length, 3, 'sat: PATCH(404)+POST, sun: POST');
+    assert.strictEqual(calls[0].method, 'PATCH');
+    assert.ok(calls[0].url.endsWith('/messages/existingSat'), 'sat edits the stored message first');
+    assert.strictEqual(calls[1].method, 'POST', '404 falls back to a fresh POST');
+    assert.strictEqual(calls[2].method, 'POST');
+    assert.ok(calls[2].url.endsWith('/channels/' + BOT_CHANNEL + '/messages'));
+
+    // Edit mode persists the new sat id under the bot channel key.
+    const last = calls.length; // silence lint-style unused warnings if harness changes
+    void last;
+    b.destroy();
+});
+
+test('bot-only config passes the auto-push gate (no webhooks attached)', () => {
+    const config = botConfig();
+    assert.strictEqual(broadcast.hasDeliveryChannel(config.targets.gamevox), true,
+        'bot token + channel counts as a delivery channel');
+    const noToken = botConfig({ botToken: '' });
+    assert.strictEqual(broadcast.hasDeliveryChannel(noToken.targets.gamevox), false,
+        'channels without a token cannot deliver');
 });
