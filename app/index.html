@@ -271,45 +271,6 @@
                     <span class="panel-label">F</span>
                 </div>
 
-                <!-- F - ADMIN/MODERATOR PANEL -->
-                <div class="panel-section collapsible" id="adminPanel">
-                    <div class="flex-between" >
-                        <h3><i class="fas fa-user-shield"></i> Admin · Moderators</h3>
-                    </div>
-                    <div id="userRoleDisplay"></div>
-                    <div class="admin-badge" id="adminList"></div>
-                    <div class="mod-area" id="modArea" data-role-show="admin" style="display:none;">
-                        <div class="flex-row-sm">
-                            <select id="modPlayerSelect" class="select-field">
-                                <option value="">-- select player --</option>
-                            </select>
-                            <button class="btn btn-active" id="approveModBtn">New Mod</button>
-                            <button class="btn" id="approveAdminBtn" data-role-show="superadmin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-gold); color:var(--text-inverse);">New Admin</button>
-                        </div>
-                        <div class="flex-row-sm">
-                            <select id="resetModSelect" class="select-field">
-                                <option value="">-- select mod --</option>
-                            </select>
-                            <button class="btn btn-active" id="resetModBtn">Reset PW</button>
-                        </div>
-                        <div class="flex-row-sm">
-                            <select id="demoteModSelect" class="select-field">
-                                <option value="">-- select mod --</option>
-                            </select>
-                            <button class="btn" id="demoteModBtn">Demote</button>
-                        </div>
-                        <div style="margin-top:var(--spacing-xs); font-size:var(--font-size-xs); color:var(--text-muted);">
-                            <i class="fas fa-info-circle"></i> admins: promote/demote mods, reset passwords | SuperAdmin: also manages admins
-                        </div>
-                    </div>
-                    <div class="divider-top" >
-                        <div id="authWidget">
-                            <!-- Auth widget will be rendered here -->
-                        </div>
-                    </div>
-                    <span class="panel-label">G</span>
-                </div>
-
                 <!-- G - ADMIN TOOLS PANEL (WITH GROUP MANAGEMENT INSIDE) -->
                 <div class="panel-section collapsible" id="adminToolsPanel" data-role-show="admin,mod" style="display:none;">
                     <h3><i class="fas fa-tools"></i> Admin Tools</h3>
@@ -410,6 +371,45 @@
                                     <i class="fas fa-info-circle"></i> Guild: Admin only | Reserve: Moderators+
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <span class="panel-label">G</span>
+                </div>
+
+                <!-- H - ADMIN/MODERATOR PANEL -->
+                <div class="panel-section collapsible" id="adminPanel">
+                    <div class="flex-between" >
+                        <h3><i class="fas fa-user-shield"></i> Admin · Moderators</h3>
+                    </div>
+                    <div id="userRoleDisplay"></div>
+                    <div class="admin-badge" id="adminList"></div>
+                    <div class="mod-area" id="modArea" data-role-show="admin" style="display:none;">
+                        <div class="flex-row-sm">
+                            <select id="modPlayerSelect" class="select-field">
+                                <option value="">-- select player --</option>
+                            </select>
+                            <button class="btn btn-active" id="approveModBtn">New Mod</button>
+                            <button class="btn" id="approveAdminBtn" data-role-show="superadmin" style="width:auto; padding:var(--spacing-xs) var(--spacing-md); background:var(--accent-gold); color:var(--text-inverse);">New Admin</button>
+                        </div>
+                        <div class="flex-row-sm">
+                            <select id="resetModSelect" class="select-field">
+                                <option value="">-- select mod --</option>
+                            </select>
+                            <button class="btn btn-active" id="resetModBtn">Reset PW</button>
+                        </div>
+                        <div class="flex-row-sm">
+                            <select id="demoteModSelect" class="select-field">
+                                <option value="">-- select mod --</option>
+                            </select>
+                            <button class="btn" id="demoteModBtn">Demote</button>
+                        </div>
+                        <div style="margin-top:var(--spacing-xs); font-size:var(--font-size-xs); color:var(--text-muted);">
+                            <i class="fas fa-info-circle"></i> admins: promote/demote mods, reset passwords | SuperAdmin: also manages admins
+                        </div>
+                    </div>
+                    <div class="divider-top" >
+                        <div id="authWidget">
+                            <!-- Auth widget will be rendered here -->
                         </div>
                     </div>
                     <span class="panel-label">H</span>
