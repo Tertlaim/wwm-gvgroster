@@ -552,6 +552,13 @@ function setupBroadcastTools() {
         }
         setupStatus.appendChild(checklistRow(out.publicKeySet,
             out.publicKeySet ? 'Public key stored' : 'Public key missing (step 2)'));
+        if (out.tokenOk) {
+            setupStatus.appendChild(checklistRow(
+                !!out.commandsRegistered,
+                out.commandsRegistered
+                    ? 'Slash command /gvg registered'
+                    : '/gvg was missing - re-registered now; restart your GameVox client'));
+        }
         for (const err of out.errors || []) {
             const row = checklistRow(false, err);
             setupStatus.appendChild(row);

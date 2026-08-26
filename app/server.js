@@ -82,7 +82,7 @@ registerAuthRoutes(app, ctx);
 registerDataRoutes(app, ctx);
 registerHistoryRoutes(app, ctx);
 registerBroadcastRoutes(app, ctx);
-registerGamevoxInteractions(app, ctx);
+const gamevoxApi = registerGamevoxInteractions(app, ctx);
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
@@ -137,6 +137,20 @@ init().then(() => {
             console.log(`Max groups: ${authConfig && authConfig.settings ? authConfig.settings.maxGroups : '?'}`);
             console.log(`===================================`);
         })().catch(err => console.error('Boot log error:', err));
+
+        // GameVox self-heal: reinstalling the bot wipes guild-scoped slash
+        // commands and global ones sync slowly - refresh /gvg registration
+        // shortly after every boot so the command stays invocable.
+        setTimeout(() => {
+            gamevoxApi.ensureGvgCommandsFromConfig()
+                .then(r => {
+                    if (r) {
+                        const where = r.guildIds.length ? ' + ' + r.guildIds.length + ' guild(s)' : '';
+                        console.log('[gamevox] /gvg registration refreshed (global' + where + ')');
+                    }
+                })
+                .catch(e => console.error('[gamevox] auto-register failed:', e.message));
+        }, 5000);
     });
 }).catch(err => {
     console.error('Failed to initialize server:', err);

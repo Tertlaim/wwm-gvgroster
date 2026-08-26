@@ -32,6 +32,24 @@ function publicKeyObject(hex) {
     return crypto.createPublicKey({ key: spki, format: 'der', type: 'spki' });
 }
 
+// Slash-command definition. Registered both guild-scoped (instant per
+// server) and globally (some GameVox clients only sync globals). Full-list
+// PUTs are idempotent.
+const GVG_COMMAND = {
+    name: 'gvg',
+    description: 'Publish the current Saturday/Sunday roster to this channel',
+    options: [{
+        name: 'days',
+        description: 'Limit to one day (default: both)',
+        type: 3,
+        required: false,
+        choices: [
+            { name: 'Saturday only', value: 'sat' },
+            { name: 'Sunday only', value: 'sun' }
+        ]
+    }]
+};
+
 module.exports = function registerGamevoxInteractions(app, ctx) {
     const { data, broadcast, botFetch, auth } = ctx;
     const doFetch = botFetch || ((url, opts) => globalThis.fetch(url, opts));
@@ -222,6 +240,74 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
         return fromConfig || String(process.env.GAMEVOX_BOT_TOKEN || '').trim();
     }
 
+    function apiBase() {
+        return 'https://bot-api.gamevox.com/api/v10/applications/' + appId;
+    }
+
+    async function listCommandNames(token, suffix) {
+        try {
+            const r = await doFetch(apiBase() + suffix, {
+                headers: { Authorization: 'Bot ' + token },
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!r.ok) return null;
+            const arr = await r.json();
+            return Array.isArray(arr) ? arr.map(c => c.name) : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Full-list PUT of /gvg globally and into each given guild. Idempotent.
+    async function putGvgCommands(token, guildIds) {
+        const headers = { Authorization: 'Bot ' + token, 'Content-Type': 'application/json' };
+        const body = JSON.stringify([GVG_COMMAND]);
+        let allOk = true;
+        for (const suffix of ['/commands'].concat(guildIds.map(id => '/guilds/' + id + '/commands'))) {
+            try {
+                const r = await doFetch(apiBase() + suffix, {
+                    method: 'PUT', headers, body,
+                    signal: AbortSignal.timeout(15000)
+                });
+                if (!r.ok) allOk = false;
+            } catch (e) {
+                allOk = false;
+            }
+        }
+        return allOk;
+    }
+
+    // Re-register /gvg everywhere the bot is installed. Reinstalling the bot
+    // on GameVox wipes guild-scoped commands and global ones propagate
+    // slowly, so this runs at boot and whenever Test connection finds the
+    // command missing.
+    async function ensureGvgCommands(token) {
+        let guildIds = [];
+        try {
+            const r = await doFetch('https://bot-api.gamevox.com/api/v10/users/@me/guilds', {
+                headers: { Authorization: 'Bot ' + token },
+                signal: AbortSignal.timeout(15000)
+            });
+            if (r.ok) {
+                const arr = await r.json();
+                if (Array.isArray(arr)) guildIds = arr.map(g => g.id);
+            }
+        } catch (e) { /* fallthrough - global PUT still runs */ }
+        const ok = await putGvgCommands(token, guildIds);
+        return { guildIds, ok };
+    }
+
+    // Boot-time entry point wired from server.js init(): reads the stored
+    // token and refreshes /gvg registration. Returns null when no token.
+    async function ensureGvgCommandsFromConfig() {
+        let token = '';
+        try {
+            token = botTokenFrom(await data.readIntegrations());
+        } catch (e) { return null; }
+        if (!token) return null;
+        return ensureGvgCommands(token);
+    }
+
     // Live connectivity check: validates the stored token and lists which
     // servers the bot is installed on. Drives both the "Test connection"
     // button and the remove-bot server dropdown.
@@ -267,6 +353,24 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
             } else {
                 out.errors.push('Could not list servers (' + gRes.status + ').');
             }
+
+            // Slash-command registration check + self-heal: reinstalling the
+            // bot can wipe guild commands, so verify and re-register on the
+            // spot rather than trusting a stale registration.
+            let commandsRegistered = false;
+            try {
+                const globalNames = await listCommandNames(token, '/commands');
+                const missingGuilds = [];
+                for (const g of out.guilds) {
+                    const names = await listCommandNames(token, '/guilds/' + g.id + '/commands');
+                    if (!names || !names.includes('gvg')) missingGuilds.push(g.id);
+                }
+                if (!globalNames || !globalNames.includes('gvg') || missingGuilds.length > 0) {
+                    await putGvgCommands(token, missingGuilds);
+                }
+                commandsRegistered = (await listCommandNames(token, '/commands') || []).includes('gvg');
+            } catch (e) { /* reported as unregistered */ }
+            out.commandsRegistered = commandsRegistered;
         } catch (e) {
             out.errors.push('Network error contacting GameVox: ' + e.message);
         }
@@ -274,7 +378,9 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
     });
 
     // Remove the bot from ONE server. Tries the self-leave API first; when
-    // the platform refuses (404 today), returns manual client instructions.
+    // the platform refuses (404 today), explains the current reality:
+    // GameVox exposes no uninstall UI at all (no Integrations menu), so the
+    // install simply persists until the platform adds one.
     app.post('/api/gamevox/setup/leave', auth.requireAuth, auth.requireSuperAdmin, async (req, res) => {
         const guildId = String((req.body && req.body.guildId) || '').trim();
         if (!/^\d{5,}$/.test(guildId)) {
@@ -304,13 +410,14 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
                 manual: true,
                 status: r.status,
                 steps: [
-                    'Open your GameVox server → Server Settings → Integrations.',
-                    `Under Bots and Apps, find ${'wwm_gvg_roster'} and choose Uninstall Application.`,
-                    'Reinstall any time via the OAuth2 install link (Setup guide, step 4).'
+                    'GameVox does not offer an uninstall option yet - the bot stays installed until one is added.',
+                    'To refresh the install instead, use the OAuth2 link (Setup guide, step 4).'
                 ]
             });
         } catch (e) {
             res.status(500).json({ success: false, error: 'Network error: ' + e.message });
         }
     });
+
+    return { ensureGvgCommandsFromConfig };
 };

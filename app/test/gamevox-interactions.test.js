@@ -32,11 +32,27 @@ function makeCtx() {
     };
     const followups = [];
     const guildState = { deleted: [] };
+    const cmdState = { global: ['gvg'], guilds: { '1516070040533311488': ['gvg'] } };
     const botFetch = async (url, opts) => {
         const ok = (body) => ({ ok: true, status: 200, json: async () => body, headers: { get: () => null } });
         if (url.endsWith('/users/@me')) return ok({ id: '1541027881444900865', username: 'wwm_gvg_roster' });
         if (url.endsWith('/users/@me/guilds') && (!opts.method || opts.method === 'GET')) {
             return ok([{ id: '1516070040533311488', name: 'The Beginning After The End' }]);
+        }
+        if (/\/applications\/[^/]+\/commands$/.test(url)) {
+            if (!opts.method || opts.method === 'GET') return ok(cmdState.global.map(n => ({ name: n })));
+            if (opts.method === 'PUT') {
+                cmdState.global = JSON.parse(opts.body).map(c => c.name);
+                return ok(cmdState.global.map(n => ({ name: n })));
+            }
+        }
+        if (/\/applications\/[^/]+\/guilds\/(\d+)\/commands$/.test(url)) {
+            const gid = RegExp.$1;
+            if (!opts.method || opts.method === 'GET') return ok((cmdState.guilds[gid] || []).map(n => ({ name: n })));
+            if (opts.method === 'PUT') {
+                cmdState.guilds[gid] = JSON.parse(opts.body).map(c => c.name);
+                return ok(cmdState.guilds[gid].map(n => ({ name: n })));
+            }
         }
         if (url.includes('/users/@me/guilds/') && opts.method === 'DELETE') {
             if (guildState.deleted.length === 0) {
@@ -58,7 +74,7 @@ function makeCtx() {
         verify: (req, res, buf) => { req.rawBody = buf; }
     }));
     registerGamevoxInteractions(app, { data, broadcast, botFetch, auth });
-    return { app, data, followups, guildState, lookups: [] };
+    return { app, data, followups, guildState, cmdState, lookups: [] };
 }
 
 function signAndFetch(app, payload, opts = {}) {
@@ -247,6 +263,26 @@ test('setup status: validates token and lists servers (superadmin)', async () =>
         assert.strictEqual(out2.botUser.username, 'wwm_gvg_roster');
         assert.deepStrictEqual(out2.guilds, [{ id: '1516070040533311488', name: 'The Beginning After The End' }]);
         assert.strictEqual(out2.publicKeySet, true);
+        assert.strictEqual(out2.commandsRegistered, true, 'gvg present in global + guild lists');
+    } finally {
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
+test('setup status self-heals a wiped /gvg registration', async () => {
+    const ctx = makeCtx();
+    ctx.data._seed({ version: 1, targets: { gamevox: { botToken: 'GVB.smoke_token_value_0123456789abcdef' } } });
+    // Mimic the reinstall wipe: no command anywhere.
+    ctx.cmdState.global = [];
+    delete ctx.cmdState.guilds['1516070040533311488'];
+    const server = ctx.app.listen(0);
+    try {
+        const port = server.address().port;
+        const res = await fetch(`http://127.0.0.1:${port}/api/gamevox/setup/status`);
+        const out = await res.json();
+        assert.strictEqual(out.commandsRegistered, true, 'status re-registered gvg and confirmed');
+        assert.ok(ctx.cmdState.global.includes('gvg'), 'global list restored');
+        assert.deepStrictEqual(ctx.cmdState.guilds['1516070040533311488'], ['gvg'], 'guild list restored');
     } finally {
         await new Promise(resolve => server.close(resolve));
     }
