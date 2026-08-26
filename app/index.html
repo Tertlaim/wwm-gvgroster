@@ -328,24 +328,33 @@
                                     </button>
                                     <div class="form-group">
                                         <label>BOT TOKEN :
-                                            <span class="tip" tabindex="0" data-tip="From developers.gamevox.com &mdash; shown only once, when you create the application. Paste + Enter swaps the connected bot; clear + Enter removes it."><i class="tip-dot">i</i></span>
+                                            <span class="tip" tabindex="0" data-tip="developers.gamevox.com &rarr; Your applications &rarr; your app &rarr; Bot tab &rarr; Reset Token / copy. Shown once at creation. Paste + Enter swaps the connected bot; clear + Enter removes it."><i class="tip-dot">i</i></span>
                                         </label>
                                         <textarea id="broadcastBotToken" rows="2" placeholder="Paste bot token (GVB.&hellip;)" autocomplete="off" spellcheck="false"></textarea>
                                         <div class="field-hint">Enter saves &middot; clear the field + Enter removes</div>
                                     </div>
                                     <div class="form-group">
-                                        <label>CHANNELS :
-                                            <span class="tip" tabindex="0" data-tip="Numeric channel ID or the UUID from Channel Settings (right-click channel &rarr; Edit) &mdash; UUIDs are translated automatically. Space/comma/newline separated, max 5."><i class="tip-dot">i</i></span>
+                                        <label>PUBLIC KEY :
+                                            <span class="tip" tabindex="0" data-tip="General Information tab &rarr; Public Key &rarr; Copy. Proves interaction replies come from YOUR application. 64 hex characters."><i class="tip-dot">i</i></span>
                                         </label>
-                                        <textarea id="broadcastBotChannels" rows="5" placeholder="Channel IDs (space/comma/newline separated)" autocomplete="off" spellcheck="false"></textarea>
-                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes all channels</div>
+                                        <textarea id="broadcastPublicKey" rows="2" placeholder="Paste public key (64 hex characters)" autocomplete="off" spellcheck="false"></textarea>
+                                        <div class="field-hint">Enter saves &middot; clear the field + Enter removes</div>
                                     </div>
                                     <div class="form-group">
-                                        <label>ON PUBLISH :</label>
-                                        <select id="broadcastBotMode" class="select-field" style="width:100%;">
-                                            <option value="fresh">Post a new message each publish</option>
-                                            <option value="edit">Edit the existing message</option>
-                                        </select>
+                                        <label>INTERACTIONS ENDPOINT URL :
+                                            <span class="tip" tabindex="0" data-tip="Copy this into General Information &rarr; Interactions Endpoint URL on the portal, then Save. GameVox verifies it with a ping automatically."><i class="tip-dot">i</i></span>
+                                        </label>
+                                        <div class="endpoint-row">
+                                            <input type="text" id="broadcastEndpointUrl" readonly tabindex="-1">
+                                            <button type="button" class="btn btn-sm btn-auto" id="broadcastEndpointCopy" title="Copy to clipboard"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                        <div class="field-hint">Read-only &mdash; paste it into the developer portal (Setup guide, step 3)</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="button" class="btn btn-sm btn-auto" id="broadcastTestConnBtn" style="width:100%;">
+                                            <i class="fas fa-plug-circle-check"></i> Test connection
+                                        </button>
+                                        <div id="broadcastSetupStatus" style="display:none;"></div>
                                     </div>
                                     <div class="hint-xs-top" id="broadcastBotStatus">
                                         <i class="fas fa-info-circle"></i> Bot not configured &mdash; paste the token above to enable publishing
@@ -356,9 +365,6 @@
                             <div class="broadcast-actions">
                                 <button class="btn btn-sm btn-auto broadcast-preview-btn" id="broadcastPreviewBtn">
                                     <i class="fas fa-eye"></i> Preview
-                                </button>
-                                <button class="btn btn-sm btn-auto broadcast-publish-btn" id="broadcastPushBtn">
-                                    <i class="fas fa-satellite-dish"></i> Publish
                                 </button>
                             </div>
                         </div>
@@ -531,33 +537,47 @@
             <div id="broadcastSetupBody" style="max-height:60vh; overflow-y:auto;">
                 <ol class="setup-steps">
                     <li>
-                        <strong>Create the application.</strong> Open <em>developers.gamevox.com</em> and sign in with your GameVox account (the same one you use in the app).
-                        Scroll to <em>Your applications</em> &rarr; <strong>+ New application</strong>.
-                        The bot token (<em>GVB.&hellip;</em>) is created here and shown only once &mdash; copy and keep it for step 5.
-                        <img src="/img/setup/oauth-portal.png" alt="GameVox Developer Portal landing page: sign in with your GameVox account to manage bot applications" loading="lazy">
-                        <img src="/img/setup/oauth-apps-list.png" alt="Your applications list with the WWM GvG Roster app card and the + New application button" loading="lazy">
+                        <strong>Create the application &amp; save its token.</strong>
+                        <span class="step-goal">Goal: an application that owns your bot and the <code>/gvg</code> command.</span><br>
+                        Open <em>developers.gamevox.com</em> &rarr; sign in &rarr; <em>Your applications</em> &rarr; <strong>+ New application</strong>.
+                        Copy the <strong>bot token</strong> (<em>GVB.&hellip;</em>) now &mdash; it is shown only once.
+                        <img src="/img/setup/oauth-portal.png" alt="GameVox Developer Portal landing page: sign in with your GameVox account" loading="lazy">
+                        <img src="/img/setup/oauth-apps-list.png" alt="Your applications list with the + New application button" loading="lazy">
                     </li>
                     <li>
-                        <strong>Open the OAuth2 tab.</strong> In your application, open the <em>OAuth2</em> tab &rarr; URL generator.
-                        The <em>bot</em> and <em>applications.commands</em> scopes are ticked by default &mdash; leave them exactly as they are.
+                        <strong>Give the website two identifiers.</strong>
+                        <span class="step-goal">Goal: GameVox trusts this site, and the site can register commands.</span><br>
+                        Copy the app&rsquo;s <strong>Public Key</strong> (General Information tab) into the <em>PUBLIC KEY</em> field in Panel G.
+                        The <strong>bot token</strong> goes into <em>BOT TOKEN</em>. Both save on Enter.
                     </li>
                     <li>
-                        <strong>Pick permissions.</strong> Still on the OAuth2 tab, tick in the permissions grid:
-                        <strong>View Channels, Send Messages, Embed Links, Read Message History</strong>
-                        (&ldquo;Administrator&rdquo; also works but grants far more than needed).
-                        <img src="/img/setup/oauth-permissions.png" alt="Permissions grid with View Channels, Send Messages, Manage Messages, Embed Links and Read Message History ticked" loading="lazy">
+                        <strong>Point interactions at this website.</strong>
+                        <span class="step-goal">Goal: GameVox knows where to deliver /gvg invocations.</span><br>
+                        In Panel G, copy the <strong>Interactions Endpoint URL</strong> shown under the token fields, then on the
+                        portal&rsquo;s <em>General Information</em> tab paste it into <strong>Interactions Endpoint URL</strong> and Save.
+                        Wake this website first (open it in a browser tab) so the verification ping succeeds.
                     </li>
                     <li>
-                        <strong>Install the bot.</strong> Scroll to the <em>bottom</em> of the OAuth2 tab to reach the link form.
-                        Either pick your server and press <strong>Install Application</strong>, or press <strong>Copy</strong> on the Generated URL and open it in a browser to install.
-                        Do this after the permissions in step 3 are ticked, so the bot installs with them.
-                        <img src="/img/setup/oauth-install.png" alt="Bottom of the OAuth2 tab: redirect None, Generated URL with Copy button, and the Install directly to a server section" loading="lazy">
+                        <strong>Tick permissions.</strong>
+                        <span class="step-goal">Goal: the bot may see channels and post.</span><br>
+                        On the OAuth2 tab&rsquo;s permissions grid tick:
+                        <strong>View Channels, Send Messages, Embed Links, Read Message History</strong>.
+                        (&ldquo;Administrator&rdquo; also works but grants far more than needed.)
+                        <img src="/img/setup/oauth-permissions.png" alt="Permissions grid with View Channels, Send Messages, Embed Links and Read Message History ticked" loading="lazy">
                     </li>
                     <li>
-                        <strong>Connect it here.</strong> Use the bot token from step 1: paste it into <strong>BOT TOKEN</strong> and press Enter.
-                        Right-click each target channel in GameVox &rarr; <em>Copy Channel ID</em>, paste into <strong>CHANNELS</strong> (space/comma separated) and press Enter.
-                        Pick the <strong>ON PUBLISH</strong> behaviour: a fresh message per publish keeps rosters visible at the bottom of chat;
-                        edit-mode rewrites one message (pair it with pinning). Publish then delivers instantly, like normal chat.
+                        <strong>Install the bot.</strong>
+                        <span class="step-goal">Goal: a wwm_gvg_roster member inside your server.</span><br>
+                        Scroll to the bottom of the OAuth2 tab: pick your server and press
+                        <strong>Install Application</strong>, or press <strong>Copy</strong> on the Generated URL and open it in a browser.
+                        <img src="/img/setup/oauth-install.png" alt="Bottom of the OAuth2 tab: generated URL with Copy button and Install directly to a server section" loading="lazy">
+                    </li>
+                    <li>
+                        <strong>Test &amp; publish.</strong>
+                        <span class="step-goal">Goal: instant rosters from chat.</span><br>
+                        Back in Panel G press <strong>Test connection</strong> &mdash; every row should show green.
+                        Then type <code>/gvg</code> in <strong>any text channel</strong> (optionally choose Saturday/Sunday/Both).
+                        The roster appears instantly for everyone watching. Requires Manage Messages or Administrator; short cooldown between uses.
                     </li>
                 </ol>
             </div>

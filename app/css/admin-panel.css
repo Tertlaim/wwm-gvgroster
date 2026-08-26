@@ -290,6 +290,21 @@
     word-break: break-all;
 }
 
+/* Interactions endpoint: one-line readonly URL with the copy button glued
+   to its right. The input shrinks (flex) instead of wrapping the button
+   onto a second line, so the row stays exactly one field tall. */
+.endpoint-row {
+    display: flex;
+    align-items: stretch;
+    gap: var(--spacing-xs);
+}
+
+.endpoint-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+
 /* Microcopy under inline-commit fields (Enter to save / clear+Enter removes) */
 .field-hint {
     margin-top: 3px;

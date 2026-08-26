@@ -380,42 +380,28 @@ function setupAdminControls() {
     }
 }
 
-// ---- Broadcast (GameVox bot) ----
-// Config autosaves on change (enable toggle, publish mode) — no Save button.
-// Text fields (token/channels) use explicit Enter/blur commits so half-typed
-// secrets are never POSTed mid-edit.
+// ---- Broadcast (GameVox bot setup + /gvg) ----
+// Publishing happens exclusively through the /gvg slash command in GameVox
+// chat (instant rendering). This panel is the bot's control room: connect
+// token + public key, copy the interactions endpoint URL, run a live
+// connectivity test.
 function setupBroadcastTools() {
-    const pushBtn = document.getElementById('broadcastPushBtn');
     const previewBtn = document.getElementById('broadcastPreviewBtn');
     const gvEnabled = document.getElementById('broadcastGamevoxEnabled');
     const gvState = document.getElementById('broadcastGamevoxState');
     const headStatus = document.getElementById('broadcastHeadStatus');
     const botToken = document.getElementById('broadcastBotToken');
-    const botChannels = document.getElementById('broadcastBotChannels');
-    const botMode = document.getElementById('broadcastBotMode');
+    const publicKey = document.getElementById('broadcastPublicKey');
+    const endpointUrl = document.getElementById('broadcastEndpointUrl');
+    const endpointCopy = document.getElementById('broadcastEndpointCopy');
+    const testConnBtn = document.getElementById('broadcastTestConnBtn');
+    const setupStatus = document.getElementById('broadcastSetupStatus');
     const botStatus = document.getElementById('broadcastBotStatus');
     const setupGuideBtn = document.getElementById('broadcastSetupGuideBtn');
-    if (!pushBtn || !gvEnabled || !botToken || !botChannels || !botStatus) return;
+    if (!previewBtn || !gvEnabled || !botToken || !publicKey || !setupStatus) return;
 
     let saveChain = Promise.resolve();
-    let saveTimer = null;
     let breakerActive = false;
-    let botReady = false; // token + at least one channel configured
-
-    // Single source of truth for both the ON/OFF caption and the collapsed
-    // header chip, so they can never drift apart.
-    function setStateText() {
-        const on = !!gvEnabled.checked;
-        if (gvState) {
-            gvState.textContent = on ? 'ON' : 'OFF';
-            gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
-        }
-        if (headStatus) {
-            headStatus.textContent = 'GameVox ' + (on ? 'ON' : 'OFF') +
-                (botReady ? ' · bot' : '') +
-                (breakerActive ? ' · paused' : '');
-        }
-    }
 
     function setBotStatus(text, savedFlash) {
         botStatus.textContent = '';
@@ -426,46 +412,21 @@ function setupBroadcastTools() {
         botStatus.classList.toggle('status-saved', !!savedFlash);
     }
 
-    async function refreshBroadcastConfig() {
-        try {
-            const r = await fetch('/api/broadcast/config', { headers: getAuthHeader() });
-            if (!r.ok) return;
-            const cfg = await r.json();
-            if (!cfg || !cfg.targets || !cfg.targets.gamevox) return;
-            const t = cfg.targets.gamevox;
-            gvEnabled.checked = !!t.enabled;
-
-            const botMask = t.botTokenMasked || '';
-            const chans = Array.isArray(t.botChannels) ? t.botChannels : [];
-            botMode.value = t.botPostMode === 'edit' ? 'edit' : 'fresh';
-            let botText;
-            if (!t.hasBotToken && chans.length === 0) {
-                botText = 'Bot not configured — paste the token above to enable publishing';
-            } else if (!t.hasBotToken) {
-                botText = chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' set — paste the bot token (GVB.…)';
-            } else if (chans.length === 0) {
-                botText = 'Bot token saved (' + botMask + ') — add channel IDs';
-            } else {
-                botText = 'Bot: ' + chans.length + ' channel' + (chans.length > 1 ? 's' : '') + ' · ' +
-                    (t.botPostMode === 'edit' ? 'edits existing message' : 'new message each publish');
-            }
-            breakerActive = !!(t.status && t.status.breakerActive);
-            if (breakerActive) botText += ' · auto-publish paused (repeated failures)';
-            setBotStatus(botText);
-            botReady = !!t.hasBotToken && chans.length > 0;
-            setStateText();
-            // Inline forms show what is saved; baselines match so an untouched
-            // field never re-posts on blur.
-            tokenField.setBaseline(typeof t.botToken === 'string' ? t.botToken : '');
-            channelsField.setBaseline(chans.join(', '));
-        } catch (e) { /* panel stays in default state */ }
+    // Single source of truth for the ON/OFF caption and the collapsed chip.
+    function setStateText() {
+        const on = !!gvEnabled.checked;
+        if (gvState) {
+            gvState.textContent = on ? 'ON' : 'OFF';
+            gvState.className = 'toggle-state ' + (on ? 'on' : 'off');
+        }
+        if (headStatus) {
+            headStatus.textContent = 'GameVox ' + (on ? 'ON' : 'OFF') +
+                (breakerActive ? ' · paused' : '');
+        }
     }
 
-    // Serialized autosave. Non-SuperAdmins get their control reverted from
-    // server state; failures revert too, so the UI never lies about what is
-    // stored. Config is a SuperAdmin concern; admins/mods only Publish.
     // One POST per config change. fragment fields omitted = unchanged
-    // server-side; '' / [] = clear. Re-syncs masks + statuses after success.
+    // server-side; '' clears. Re-syncs forms + statuses after success.
     function postGamevoxConfig(fragment) {
         if (!AuthModule.isSuperAdmin()) {
             showToast('Only the SuperAdmin can change broadcast settings.', 'error', 3000);
@@ -497,58 +458,31 @@ function setupBroadcastTools() {
         return saveChain;
     }
 
-    // Autosave for the toggle + mode select only. Text fields use explicit
-    // Enter/blur commits (makeCommitField below), so half-typed secrets and
-    // partial URLs are never POSTed mid-edit.
-    function doSave() {
-        if (!AuthModule.isSuperAdmin()) {
-            showToast('Only the SuperAdmin can change broadcast settings.', 'error', 3000);
-            refreshBroadcastConfig();
-            return;
-        }
-        const fragment = { enabled: !!gvEnabled.checked };
-        if (botMode.value === 'edit' || botMode.value === 'fresh') {
-            fragment.botPostMode = botMode.value;
-        }
-        postGamevoxConfig(fragment);
-    }
-
-    // ---- Inline-commit text fields ----
-    // The field always shows what is saved. Edit + Enter (or blur a changed
-    // field) saves the edit; delete-to-empty + Enter/blur clears it; Esc
-    // reverts to the saved value. toFragment(raw) returns
-    // { payload, canonical } - canonical is the exact display form persisted.
+    // Toggle autosaves immediately; text fields use explicit Enter/blur
+    // commits so half-typed secrets are never POSTed mid-edit. The field
+    // always shows what is saved; Esc reverts an uncommitted edit.
     function makeCommitField(inputEl, toFragment) {
-        let baseline = ''; // canonical string currently stored ('' = none)
-
+        let baseline = '';
         async function commit() {
             let parsed;
             try {
                 parsed = toFragment(inputEl.value.trim());
             } catch (err) {
                 showToast(err.message, 'error', 4000);
-                return; // keep the typed value so it can be fixed in place
+                return;
             }
-            if (parsed.canonical === baseline) return; // unchanged since last save
+            if (parsed.canonical === baseline) return;
             const ok = await postGamevoxConfig(parsed.payload);
             if (ok) {
                 baseline = parsed.canonical;
-                inputEl.value = baseline; // show exactly what is saved
-            }
-        }
-
-        inputEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                // Plain Enter commits (textareas: Shift+Enter makes a line,
-                // harmless - whitespace is stripped before saving).
-                e.preventDefault();
-                commit();
-            } else if (e.key === 'Escape') {
                 inputEl.value = baseline;
             }
+        }
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') e.preventDefault(), commit();
+            else if (e.key === 'Escape') inputEl.value = baseline;
         });
         inputEl.addEventListener('blur', function() { commit(); });
-
         return { setBaseline: function(v) { baseline = v || ''; inputEl.value = v || ''; } };
     }
 
@@ -560,120 +494,111 @@ function setupBroadcastTools() {
         return { payload: { botToken: raw }, canonical: raw };
     });
 
-    const channelsField = makeCommitField(botChannels, function(raw) {
-        if (raw === '') return { payload: { botChannels: [] }, canonical: '' };
-        const list = raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
-        if (list.length > 5) throw new Error('Max 5 GameVox bot channels per target');
-        for (const c of list) {
-            // Numeric snowflake OR the UUID from Channel Settings - the
-            // server translates UUIDs to snowflakes on save.
-            if (!/^(?:\d{5,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.test(c)) {
-                throw new Error('Invalid channel ID "' + c.slice(0, 20) + '" (numeric ID or the UUID from Channel Settings)');
-            }
+    const keyField = makeCommitField(publicKey, function(raw) {
+        if (raw === '') return { payload: { publicKey: '' }, canonical: '' };
+        if (!/^[0-9a-f]{64}$/i.test(raw)) {
+            throw new Error('Public key must be 64 hex characters (General Information tab)');
         }
-        return { payload: { botChannels: list }, canonical: list.join(', ') };
+        return { payload: { publicKey: raw }, canonical: raw.toLowerCase() };
     });
 
-    // Debounced autosave only for the toggle + mode select; text fields are
-    // explicit-commit (above).
-    function requestSave() {
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(doSave, 600);
+    // Endpoint URL mirrors wherever this page is served from - correct for
+    // both localhost testing and the Render deployment.
+    function currentEndpointUrl() {
+        return window.location.origin + '/api/gamevox/interactions';
     }
-    gvEnabled.addEventListener('change', function() {
-        setStateText();
-        requestSave();
+    endpointUrl.value = currentEndpointUrl();
+    endpointCopy.addEventListener('click', function() {
+        const url = endpointUrl.value;
+        const done = () => showToast('Endpoint URL copied', 'success', 2000);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done, () => fallbackCopy(url, done));
+        } else {
+            fallbackCopy(url, done);
+        }
     });
-    botMode.addEventListener('change', requestSave);
+    function fallbackCopy(text, done) {
+        endpointUrl.removeAttribute('readonly');
+        endpointUrl.select();
+        try { document.execCommand('copy'); done(); } catch (e) { /* noop */ }
+        endpointUrl.setAttribute('readonly', '');
+        window.getSelection().removeAllRanges();
+    }
 
-    // Setup guide modal (SuperAdmin): full bot/OAuth2 walkthrough with
-    // screenshots, replacing inline instruction text in the panel.
-    const setupModal = document.getElementById('broadcastSetupModal');
-    if (setupGuideBtn && setupModal) {
-        setupGuideBtn.addEventListener('click', function() {
-            setupModal.classList.add('active');
-        });
-        const closeBtn = document.getElementById('broadcastSetupCloseBtn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                setupModal.classList.remove('active');
-            });
+    // ---- Setup checklist rendering ----
+    function checklistRow(ok, text) {
+        const row = document.createElement('div');
+        row.className = 'setup-check-row';
+        const i = document.createElement('i');
+        i.className = ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark';
+        row.appendChild(i);
+        row.appendChild(document.createTextNode(' ' + text));
+        return row;
+    }
+
+    function renderSetupStatus(out) {
+        setupStatus.innerHTML = '';
+        setupStatus.style.display = '';
+        setupStatus.appendChild(checklistRow(out.tokenOk,
+            out.tokenOk
+                ? 'Token accepted by GameVox' + (out.botUser ? ' (' + out.botUser.username + ')' : '')
+                : 'Token invalid or missing'));
+        if (out.tokenOk) {
+            setupStatus.appendChild(checklistRow(
+                out.guilds.length > 0,
+                out.guilds.length
+                    ? 'Installed on: ' + out.guilds.map(g => g.name).join(', ')
+                    : 'Not installed on any server yet (Setup guide, step 5)'));
+        }
+        setupStatus.appendChild(checklistRow(out.publicKeySet,
+            out.publicKeySet ? 'Public key stored' : 'Public key missing (step 2)'));
+        for (const err of out.errors || []) {
+            const row = checklistRow(false, err);
+            setupStatus.appendChild(row);
         }
     }
 
-    let pushCooldownUntil = 0;
-    let pushTimer = null;
-    function startPushCooldown(seconds) {
-        pushCooldownUntil = Date.now() + seconds * 1000;
-        pushBtn.disabled = true;
-        clearInterval(pushTimer);
-        const label = pushBtn.innerHTML;
-        pushTimer = setInterval(function() {
-            const remaining = Math.ceil((pushCooldownUntil - Date.now()) / 1000);
-            if (remaining <= 0) {
-                clearInterval(pushTimer);
-                pushBtn.innerHTML = label;
-                pushBtn.disabled = !AuthModule.isMod();
-                return;
-            }
-            pushBtn.textContent = 'Wait ' + remaining + 's';
-        }, 500);
-    }
-
-    pushBtn.addEventListener('click', async function() {
-        if (!AuthModule.isMod()) {
-            showToast('Only moderators and admins can publish.', 'error', 3000);
+    async function runTestConnection() {
+        if (!AuthModule.isSuperAdmin()) {
+            showToast('Only the SuperAdmin can test the bot connection.', 'error', 3000);
             return;
         }
-        if (Date.now() < pushCooldownUntil) return;
+        testConnBtn.disabled = true;
+        setupStatus.innerHTML = '';
+        setupStatus.style.display = '';
+        setupStatus.appendChild(checklistRow(true, 'Contacting GameVox…'));
         try {
-            pushBtn.disabled = true;
-            const r = await fetch('/api/broadcast/push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                body: '{}'
-            });
+            const r = await fetch('/api/gamevox/setup/status', { headers: getAuthHeader() });
             const result = await r.json();
-            startPushCooldown(30);
-            if (!result.success) {
-                showToast(result.error || 'Publish failed', 'error', 3000);
+            if (r.status === 403) {
+                showToast('Only the SuperAdmin can test the bot connection.', 'error', 3000);
+                setupStatus.style.display = 'none';
                 return;
             }
-            const results = result.results || {};
-            const DAY_NAMES = { sat: 'Saturday', sun: 'Sunday' };
-            const lines = Object.keys(results).filter(function(k) {
-                return k === 'gamevox'; // only rendered target
-            }).map(function(k) {
-                const res = results[k];
-                if (res && res.cooldown) return k + ': cooldown (' + res.retryAfterSec + 's left)';
-                if (res && res.skipped) return k + ': not configured';
-                if (res && res.ok) return k + ': published';
-                // Surface the real reason GameVox rejected/failed, per day.
-                const errs = ((res && res.days) || [])
-                    .filter(function(d) { return d && d.ok === false && d.error; })
-                    .map(function(d) { return (DAY_NAMES[d.day] || d.day) + ': ' + d.error; });
-                return k + ': failed' + (errs.length ? ' (' + errs.join('; ') + ')' : '');
-            });
-            const allOk = lines.length > 0 && lines.every(function(l) { return l.indexOf(': published') !== -1; });
-            showToast(lines.join(' · '), allOk ? 'success' : 'error', allOk ? 2500 : 8000);
+            if (!result.success) {
+                showToast(result.error || 'Test failed', 'error', 3000);
+                setupStatus.style.display = 'none';
+                return;
+            }
+            renderSetupStatus(result);
         } catch (e) {
-            startPushCooldown(5);
-            showToast('Publish failed (network error)', 'error', 3000);
+            showToast('Test failed (network error)', 'error', 3000);
+        } finally {
+            testConnBtn.disabled = false;
         }
-    });
+    }
 
-    // ---- Publish preview (moderator+): dry-run render of the exact markup
-    // the bot would send, shown in a chat-like modal. No cooldown, no HTTP
-    // delivery - it reads the same buildDayText() output from the server.
+    testConnBtn.addEventListener('click', runTestConnection);
+
+    // ---- Preview modal (moderator+) ----
     function escHtml(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-    // Chat-style approximation: **bold** -> <strong>, newlines kept. Table
-    // pipes stay literal, exactly as plain-markdown chat renders them.
     function markupToHtml(text) {
         return escHtml(text).replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
     }
+    const DAY_LABELS_LOCAL = { sat: 'Saturday', sun: 'Sunday' };
     function openBroadcastPreview(days) {
         const body = document.getElementById('broadcastPreviewBody');
         body.innerHTML = '';
@@ -696,35 +621,73 @@ function setupBroadcastTools() {
         }
         document.getElementById('broadcastPreviewModal').classList.add('active');
     }
-    const DAY_LABELS_LOCAL = { sat: 'Saturday', sun: 'Sunday' };
-    if (previewBtn) {
-        previewBtn.addEventListener('click', async function() {
-            if (!AuthModule.isMod()) {
-                showToast('Only moderators and admins can preview.', 'error', 3000);
-                return;
-            }
-            try {
-                previewBtn.disabled = true;
-                const r = await fetch('/api/broadcast/preview', { headers: getAuthHeader() });
-                const result = await r.json();
-                if (result.success) {
-                    openBroadcastPreview(result.days || {});
-                } else {
-                    showToast(result.error || 'Preview failed', 'error', 3000);
-                }
-            } catch (e) {
-                showToast('Preview failed (network error)', 'error', 3000);
-            } finally {
-                previewBtn.disabled = false;
-            }
-        });
-    }
+    previewBtn.addEventListener('click', async function() {
+        if (!AuthModule.isMod()) {
+            showToast('Only moderators and admins can preview.', 'error', 3000);
+            return;
+        }
+        try {
+            previewBtn.disabled = true;
+            const r = await fetch('/api/broadcast/preview', { headers: getAuthHeader() });
+            const result = await r.json();
+            if (result.success) openBroadcastPreview(result.days || {});
+            else showToast(result.error || 'Preview failed', 'error', 3000);
+        } catch (e) {
+            showToast('Preview failed (network error)', 'error', 3000);
+        } finally {
+            previewBtn.disabled = false;
+        }
+    });
     const previewCloseBtn = document.getElementById('broadcastPreviewCloseBtn');
     if (previewCloseBtn) {
         previewCloseBtn.addEventListener('click', function() {
             document.getElementById('broadcastPreviewModal').classList.remove('active');
         });
     }
+
+    // ---- Setup guide modal ----
+    const setupModal = document.getElementById('broadcastSetupModal');
+    if (setupGuideBtn && setupModal) {
+        setupGuideBtn.addEventListener('click', function() {
+            setupModal.classList.add('active');
+        });
+        const closeBtn = document.getElementById('broadcastSetupCloseBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                setupModal.classList.remove('active');
+            });
+        }
+    }
+
+    async function refreshBroadcastConfig() {
+        try {
+            const r = await fetch('/api/broadcast/config', { headers: getAuthHeader() });
+            if (!r.ok) return;
+            const cfg = await r.json();
+            if (!cfg || !cfg.targets || !cfg.targets.gamevox) return;
+            const t = cfg.targets.gamevox;
+            gvEnabled.checked = !!t.enabled;
+
+            const botMask = t.botTokenMasked || '';
+            let botText;
+            if (!t.hasBotToken) {
+                botText = 'Bot not configured — paste the token above to enable publishing';
+            } else {
+                botText = 'Bot connected (' + botMask + ') — /gvg is live in GameVox chat';
+            }
+            breakerActive = !!(t.status && t.status.breakerActive);
+            setBotStatus(botText);
+            setStateText();
+            tokenField.setBaseline(typeof t.botToken === 'string' ? t.botToken : '');
+            keyField.setBaseline(typeof t.publicKey === 'string' ? t.publicKey : '');
+        } catch (e) { /* panel stays in default state */ }
+    }
+
+    gvEnabled.addEventListener('change', function() {
+        setStateText();
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => postGamevoxConfig({ enabled: !!gvEnabled.checked }), 600);
+    });
 
     refreshBroadcastConfig();
 }

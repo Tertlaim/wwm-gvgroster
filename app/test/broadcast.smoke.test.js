@@ -120,37 +120,43 @@ test('boot smoke: real server serves authed broadcast endpoints end to end', asy
             method: 'POST',
             headers: authHeaders,
             body: JSON.stringify({
-                targets: { gamevox: { enabled: true, botPostMode: 'edit' } }
+                targets: { gamevox: { enabled: true, publicKey: 'd'.repeat(64) } }
             })
         });
         assert.strictEqual(post.status, 200);
         const postBody = await post.json();
         assert.strictEqual(postBody.targets.gamevox.hasBotToken, true);
         assert.match(postBody.targets.gamevox.botTokenMasked, /…cdef$/);
-        assert.deepStrictEqual(postBody.targets.gamevox.botChannels, ['1540402360065040384']);
+        assert.strictEqual(postBody.targets.gamevox.publicKey, 'd'.repeat(64));
 
         // Persisted to the isolated integrations file (write path works).
         const stored = JSON.parse(fs.readFileSync(path.join(tmp.dataDir, 'integrations.json'), 'utf8'));
         assert.strictEqual(stored.targets.gamevox.botToken, SMOKE_BOT_TOKEN);
         assert.strictEqual(stored.targets.gamevox.enabled, true);
-        assert.strictEqual(stored.targets.gamevox.botPostMode, 'edit');
+        assert.strictEqual(stored.targets.gamevox.publicKey, 'd'.repeat(64));
 
-        // Manual push endpoint answers through the real broadcaster. The
-        // fresh default database has no roster content, so both days render
-        // as empty and the push is a clean no-op (zero outbound HTTP - no
-        // test traffic ever reaches the real platform).
+        // Preview endpoint answers through the real builder. The fresh
+        // default database has no roster content, so both days render as
+        // empty and the run is a clean no-op (zero outbound HTTP - no test
+        // traffic ever reaches the real platform).
+        const preview = await fetch(base + '/api/broadcast/preview', {
+            method: 'GET',
+            headers: authHeaders
+        });
+        assert.strictEqual(preview.status, 200);
+        const previewBody = await preview.json();
+        assert.strictEqual(previewBody.success, true);
+        assert.strictEqual(Object.keys(previewBody.days).length, 2);
+
+        // The REST push route is gone by design - publishing is /gvg-only.
         const push = await fetch(base + '/api/broadcast/push', {
             method: 'POST',
             headers: authHeaders,
             body: JSON.stringify({ target: 'gamevox' })
         });
-        assert.strictEqual(push.status, 200);
-        const pushBody = await push.json();
-        assert.strictEqual(pushBody.success, true);
-        assert.strictEqual(pushBody.results.gamevox.ok, true);
-        assert.strictEqual(pushBody.results.gamevox.days.filter(d => d.skipped).length, 2);
+        assert.strictEqual(push.status, 404);
 
-        // Server still healthy after the failed push.
+        // Server still healthy afterwards.
         const health = await fetch(base + '/api/staff');
         assert.strictEqual(health.status, 200);
     } finally {

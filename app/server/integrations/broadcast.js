@@ -42,13 +42,9 @@ const CLASS_EMOJI = { Tank: '🛡️', DPS: '⚔️', Heal: '🌿' };
 const FOOTER_RULE = '─'.repeat(28);
 
 // Discord-compatible bot REST base (developers.gamevox.com/docs/migrating).
-// Messages sent under a bot token are normal channel messages: they reach
-// online clients live (no restart needed) and support edit-in-place, which
-// incoming webhooks never will (D0: PATCH/DELETE 405).
+// Used by the /gvg interaction handler (followup delivery) and by the
+// command-registration script.
 const GAMEVOX_BOT_API = 'https://bot-api.gamevox.com/api/v10';
-// fresh = new message per push (survives burial under newer chat);
-// edit  = PATCH the stored per-channel message (pairs well with pinning).
-const BOT_POST_MODES = ['fresh', 'edit'];
 
 // Host-pinned URL shapes double as an SSRF guard. They are enforced at the
 // trust boundary (the admin-only config route) where untrusted input enters;
@@ -78,7 +74,7 @@ function defaultIntegrationsConfig() {
             discord: { platform: 'discord', enabled: false, mode: 'auto', webhookUrl: '', satMessageId: null, sunMessageId: null },
             gamevox: {
                 platform: 'gamevox', enabled: false, mode: 'manual',
-                botToken: '', botChannels: [], botPostMode: 'fresh',
+                botToken: '', publicKey: '',
                 siteLabel: '', siteUrl: ''
             }
         }
@@ -156,66 +152,6 @@ function maskBotToken(token) {
     return t.slice(0, 4) + '…' + t.slice(-4);
 }
 
-// Channel identifiers for the bot path: numeric snowflakes only. The bot
-// REST surface rejects GameVox internal UUIDs with 10003 Unknown Channel
-// (live-tested 2026-08-25).
-const CHANNEL_ID_RE = /^\d{5,}$/;
-
-function isValidChannelId(id) {
-    return typeof id === 'string' && CHANNEL_ID_RE.test(id.trim());
-}
-
-// GameVox's own UI (Channel Settings -> Channel ID) shows the internal UUID
-// (gamevox_id), while the bot REST surface only resolves numeric snowflakes.
-// The guild channel list carries both, so pasted UUIDs are translated here.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CHANNEL_MAP_TTL_MS = 5 * 60 * 1000;
-const channelMapCache = new Map(); // token -> { map: uuid|snowflake -> snowflake, at }
-
-async function fetchChannelMap(token, fetchImpl) {
-    const cached = channelMapCache.get(token);
-    if (cached && Date.now() - cached.at < CHANNEL_MAP_TTL_MS) return cached.map;
-    const map = new Map();
-    const headers = { Authorization: 'Bot ' + token };
-    const gRes = await fetchImpl(GAMEVOX_BOT_API + '/users/@me/guilds', {
-        headers, signal: AbortSignal.timeout(15000)
-    });
-    if (!gRes.ok) throw new Error('channel lookup failed (' + gRes.status + ')');
-    for (const g of await gRes.json()) {
-        const cRes = await fetchImpl(GAMEVOX_BOT_API + '/guilds/' + g.id + '/channels', {
-            headers, signal: AbortSignal.timeout(15000)
-        });
-        if (!cRes.ok) continue;
-        for (const c of await cRes.json()) {
-            if (!c.id) continue;
-            map.set(c.id, c.id);
-            if (c.gamevox_id) map.set(String(c.gamevox_id).toLowerCase(), c.id);
-        }
-    }
-    channelMapCache.set(token, { map, at: Date.now() });
-    return map;
-}
-
-// Translate a mixed list of snowflakes/UUIDs into stored snowflakes.
-// Returns { ids, unknown } - unknown entries could not be matched to any
-// channel the bot can see (typo, or bot not installed on that server).
-async function resolveChannelIds(token, rawList, fetchImpl) {
-    const map = await fetchChannelMap(token, fetchImpl || globalThis.fetch);
-    const ids = [];
-    const unknown = [];
-    for (const raw of rawList) {
-        const v = String(raw == null ? '' : raw).trim();
-        if (!v) continue;
-        const hit = map.get(UUID_RE.test(v) ? v.toLowerCase() : v);
-        if (hit) {
-            if (!ids.includes(hit)) ids.push(hit);
-        } else {
-            unknown.push(v);
-        }
-    }
-    return { ids, unknown };
-}
-
 // Split long plain-markdown text into chat-sized chunks (<=max chars),
 // breaking at line boundaries so tables/headings stay intact per chunk.
 function splitForChat(text, max) {
@@ -242,12 +178,6 @@ function splitForChat(text, max) {
     return out;
 }
 
-// Channel IDs for the bot path (client "Copy Channel ID").
-function normalizeBotChannels(target) {
-    if (!target || !Array.isArray(target.botChannels)) return [];
-    return target.botChannels.filter(c => isValidChannelId(c));
-}
-
 // Config wins; .env is the deployment fallback so the secret can be managed
 // outside the database when preferred.
 function effectiveBotToken(target) {
@@ -256,11 +186,11 @@ function effectiveBotToken(target) {
     return String(process.env.GAMEVOX_BOT_TOKEN || '').trim();
 }
 
-// A target can deliver if it has webhooks OR a usable bot configuration.
+// Discord target: delivers through configured incoming webhooks. The GameVox
+// target is interaction-driven (/gvg) and never uses this push machinery.
 function hasDeliveryChannel(target) {
     if (!target) return false;
-    if (normalizeWebhooks(target).length > 0) return true;
-    return Boolean(effectiveBotToken(target)) && normalizeBotChannels(target).length > 0;
+    return normalizeWebhooks(target).length > 0;
 }
 
 // Markdown-safe text: names/classes/roles come from validated input, but
@@ -606,23 +536,12 @@ function createBroadcaster(deps) {
         return { ok: false, status: res.status, error: httpError(res, parsed) };
     }
 
-    // Edit-in-place for one day on ONE channel. Discord-style platforms
-    // PATCH the stored per-channel message id (falling back to create on
-    // 404); create-only platforms (GameVox incoming webhooks) always POST a
-    // fresh plain-markdown message - embeds are not wired in GameVox
-    // webhooks v1 (docs, 2026-08-23).
-    async function ensureDayMessage(st, target, url, db, day, actor, siteOverride) {
-        const canEdit = target.platform !== 'gamevox';
-        let message;
-        if (canEdit) {
-            message = buildDayMessage(db, day, { updatedBy: actor });
-        } else {
-            const text = buildDayText(db, day, {
-                updatedBy: actor,
-                ...resolveSite(target, siteOverride)
-            });
-            message = text ? { content: text } : null;
-        }
+    // Edit-in-place for one day on ONE channel (Discord-style platforms
+    // PATCH the stored per-channel message id, falling back to create on
+    // 404). The GameVox target is interaction-driven (/gvg) and never
+    // routes through this REST machinery.
+    async function ensureDayMessage(st, target, url, db, day, actor) {
+        const message = buildDayMessage(db, day, { updatedBy: actor });
         if (!message) return { ok: true, skipped: true };
 
         if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
@@ -632,96 +551,34 @@ function createBroadcaster(deps) {
         const ids = target.channelIds[url];
 
         const idKey = day + 'MessageId';
-        if (canEdit && ids[idKey]) {
+        if (ids[idKey]) {
             const edited = await send(st, url + '/messages/' + ids[idKey], 'PATCH', message);
             if (edited.ok) return { ok: true, updated: true };
             if (edited.status !== 404) return { ok: false, error: edited.error };
             ids[idKey] = null;
         }
 
-        // Discord needs ?wait=true to echo the created message back; GameVox
-        // returns it implicitly (URL-token auth, no extra headers).
-        const postUrl = target.platform === 'discord'
-            ? url + '?wait=true'
-            : url;
-        const created = await send(st, postUrl, 'POST', message);
+        const created = await send(st, url + '?wait=true', 'POST', message);
         if (!created.ok) return { ok: false, error: created.error };
         if (!created.body || !created.body.id) return { ok: false, error: 'no message id in response' };
-        if (canEdit) ids[idKey] = created.body.id;
-        return { ok: true, created: true };
-    }
-
-    // Site branding for a push: config values (used by interval auto-pushes,
-    // which have no request context), overridden whenever the route passes an
-    // explicit per-request decision (public origin, or the Local Test tag).
-    function resolveSite(target, siteOverride) {
-        const site = { siteLabel: target.siteLabel, siteUrl: target.siteUrl };
-        if (siteOverride && typeof siteOverride === 'object') {
-            if (typeof siteOverride.siteLabel === 'string') site.siteLabel = siteOverride.siteLabel;
-            if (typeof siteOverride.siteUrl === 'string') site.siteUrl = siteOverride.siteUrl;
-        }
-        return site;
-    }
-
-    // One day on ONE channel via the GameVox bot REST API. Bot messages are
-    // normal chat: online clients see them live, and edit mode can PATCH a
-    // stored message id (fresh mode always posts, so a roster buried under
-    // newer chat is never silently updated out of sight). Content is the
-    // same plain-markdown day text the webhook path uses (2-column layout).
-    async function botEnsureDayMessage(st, target, channelId, db, day, actor, siteOverride) {
-        const text = buildDayText(db, day, {
-            updatedBy: actor,
-            ...resolveSite(target, siteOverride)
-        });
-        if (!text) return { ok: true, skipped: true };
-
-        const token = effectiveBotToken(target);
-        if (!token) return { ok: false, error: 'bot token missing' };
-        const auth = { Authorization: 'Bot ' + token };
-        const mode = BOT_POST_MODES.includes(target.botPostMode) ? target.botPostMode : 'fresh';
-        const idKey = day + 'MessageId';
-        const idsRoot = (target.channelIds && typeof target.channelIds === 'object')
-            ? target.channelIds['bot:' + channelId]
-            : null;
-        const storedId = mode === 'edit' && idsRoot ? idsRoot[idKey] : null;
-
-        if (storedId) {
-            const edited = await send(st,
-                GAMEVOX_BOT_API + '/channels/' + channelId + '/messages/' + storedId,
-                'PATCH', { content: text }, auth);
-            if (edited.ok) return { ok: true, updated: true };
-            if (edited.status !== 404) return { ok: false, error: edited.error };
-            idsRoot[idKey] = null; // message deleted server-side -> recreate
-        }
-
-        const created = await send(st,
-            GAMEVOX_BOT_API + '/channels/' + channelId + '/messages',
-            'POST', { content: text }, auth);
-        if (!created.ok) return { ok: false, error: created.error };
-        if (!created.body || !created.body.id) return { ok: false, error: 'no message id in response' };
-        if (mode === 'edit') {
-            if (!target.channelIds || typeof target.channelIds !== 'object') target.channelIds = {};
-            if (!target.channelIds['bot:' + channelId] || typeof target.channelIds['bot:' + channelId] !== 'object') {
-                target.channelIds['bot:' + channelId] = {};
-            }
-            target.channelIds['bot:' + channelId][idKey] = created.body.id;
-        }
+        ids[idKey] = created.body.id;
         return { ok: true, created: true };
     }
 
     async function pushTarget(key, options) {
+        // The GameVox target is interaction-driven (/gvg in chat) and no
+        // longer participates in the REST push engine at all.
+        if (key === 'gamevox') {
+            return { ok: false, skipped: true, error: 'not configured' };
+        }
         const opts = options || {};
         const cfg = opts.config || await d.readConfig();
         if (cfg && Number.isFinite(Number(cfg.debounceSec))) {
             debounceSecCache = Number(cfg.debounceSec);
         }
         const target = cfg && cfg.targets && cfg.targets[key];
-        // Webhooks drive the discord target only; the GameVox path is
-        // bot-exclusive since the legacy webhook removal (2026-08-26).
-        const urls = key === 'discord' ? normalizeWebhooks(target) : [];
-        const botChannels = key === 'gamevox' ? normalizeBotChannels(target) : [];
-        const botOn = botChannels.length > 0 && Boolean(effectiveBotToken(target));
-        if (!target || !target.enabled || (urls.length === 0 && !botOn)) {
+        const urls = normalizeWebhooks(target);
+        if (!target || !target.enabled || urls.length === 0) {
             return { ok: false, skipped: true, error: 'not configured' };
         }
 
@@ -750,24 +607,15 @@ function createBroadcaster(deps) {
         const db = opts.db || await d.readData();
         if (!db) return { ok: false, error: 'no data' };
 
-        // Fan out: every enabled channel (webhook or bot) receives every
-        // non-empty day. Bot channels are numbered after webhooks so error
-        // labels stay stable per delivery kind.
+        // Fan out: every enabled webhook channel receives every non-empty
+        // day.
         const days = [];
-        configDirty = configDirty || false;
         for (const day of DAY_KEYS) {
             const perChannel = [];
             for (let i = 0; i < urls.length; i++) {
-                const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system', opts.site);
+                const r = await ensureDayMessage(st, target, urls[i], db, day, opts.actor || 'system');
                 if (r.created) configDirty = true;
                 perChannel.push({ n: i + 1, ...r });
-            }
-            if (botOn) {
-                for (let i = 0; i < botChannels.length; i++) {
-                    const r = await botEnsureDayMessage(st, target, botChannels[i], db, day, opts.actor || 'system', opts.site);
-                    if (r.created) configDirty = true;
-                    perChannel.push({ n: urls.length + i + 1, ...r });
-                }
             }
             const failed = perChannel.filter(x => x.ok === false);
             days.push({
@@ -956,7 +804,6 @@ module.exports = {
     MAX_FIELD_CHARS,
     MAX_FIELD_LINES,
     GAMEVOX_BOT_API,
-    BOT_POST_MODES,
     defaultIntegrationsConfig,
     canonicalize,
     computeGroupsHash,
@@ -964,11 +811,7 @@ module.exports = {
     isValidWebhookUrl,
     isValidBotToken,
     maskBotToken,
-    isValidChannelId,
-    UUID_RE,
-    resolveChannelIds,
     splitForChat,
-    normalizeBotChannels,
     effectiveBotToken,
     hasDeliveryChannel,
     buildDayMessage,

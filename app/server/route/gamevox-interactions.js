@@ -2,20 +2,27 @@
 //
 // GameVox POSTs every slash-command invocation here with an Ed25519
 // signature over "<timestamp><rawBody>" (headers: X-Signature-Ed25519 /
-// X-Signature-Timestamp). The /publish command replies with a deferred
+// X-Signature-Timestamp). The /gvg command replies with a deferred
 // acknowledgment and then delivers the Saturday/Sunday roster as interaction
 // followups - which the invoking client renders immediately, giving the
-// publisher instant visual confirmation (the REST push path lacks this on
+// publisher instant visual confirmation (the REST push path lacked this on
 // GameVox clients; live-tested 2026-08-25).
 //
-// Public key + app id are public identifiers (they appear in install URLs);
-// env overrides exist for multi-instance setups but are not secrets.
+// The Ed25519 PUBLIC key is a public identifier: SuperAdmins store it in the
+// panel (per-application), with the built-in default as fallback. It also
+// exposes setup-status probes and a remove-from-server action so a bot can
+// be remade without touching the GameVox client.
+//
+// Delivery note: followups land in the channel where /gvg was invoked -
+// there is no configured channel list by design (D1-a decision, 2026-08-26).
 
 const crypto = require('crypto');
 
 const DEFAULT_PUBLIC_KEY = '212030ed4e13c365be8daaa1f71f65ce4021ef477e27e756975e3e71ed181dc9';
 const DEFAULT_APP_ID = '1541027880090140673';
+const GVG_COOLDOWN_MS = 30 * 1000;
 const MANAGE_MESSAGES = 0x2000n;
+const ADMINISTRATOR = 1n << 3n;
 const EPHEMERAL = 1 << 6;
 const FOLLOWUP_MAX = 1900;
 
@@ -26,20 +33,46 @@ function publicKeyObject(hex) {
 }
 
 module.exports = function registerGamevoxInteractions(app, ctx) {
-    const { data, broadcast, botFetch } = ctx;
+    const { data, broadcast, botFetch, auth } = ctx;
     const doFetch = botFetch || ((url, opts) => globalThis.fetch(url, opts));
-    const publicKeyHex = process.env.GAMEVOX_PUBLIC_KEY || DEFAULT_PUBLIC_KEY;
+    const fallbackKey = process.env.GAMEVOX_PUBLIC_KEY || DEFAULT_PUBLIC_KEY;
     const appId = process.env.GAMEVOX_APP_ID || DEFAULT_APP_ID;
 
-    let verifiedKey = null;
-    try {
-        verifiedKey = publicKeyObject(publicKeyHex);
-    } catch (e) {
-        console.error('[gamevox-interactions] bad GAMEVOX_PUBLIC_KEY:', e.message);
+    // Public key resolution: panel-stored value wins over the built-in
+    // default so remade applications never need a code change.
+    async function currentPublicKey() {
+        try {
+            const cfg = await data.readIntegrations();
+            const k = cfg && cfg.targets && cfg.targets.gamevox &&
+                typeof cfg.targets.gamevox.publicKey === 'string'
+                ? cfg.targets.gamevox.publicKey.trim()
+                : '';
+            if (/^[0-9a-f]{64}$/i.test(k)) return k;
+        } catch (e) { /* fall through to default */ }
+        return fallbackKey;
     }
 
-    // Interaction followup: valid for 15 minutes after the command ran,
-    // independent of the 3s callback window.
+    function verifySignature(req, keyHex) {
+        let key;
+        try {
+            key = publicKeyObject(keyHex);
+        } catch (e) {
+            return false;
+        }
+        const sig = String(req.headers['x-signature-ed25519'] || '');
+        const ts = String(req.headers['x-signature-timestamp'] || '');
+        if (!/^[0-9a-f]{128}$/i.test(sig) || !/^\d+$/.test(ts)) return false;
+        // Replay guard: refuse timestamps older than 10 minutes. (Cold starts
+        // delay execution by <=~60s, far inside this window.)
+        if (Math.abs(Date.now() / 1000 - Number(ts)) > 600) return false;
+        try {
+            const msg = Buffer.concat([Buffer.from(ts), req.rawBody || Buffer.alloc(0)]);
+            return crypto.verify(null, msg, key, Buffer.from(sig, 'hex'));
+        } catch (e) {
+            return false;
+        }
+    }
+
     async function postFollowup(interactionToken, content, flags) {
         try {
             const r = await doFetch(
@@ -58,22 +91,6 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
         }
     }
 
-    function verifySignature(req) {
-        if (!verifiedKey) return false;
-        const sig = String(req.headers['x-signature-ed25519'] || '');
-        const ts = String(req.headers['x-signature-timestamp'] || '');
-        if (!/^[0-9a-f]{128}$/i.test(sig) || !/^\d+$/.test(ts)) return false;
-        // Replay guard: refuse timestamps older than 10 minutes. (Cold starts
-        // delay execution by <=~60s, far inside this window.)
-        if (Math.abs(Date.now() / 1000 - Number(ts)) > 600) return false;
-        try {
-            const msg = Buffer.concat([Buffer.from(ts), req.rawBody || Buffer.alloc(0)]);
-            return crypto.verify(null, msg, verifiedKey, Buffer.from(sig, 'hex'));
-        } catch (e) {
-            return false;
-        }
-    }
-
     // True when this interaction sat queued while the instance woke from
     // sleep: the 3s callback window is long gone, so immediate replies would
     // vanish. Everything must go out as followups instead (tokens live 15min).
@@ -82,8 +99,11 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
         return ts > 0 && (Date.now() / 1000 - ts) > 10;
     }
 
+    let lastGvgAt = 0; // global cooldown - rosters are rare, bursts are noise
+
     app.post('/api/gamevox/interactions', async (req, res) => {
-        if (!verifySignature(req)) {
+        const keyHex = await currentPublicKey();
+        if (!verifySignature(req, keyHex)) {
             return res.status(401).json({ error: 'invalid signature' });
         }
         const body = req.body || {};
@@ -105,7 +125,7 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
                 : broadcast.DAY_KEYS.slice();
             const late = isLate(req);
 
-            if (!(perms & MANAGE_MESSAGES) && !(perms & (1n << 3n))) { // ManageMessages | Administrator
+            if (!(perms & MANAGE_MESSAGES) && !(perms & ADMINISTRATOR)) {
                 const denial = {
                     type: 4,
                     data: {
@@ -116,6 +136,23 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
                 if (!late) return res.json(denial);
                 res.status(200).json({});
                 await postFollowup(body.token, denial.data.content, denial.data.flags);
+                return undefined;
+            }
+
+            // Global cooldown: one publisher at a time keeps channel noise
+            // down while the no-whitelist model settles in (D1-a, 2026-08-26).
+            const waitMs = GVG_COOLDOWN_MS - (Date.now() - lastGvgAt);
+            if (waitMs > 0) {
+                const busy = {
+                    type: 4,
+                    data: {
+                        content: `A roster was just published - try again in ${Math.ceil(waitMs / 1000)}s.`,
+                        flags: EPHEMERAL
+                    }
+                };
+                if (!late) return res.json(busy);
+                res.status(200).json({});
+                await postFollowup(body.token, busy.data.content, busy.data.flags);
                 return undefined;
             }
 
@@ -149,6 +186,8 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
                 return undefined;
             }
 
+            lastGvgAt = Date.now();
+
             if (!late) {
                 // Warm path: acknowledge within the callback window ("thinking..."),
                 // deliver content as followups right after.
@@ -173,5 +212,105 @@ module.exports = function registerGamevoxInteractions(app, ctx) {
         }
 
         return res.status(400).json({ error: 'unknown interaction type' });
+    });
+
+    // ---- Setup helpers (SuperAdmin only) ----
+
+    function botTokenFrom(cfg) {
+        const t = cfg && cfg.targets && cfg.targets.gamevox;
+        const fromConfig = t && typeof t.botToken === 'string' ? t.botToken.trim() : '';
+        return fromConfig || String(process.env.GAMEVOX_BOT_TOKEN || '').trim();
+    }
+
+    // Live connectivity check: validates the stored token and lists which
+    // servers the bot is installed on. Drives both the "Test connection"
+    // button and the remove-bot server dropdown.
+    app.get('/api/gamevox/setup/status', auth.requireAuth, auth.requireSuperAdmin, async (req, res) => {
+        const out = { tokenOk: false, botUser: null, guilds: [], errors: [], publicKeySet: false };
+        try {
+            const cfg = await data.readIntegrations();
+            const k = cfg && cfg.targets && cfg.targets.gamevox &&
+                typeof cfg.targets.gamevox.publicKey === 'string'
+                ? cfg.targets.gamevox.publicKey.trim()
+                : '';
+            out.publicKeySet = /^[0-9a-f]{64}$/i.test(k);
+        } catch (e) { /* ignore */ }
+
+        let token = '';
+        try {
+            const cfg = await data.readIntegrations();
+            token = botTokenFrom(cfg);
+        } catch (e) { /* ignore */ }
+        if (!token) {
+            out.errors.push('No bot token saved - paste it above first.');
+            return res.json({ success: true, ...out });
+        }
+
+        try {
+            const meRes = await doFetch('https://bot-api.gamevox.com/api/v10/users/@me', {
+                headers: { Authorization: 'Bot ' + token },
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!meRes.ok) {
+                out.errors.push('Token rejected by GameVox (' + meRes.status + ') - regenerate it in the portal.');
+                return res.json({ success: true, ...out });
+            }
+            out.tokenOk = true;
+            out.botUser = await meRes.json();
+
+            const gRes = await doFetch('https://bot-api.gamevox.com/api/v10/users/@me/guilds', {
+                headers: { Authorization: 'Bot ' + token },
+                signal: AbortSignal.timeout(15000)
+            });
+            if (gRes.ok) {
+                out.guilds = (await gRes.json()).map(g => ({ id: g.id, name: g.name }));
+            } else {
+                out.errors.push('Could not list servers (' + gRes.status + ').');
+            }
+        } catch (e) {
+            out.errors.push('Network error contacting GameVox: ' + e.message);
+        }
+        res.json({ success: true, ...out });
+    });
+
+    // Remove the bot from ONE server. Tries the self-leave API first; when
+    // the platform refuses (404 today), returns manual client instructions.
+    app.post('/api/gamevox/setup/leave', auth.requireAuth, auth.requireSuperAdmin, async (req, res) => {
+        const guildId = String((req.body && req.body.guildId) || '').trim();
+        if (!/^\d{5,}$/.test(guildId)) {
+            return res.status(400).json({ success: false, error: 'Invalid guild id' });
+        }
+        let token = '';
+        try {
+            token = botTokenFrom(await data.readIntegrations());
+        } catch (e) { /* ignore */ }
+        if (!token) {
+            return res.status(400).json({ success: false, error: 'No bot token saved' });
+        }
+        try {
+            const r = await doFetch(
+                `https://bot-api.gamevox.com/api/v10/users/@me/guilds/${guildId}`,
+                {
+                    method: 'DELETE',
+                    headers: { Authorization: 'Bot ' + token },
+                    signal: AbortSignal.timeout(15000)
+                });
+            if (r.ok || r.status === 204) {
+                return res.json({ success: true, removed: true });
+            }
+            return res.json({
+                success: true,
+                removed: false,
+                manual: true,
+                status: r.status,
+                steps: [
+                    'Open your GameVox server → Server Settings → Integrations.',
+                    `Under Bots and Apps, find ${'wwm_gvg_roster'} and choose Uninstall Application.`,
+                    'Reinstall any time via the OAuth2 install link (Setup guide, step 4).'
+                ]
+            });
+        } catch (e) {
+            res.status(500).json({ success: false, error: 'Network error: ' + e.message });
+        }
     });
 };
