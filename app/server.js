@@ -83,6 +83,8 @@ registerDataRoutes(app, ctx);
 registerHistoryRoutes(app, ctx);
 registerBroadcastRoutes(app, ctx);
 const gamevoxApi = registerGamevoxInteractions(app, ctx);
+const gamevoxGateway = require(__dirname + '/server/gamevox-gateway');
+gamevoxGateway(ctx);
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
