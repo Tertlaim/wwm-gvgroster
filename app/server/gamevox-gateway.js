@@ -12,6 +12,7 @@
  */
 
 const WebSocket = require('ws');
+const { DAY_KEYS } = require('./integrations/broadcast');
 
 const GATEWAY = 'wss://gateway.gamevox.com/?v=10&encoding=json';
 
@@ -164,7 +165,11 @@ function handleMessageCreate(ctx, msg) {
     const ADMINISTRATOR = 1n << 3n;
     const perms = BigInt(member.permissions || '0');
     if (!(perms & MANAGE_MESSAGES) && !(perms & ADMINISTRATOR)) {
-        console.log('[gw] !gvg denied (no Manage Messages/Administrator)');
+        ctx.broadcaster.publish('Only moderators and admins can publish the roster.', {
+            author: author.username || 'wwm_gvg_roster',
+            channelId,
+            guildId
+        });
         return;
     }
 
@@ -178,11 +183,10 @@ function handleMessageCreate(ctx, msg) {
     }
     cooldowns.set(guildId, now);
 
-    // Build roster from Supabase
+    // Build roster from Supabase using shared DAY_KEYS from broadcast module
     const db = ctx.data.readDatabase();
     const texts = [];
 
-    const DAY_KEYS = ['sat', 'sun'];
     for (const day of DAY_KEYS) {
         const groups = db && db.groups && db.groups[day];
         if (!groups || typeof groups !== 'object') continue;
@@ -208,9 +212,8 @@ function handleMessageCreate(ctx, msg) {
 
     console.log('[gw] !gvg publishing ' + texts.length + ' days for guild ' + guildId);
 
-    // Publish via HTTP-mode interactions
-    const contentToPost = texts.join('\n\n');
-    const out = ctx.broadcaster.publish(contentToPost, {
+    // Publish via HTTP-mode interactions with chunking for Discord's 2000 char limit
+    const out = ctx.broadcaster.publish(texts.join('\n\n'), {
         author: author.username || 'wwm_gvg_roster',
         channelId,
         guildId
